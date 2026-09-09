@@ -1,0 +1,1861 @@
+Работаем с текущим проектом:
+
+/Users/vitaliiprotsiuk/Desktop/Blink
+
+Это НЕ новый проект.
+
+Перед изменениями:
+1. Прочитай реальные текущие файлы проекта.
+2. Прочитай последний Blink current-state report.
+3. Сделай новый backup/checkpoint.
+4. Запусти полный baseline test suite.
+5. После этого вноси изменения ниже.
+
+Цель этого этапа:
+НЕ добавлять новые большие подсистемы.
+
+Наоборот:
+- убрать ненужную сложность;
+- закончить недоделанную Astronomy;
+- устранить архитектурные противоречия;
+- проверить background/runtime behavior;
+- стабилизировать Blink как ежедневное personal utility app.
+
+
+==================================================
+1. СОХРАНЯЕМ ОБЩУЮ АРХИТЕКТУРУ
+==================================================
+
+Основной контракт Blink НЕ менять:
+
+SwiftUI GUI
+    ↓
+local JSON
+    ↓
+watcher.py
+    ↓
+ntfy
+    ↓
+iPhone
+
+
+SwiftUI:
+- UI;
+- editing local data;
+- Active / Done;
+- Dock/menu-bar attention.
+
+watcher.py:
+- единственный notification sender;
+- direct ntfy;
+- remote ntfy 24-hour queue.
+
+Astronomy:
+- local Skyfield/JPL calculations.
+
+Weather:
+- Open-Meteo only when fresh Weather briefing is actually needed.
+
+Mac остается local source of truth.
+
+НЕ добавлять:
+- SQLite;
+- cloud backend;
+- Netlify;
+- AI;
+- Calendar integrations.
+
+
+==================================================
+2. ПОЛНОСТЬЮ УДАЛИТЬ SNOOZE
+==================================================
+
+Принято окончательное решение:
+
+SNOOZE В BLINK НЕ НУЖЕН.
+
+Удалить его полностью.
+
+Не просто спрятать UI.
+
+Нужно удалить связанный код, schema и tests.
+
+
+Сейчас существуют:
+
+snoozed_until
+snoozed_for_minutes
+
+а также UI:
+
+10 min
+30 min
+1 hour
+Tomorrow
+
+и domain/reminder logic Snooze.
+
+
+Все это удалить.
+
+
+После изменений personal lifecycle должен быть только:
+
+Upcoming
+    ↓
+Active
+    ↓
+Done
+    ↓
+History
+
+
+Без промежуточного Snooze state.
+
+
+==================================================
+3. MIGRATION СУЩЕСТВУЮЩИХ SNOOZE DATA
+==================================================
+
+Нельзя сломать существующий agenda.json.
+
+Если старый event содержит:
+
+"snoozed_until"
+"snoozed_for_minutes"
+
+они больше не должны влиять на runtime.
+
+
+Сделай безопасную one-time cleanup/migration:
+
+- удалить известные obsolete snooze fields;
+- сохранить все остальные unknown fields;
+- atomic write;
+- никаких изменений start;
+- никаких изменений reminders;
+- никаких изменений Done.
+
+
+Если событие было snoozed,
+после удаления Snooze оно снова определяется только по original start.
+
+
+Если:
+
+start <= now
+requires_done == true
+done != true
+
+→ Active.
+
+
+==================================================
+4. ACTIVE И ATTENTION РАЗДЕЛИТЬ
+==================================================
+
+Сейчас архитектура смешивает:
+
+event lifecycle
+и
+visual attention start.
+
+
+Это исправить.
+
+
+Правильная модель:
+
+
+EVENT STATE:
+
+start > now
+→ Upcoming
+
+start <= now
+requires_done == true
+done != true
+→ Active
+
+done == true
+→ History
+
+
+ATTENTION STATE:
+
+attention_start =
+start - blinker_minutes_before
+
+
+Если:
+
+attention_start <= now
+и event unfinished/enabled
+
+→ этот event может участвовать в AttentionState.
+
+
+Пример:
+
+Meeting
+start = 15:00
+blinker = 60 min
+
+
+14:00:
+
+Event = UPCOMING
+Attention = YELLOW
+
+
+15:00:
+
+Event = ACTIVE
+Attention = YELLOW
+
+
+Done:
+
+Event = HISTORY
+Attention = OFF
+
+
+НЕ переводить event в Active раньше start
+только потому, что начался blinker.
+
+
+==================================================
+5. ATTENTION СОХРАНЯЕМ
+==================================================
+
+Сохраняем:
+
+green
+yellow
+red
+off
+
+
+Global AttentionState:
+
+red > yellow > green > off
+
+
+Attention может начинаться до start через blinker_minutes_before.
+
+
+Done окончательно снимает Attention конкретного event.
+
+
+Dock и menu bar используют один AttentionManager.
+
+
+Будущая USB lamp тоже должна использовать этот же state.
+
+
+==================================================
+6. ПОЛНОСТЬЮ УДАЛИТЬ QUIET HOURS
+==================================================
+
+Quiet Hours больше НЕ нужны.
+
+
+Причина:
+
+Пользователь сам явно включает/выключает:
+
+- personal event;
+- astronomy event;
+- Weather briefing.
+
+Не должно существовать скрытой policy,
+из-за которой включенный пользователем event внезапно не приходит.
+
+
+Удалить:
+
+quiet_hours.json
+app/quiet_hours.py
+
+всю quiet-hours evaluation в watcher;
+
+все Swift references;
+
+все tests;
+
+все README/docs references;
+
+все remote-queue special cases для quiet hours.
+
+
+После изменений должно быть очень простое правило:
+
+enabled == true
+→ notification eligible
+
+enabled == false
+→ notification disabled
+
+
+Никаких дополнительных временных suppress rules.
+
+
+==================================================
+7. REMOTE NTFY QUEUE ПОСЛЕ УДАЛЕНИЯ QUIET HOURS
+==================================================
+
+24-hour remote queue сохранить.
+
+
+Она используется для:
+
+PERSONAL
+ASTRONOMY
+
+
+Не Weather.
+
+
+После удаления Quiet Hours remote queue становится проще:
+
+desired reminder
++
+enabled
++
+not Done
++
+inside 24h
+→ queue
+
+
+No hidden policy.
+
+
+Edit / Delete / Disable / Done
+по-прежнему должны cancel/update remote ntfy messages.
+
+
+==================================================
+8. WEATHER: НИКАКОГО ПОСТОЯННОГО POLLING
+==================================================
+
+Очень важно проверить текущую реализацию.
+
+Watcher НЕ должен обращаться в Open-Meteo
+на каждом watcher cycle.
+
+
+Weather network request нужен только когда:
+
+1. наступило configured Weather briefing time;
+или
+
+2. Mac проснулся ПОСЛЕ briefing time,
+   today's briefing еще не отправлен;
+или
+
+3. пользователь явно нажал manual Refresh,
+   если такая кнопка существует;
+или
+
+4. существует конкретная retry после failed due briefing.
+
+
+НЕ делать постоянный background weather refresh.
+
+
+Weather cache UI может показывать последнюю известную информацию,
+но background network requests без причины не нужны.
+
+
+==================================================
+9. WEATHER И NTFY REMOTE QUEUE
+==================================================
+
+Weather НЕ ставить заранее в общий 24-hour ntfy queue.
+
+
+Причина:
+прогноз должен быть свежим.
+
+
+Логика:
+
+
+CASE A
+
+Mac awake at briefing time.
+
+→ fetch Open-Meteo
+→ build fresh briefing
+→ direct ntfy push
+→ mark today's briefing sent
+
+
+CASE B
+
+Mac asleep at briefing time.
+
+Mac wakes later.
+
+→ detect wake
+→ today's briefing not sent
+→ fetch fresh forecast
+→ immediately send briefing
+
+
+CASE C
+
+Fetch failed.
+
+→ do NOT mark briefing sent
+→ retry later while awake with sane interval
+→ no tight retry loop
+
+
+Если Internet отсутствует:
+
+→ GUI may show Weather unavailable
+→ Personal/Astronomy continue working
+→ no crash.
+
+
+==================================================
+10. WEATHER FETCH RATE / RETRIES
+==================================================
+
+Не создавать постоянный runner.
+
+
+Для failed due Weather briefing можно сделать, например:
+
+retry no faster than every 10–15 minutes
+
+до разумной границы текущего дня.
+
+
+Не делать retry every watcher poll.
+
+
+Никаких multiple concurrent fetch workers.
+
+
+Один weather request at a time.
+
+
+==================================================
+11. WEATHER MESSAGE: HIGH TODAY + LOW TONIGHT
+==================================================
+
+Изменить semantics low temperature.
+
+
+Нужно показывать:
+
+High today
+Low tonight
+
+
+а не просто calendar-day minimum.
+
+
+Пример:
+
+High today: 68°F
+Low tonight: 47°F
+
+
+High today:
+может использовать daily daytime maximum.
+
+
+Low tonight:
+вычислить из hourly forecast
+для предстоящей ночи.
+
+
+Предпочтительный practical window:
+
+примерно 18:00 local today
+→ 08:00 local next day
+
+
+Если есть более корректная простая реализация —
+документируй.
+
+
+Главное:
+не показывать утром как "Low tonight"
+температуру, которая была в 5 AM сегодня.
+
+
+==================================================
+12. WEATHER CONTENT СОХРАНИТЬ
+==================================================
+
+Weather briefing должен содержать факты:
+
+- High today
+- Low tonight
+- Humidity min/max
+- Rain probability / useful timing
+- Snow
+- Wind / gusts when meaningful
+
+
+Никаких:
+
+jacket recommendation
+vest recommendation
+AI clothing advice.
+
+
+==================================================
+13. FULL MOON / NEW MOON — ЗАКОНЧИТЬ
+==================================================
+
+Сейчас Full Moon / New Moon не всегда имеют реальный exact timestamp.
+
+Это нужно закончить.
+
+
+Использовать надежную Skyfield/JPL astronomy logic.
+
+
+Для каждого exact phase event сохранить:
+
+- event type;
+- UTC instant;
+- local datetime;
+- location/timezone context where appropriate.
+
+
+Для фаз:
+
+New Moon
+First Quarter
+Full Moon
+Last Quarter
+
+
+Нас особенно интересуют notification events:
+
+Full Moon
+New Moon
+
+
+Пользователь должен иметь возможность:
+
+Full Moon:
+enabled ON/OFF
+offsets []
+
+New Moon:
+enabled ON/OFF
+offsets []
+
+
+Например:
+
+Full Moon
+☑ 24 hours before
+☑ At event
+
+
+Event-time push должен приходить в реальный
+астрономический момент полнолуния.
+
+
+То же для New Moon.
+
+
+==================================================
+14. MOON STATUS AT SUNSET
+==================================================
+
+Закончить reliably.
+
+
+Если sunset существует:
+
+moon_above_horizon_at_sunset
+НЕ должен быть случайным null.
+
+
+В момент sunset вычислить topocentric Moon altitude.
+
+
+Если altitude > horizon threshold:
+→ Above horizon
+
+если ниже:
+→ Below horizon
+
+
+Также briefing может содержать:
+
+phase name;
+illumination;
+waxing/waning;
+next moonrise/moonset;
+next Full Moon;
+next New Moon.
+
+
+Если конкретного rise/set нет в local calendar day,
+это НЕ ошибка.
+
+
+Показывать корректно:
+
+No moonrise today
+
+или:
+
+Next moonrise: tomorrow 00:17
+
+
+==================================================
+15. ASTRONOMY HORIZON BOUNDARY
+==================================================
+
+Schedule остается rolling 24 months.
+
+
+Но при вычислении:
+
+next Full Moon
+next New Moon
+next moonrise
+etc.
+
+нельзя потерять событие просто потому,
+что оно находится немного за final persisted horizon.
+
+
+Поэтому calculator может использовать небольшой
+look-ahead padding за 24-month boundary,
+например один-два lunar cycles,
+если это нужно.
+
+
+Persisted schedule при этом остается примерно 24 months.
+
+
+==================================================
+16. POLAR / NO-EVENT CASES — ЗАКОНЧИТЬ КОРРЕКТНО
+==================================================
+
+Пользователь хочет корректную информацию,
+но нельзя выдумывать событие, которого нет.
+
+
+На высоких широтах могут реально отсутствовать:
+
+sunrise
+sunset
+moonrise
+moonset
+
+в конкретную local date.
+
+
+Это должно быть explicit valid state,
+а НЕ exception/null mystery.
+
+
+Например:
+
+sunrise: null
+sun_state: polar_night
+
+или:
+
+sunset: null
+sun_state: polar_day
+
+
+Moon:
+
+moonrise: null
+moonrise_status: no_rise_this_local_date
+
+
+UI/message должен отображать понятное:
+
+No sunrise today
+Sun remains below horizon
+
+или соответствующий корректный текст.
+
+
+Не генерировать fake timestamps.
+
+
+==================================================
+17. ECLIPSES — ЗАКОНЧИТЬ
+==================================================
+
+Сейчас eclipses scaffold.
+
+Пользователь хочет реально использовать:
+
+Lunar Eclipse
+Solar Eclipse
+
+
+Оба должны иметь:
+
+enabled ON/OFF
+notification offsets
+
+
+Но уведомлять нужно только о затмениях,
+которые реально наблюдаемы из configured location.
+
+
+Не уведомлять о solar eclipse,
+видимом только на другой стороне Земли.
+
+
+==================================================
+18. LUNAR ECLIPSE
+==================================================
+
+Реализовать reliable lunar eclipse calculation.
+
+
+Нужно определить минимум:
+
+- type, если надежно:
+  penumbral / partial / total;
+- locally observable или нет;
+- local start;
+- maximum;
+- local end;
+- Moon altitude / visibility as necessary.
+
+
+Если часть eclipse происходит ниже local horizon,
+message должен честно это отражать.
+
+
+Notification anchor предпочтительно:
+
+начало locally observable eclipse.
+
+
+Body может содержать:
+
+Lunar eclipse
+Starts: ...
+Maximum: ...
+Ends: ...
+
+
+Если другой anchor технически существенно надежнее,
+объясни в final report.
+
+
+==================================================
+19. SOLAR ECLIPSE
+==================================================
+
+Solar eclipse сложнее.
+
+Не использовать грубое правило:
+
+Sun/Moon angular separation small
+→ eclipse visible.
+
+
+Нужен надежный topocentric/local visibility calculation.
+
+
+Определить:
+
+- eclipse observable from configured coordinates;
+- partial/total/annular if reliably calculable;
+- local visible start;
+- maximum;
+- visible end;
+- magnitude/obscuration only if computed reliably.
+
+
+Используй официально документированный
+и проверяемый astronomy approach.
+
+
+Можно добавить специализированную dependency,
+если Skyfield alone не дает достаточного надежного local eclipse API.
+
+
+Но:
+
+- dependency должна быть justified;
+- local/offline astronomy после install предпочтительна;
+- никакого random web scraping;
+- никаких hard-coded eclipse tables.
+
+
+Перед выбором implementation проверь authoritative documentation.
+
+
+==================================================
+20. ECLIPSE VALIDATION
+==================================================
+
+Обязательно cross-check известные eclipses
+с authoritative published data.
+
+Минимум несколько test locations:
+
+- location inside path;
+- location outside path;
+- partial visibility location;
+- event below horizon where applicable.
+
+
+Не считать eclipse implementation finished,
+пока local observability не проверена.
+
+
+==================================================
+21. ASTRONOMY LOCATION CHANGE
+==================================================
+
+Сейчас после location change astronomy требует regeneration.
+
+Для пользователя этого быть не должно.
+
+
+Правильное поведение:
+
+Save new Location
+    ↓
+location revision/fingerprint changes
+    ↓
+old weather cache stale
+old astronomy stale
+old future remote astronomy notifications cancel
+    ↓
+generate new Astronomy automatically
+    ↓
+rebuild next-24h astronomy remote queue
+
+
+Personal events НЕ менять.
+
+
+Никакой кнопки:
+
+"remember to regenerate astronomy"
+
+пользователю не нужна.
+
+
+==================================================
+22. ЕДИНАЯ LOCATION VALIDATION
+==================================================
+
+Сейчас SwiftUI может записать Location до единой Python validation boundary.
+
+Это исправить.
+
+
+Authoritative validation должна проверять ДО final save:
+
+latitude
+longitude
+IANA timezone
+
+
+City-search result:
+доверять выбранному geocoder result,
+но все равно validate schema.
+
+
+Custom coordinates:
+timezone mismatch нельзя молча пропускать.
+
+
+Swift UI должен получить:
+
+VALID
+или
+human-readable validation error
+
+
+и только потом atomic save.
+
+
+==================================================
+23. LOCATION REVISION / FINGERPRINT
+==================================================
+
+SQLite сейчас НЕ нужен.
+
+
+Для multi-file consistency использовать:
+
+location fingerprint
+
+или:
+
+location revision
+
+
+Например:
+
+location.json
+revision = 12
+
+
+astronomy_schedule.json
+location_revision = 12
+
+
+weather_cache.json
+location_revision = 12
+
+
+Если revisions отличаются:
+
+derived file считается stale.
+
+
+Watcher НЕ должен использовать stale Astronomy/Weather
+как данные нового location.
+
+
+==================================================
+24. TEMPLATES LEGACY — УДАЛИТЬ
+==================================================
+
+Ранее было принято решение не использовать Templates.
+
+В текущем report есть:
+
+templates.json
+и legacy Templates UI/code.
+
+
+Очистить это полностью.
+
+
+Но existing event с obsolete:
+
+template_id
+
+не должен сломаться.
+
+
+Можно:
+
+- перестать использовать поле;
+- безопасно удалить known obsolete template_id при migration;
+- сохранить остальные unknown fields.
+
+
+Удалить:
+
+templates.json;
+Templates UI;
+Template domain code;
+template tests;
+docs references.
+
+
+==================================================
+25. RECURRENCE — СДЕЛАТЬ IDEMPOTENT
+==================================================
+
+Сохраняем два режима:
+
+weekly_fixed
+
+after_done_days
+
+
+Но generation следующего event после Done
+должна быть idempotent.
+
+
+Не должно быть:
+
+Done
+→ next event created
+→ crash
+→ retry
+→ second identical next event created
+
+
+Добавить устойчивую relation,
+например:
+
+series_id
+occurrence_id/index
+
+или:
+
+generated_from_event_id
+
+
+Выбери минимальную clean scheme.
+
+
+Повторная обработка Done
+не создает duplicate offspring.
+
+
+==================================================
+26. NTFY REMOTE STATE TERMINOLOGY
+==================================================
+
+Blink не знает,
+увидел ли пользователь реально push на iPhone.
+
+
+Поэтому не использовать misleading internal state:
+
+"delivered"
+
+для scheduled ntfy,
+если имеется в виду только:
+
+delivery time passed.
+
+
+Различать примерно:
+
+queued
+direct_sent
+assumed_sent
+canceled
+pending_sync
+
+
+Exact naming выбери сам.
+
+
+Не изображать настоящий delivery receipt,
+которого нет.
+
+
+==================================================
+27. NTFY NOTIFICATION PRIORITY
+==================================================
+
+Сохранять отдельно:
+
+attention_level
+
+и:
+
+ntfy priority
+
+
+Но дать разумную default mapping:
+
+
+Green / Normal
+→ ntfy default
+
+Yellow / Important
+→ ntfy high
+
+Red / Critical
+→ ntfy max
+
+
+Это DEFAULT,
+а не одна и та же data field.
+
+
+Если текущая architecture позволяет индивидуально переопределить
+transport priority — сохранить такую возможность.
+
+
+Это также поможет с audible iPhone notifications,
+но не утверждать, что ntfy max гарантированно
+обходит iPhone Silent/Focus.
+
+
+==================================================
+28. BLINK.APP AUTO START
+==================================================
+
+Watcher LaunchAgent недостаточно
+для Dock/menu bar attention.
+
+
+Нужно проверить текущий runtime.
+
+
+После login желательно иметь:
+
+
+LaunchAgent
+→ watcher.py
+
+
+Login Item / appropriate user-level mechanism
+→ Blink.app
+
+
+При этом:
+
+Blink.app starts silently;
+main window не обязан открываться автоматически;
+menu bar должен жить;
+Dock attention должен работать.
+
+
+Если packaging state пока не позволяет reliable Login Item,
+реализуй максимально clean version и report limitation.
+
+
+==================================================
+29. LAUNCHAGENT И PYTHON VENV
+==================================================
+
+Отдельно проверить текущий plist.
+
+
+Он должен запускать конкретный:
+
+/Users/.../Blink/.venv/bin/python
+
+и absolute watcher path.
+
+
+Не зависеть от shell PATH.
+
+
+Проверить наличие:
+
+Skyfield
+numpy
+timezonefinder
+
+именно в runtime environment LaunchAgent.
+
+
+Добавить runtime test/report.
+
+
+==================================================
+30. ПРОВЕРИТЬ ПОСТОЯННЫЕ RUNNERS / TIMERS
+==================================================
+
+Это отдельная задача этого stabilization pass.
+
+
+Нужно сделать audit ВСЕХ:
+
+- Python loops;
+- Swift timers;
+- background tasks;
+- network polling;
+- filesystem polling;
+- astronomy regeneration;
+- weather fetch;
+- remote ntfy reconcile;
+- heartbeat writes;
+- Dock animation timer;
+- menu-bar refresh timers.
+
+
+Цель:
+
+когда Blink idle,
+он почти ничего не должен делать.
+
+
+==================================================
+31. EXPECTED BACKGROUND PROCESSES
+==================================================
+
+В нормальном режиме допустимо иметь:
+
+1. watcher.py
+2. Blink.app process, если нужен Dock/menu bar attention
+
+
+НЕ должно быть постоянно живущих:
+
+weather workers;
+astronomy generator processes;
+geocoder processes;
+multiple watcher copies;
+extra Python helpers.
+
+
+Helpers должны запускаться,
+сделать работу,
+завершиться.
+
+
+==================================================
+32. WATCHER LOOP
+==================================================
+
+Watcher loop может оставаться lightweight.
+
+
+Но НЕ нужно на каждом poll:
+
+- fetch Weather;
+- regenerate Astronomy;
+- call geocoder;
+- rewrite large JSON;
+- perform full remote reconciliation if nothing changed.
+
+
+Использовать:
+
+mtime/revision/dirty detection
+
+или простой state comparison.
+
+
+==================================================
+33. REMOTE NTFY RECONCILE CADENCE
+==================================================
+
+24-hour remote queue должна быть reliable,
+но не надо hammer ntfy every watcher cycle.
+
+
+Reconcile обязательно:
+
+- startup;
+- wake;
+- agenda changed;
+- astronomy config changed;
+- astronomy schedule changed;
+- location changed;
+- Done/Edit/Delete/Disable effect detected.
+
+
+Дополнительно можно иметь safety periodic reconcile,
+например раз в несколько минут.
+
+
+Не POST одинаковую desired queue снова и снова.
+
+
+==================================================
+34. WEATHER NETWORK CADENCE
+==================================================
+
+Еще раз:
+
+NO POLLING.
+
+
+Weather API:
+
+- due briefing;
+- missed briefing after wake;
+- explicit user Refresh;
+- controlled retry after failure.
+
+
+Всё.
+
+
+==================================================
+35. ASTRONOMY GENERATOR НЕ ДОЛЖЕН БЫТЬ DAEMON
+==================================================
+
+Generator запускается только если:
+
+- schedule missing;
+- schedule stale;
+- location changed;
+- horizon getting short.
+
+
+После generation process заканчивается.
+
+
+==================================================
+36. HEARTBEAT / DISK WRITES
+==================================================
+
+Проверить watcher_runtime.json heartbeat.
+
+
+Не надо бессмысленно писать файл несколько раз в секунду.
+
+
+Выбери sane cadence,
+например примерно 30–60 sec,
+если status UX это позволяет.
+
+
+==================================================
+37. LOG GROWTH
+==================================================
+
+Проверить:
+
+watcher.log
+stdout
+stderr
+other logs
+
+
+Они не должны бесконечно расти годами.
+
+
+Добавить простой log rotation / max-size policy
+или другой минимальный bounded approach.
+
+
+Не нужна enterprise logging system.
+
+
+==================================================
+38. CPU / NETWORK IDLE GOAL
+==================================================
+
+При:
+
+- no due events;
+- no settings changes;
+- no Weather briefing;
+- healthy Astronomy horizon;
+
+Blink должен:
+
+- почти не использовать CPU;
+- не делать network calls;
+- не постоянно писать на disk.
+
+
+В final report дать фактическое описание idle behavior.
+
+
+==================================================
+39. SYSTEM HEALTH VIEW
+==================================================
+
+Добавить небольшой diagnostics/status section.
+
+Не загромождать Main UI.
+
+
+Например Settings / Status:
+
+
+Watcher             Running
+Last heartbeat      15 sec ago
+
+ntfy queue
+Synced through      Sep 9, 00:15
+
+Weather
+Last briefing       Sep 8, 06:30
+Last data fetch     Sep 8, 06:30
+
+Astronomy
+Location            Sunnyvale, CA
+Valid through       Sep 2028
+
+Location revision   ...
+
+Last ntfy success   ...
+
+
+Это очень полезно для диагностики.
+
+
+Не показывать secret ntfy topic.
+
+
+==================================================
+40. INCOMPLETE ASTRONOMY UI
+==================================================
+
+После этого этапа нельзя оставлять active-looking
+feature checkbox, если backend не trustworthy.
+
+
+Цель этапа:
+Full Moon / New Moon / Eclipse закончить.
+
+
+Если какой-то eclipse feature после серьезной реализации
+всё еще технически нельзя считать reliable:
+
+НЕ делать fake.
+
+
+UI должен честно показать:
+
+Unavailable / Not ready
+
+и final report должен объяснить почему.
+
+
+Но задача этого этапа —
+сделать серьезную попытку закончить всё,
+а не автоматически оставить scaffold.
+
+
+==================================================
+41. TESTS — SNOOZE REMOVAL
+==================================================
+
+Добавить/изменить tests:
+
+
+1. old snoozed_until ignored/removed.
+
+2. old snoozed_for_minutes ignored/removed.
+
+3. past unfinished event becomes Active
+   regardless of obsolete Snooze fields.
+
+4. no Snooze buttons in Swift UI.
+
+5. no Snooze domain code remains.
+
+6. no Snooze test code remains except migration tests.
+
+
+==================================================
+42. TESTS — QUIET HOURS REMOVAL
+==================================================
+
+1. quiet_hours.json no longer runtime dependency.
+
+2. no quiet-hours policy import.
+
+3. enabled nighttime astronomy event is eligible.
+
+4. enabled nighttime personal event is eligible.
+
+5. no remote queue suppression by time-of-day.
+
+6. disabled event still correctly suppressed.
+
+
+==================================================
+43. TESTS — ACTIVE VS ATTENTION
+==================================================
+
+Meeting 15:00
+blinker 60 min
+
+
+14:30:
+Upcoming == true
+Active == false
+Attention == event color
+
+
+15:00:
+Active == true
+
+
+Done:
+History == true
+Attention no longer includes event.
+
+
+==================================================
+44. TESTS — FULL / NEW MOON
+==================================================
+
+Use known authoritative events.
+
+
+Check:
+
+- exact phase ordering;
+- plausible timestamps;
+- correct local timezone conversion;
+- DST;
+- notification offsets;
+- enabled/disabled behavior;
+- next Full/New Moon fields near horizon boundary.
+
+
+==================================================
+45. TESTS — POLAR CASES
+==================================================
+
+Test real high-latitude locations/dates.
+
+
+Cases:
+
+- no sunrise;
+- no sunset;
+- polar day;
+- polar night;
+- no moonrise in local date;
+- no moonset in local date.
+
+
+No exception.
+No fake timestamp.
+Explicit valid state.
+
+
+==================================================
+46. TESTS — ECLIPSES
+==================================================
+
+Use authoritative known eclipses.
+
+
+At minimum:
+
+Solar:
+- inside visibility area;
+- outside visibility area;
+- partial visibility;
+- event below horizon if applicable.
+
+
+Lunar:
+- observable;
+- not observable due to horizon/time;
+- partial/total where appropriate.
+
+
+Check local start/max/end.
+
+
+==================================================
+47. TESTS — WEATHER
+==================================================
+
+1. No API call each watcher poll.
+
+2. Due briefing:
+   one fresh fetch.
+
+3. Wake after missed briefing:
+   one fresh fetch + send.
+
+4. Second wake same day:
+   no duplicate briefing.
+
+5. Failed fetch:
+   not marked sent.
+
+6. Retry is throttled.
+
+7. High today correct.
+
+8. Low tonight uses future nighttime data.
+
+9. Humidity min/max.
+
+10. Rain.
+
+11. Snow.
+
+12. Wind/gust.
+
+
+==================================================
+48. TESTS — RECURRENCE IDEMPOTENCY
+==================================================
+
+1. Done recurring event creates exactly one successor.
+
+2. Same Done processing twice
+   creates no duplicate successor.
+
+3. Crash/reload simulation
+   creates no duplicate.
+
+4. after_done_days uses actual Done time.
+
+5. weekly_fixed preserves expected weekday/time.
+
+
+==================================================
+49. TESTS — RESOURCE BEHAVIOR
+==================================================
+
+Where practical, instrument/mock calls.
+
+
+Verify over many idle watcher cycles:
+
+- Weather HTTP calls = 0;
+- Astronomy generation = 0;
+- geocoder calls = 0;
+- duplicate ntfy schedule POST = 0;
+- no rapid state-file rewrites.
+
+
+==================================================
+50. MANUAL END-TO-END TESTS
+==================================================
+
+После automated tests нужны реальные manual checks.
+
+
+A. Personal event
+→ direct/scheduled ntfy
+→ iPhone
+
+
+B. 24h scheduled reminder
+→ close Mac lid
+→ reminder arrives while Mac asleep
+
+
+C. Edit queued reminder
+→ old schedule canceled/replaced
+→ only new push arrives
+
+
+D. Delete queued reminder
+→ push does not arrive
+
+
+E. Dock blinking
+→ verify visually
+
+
+F. Menu bar
+→ verify
+
+
+G. Lid close / wake
+→ watcher resumes
+→ no duplicates
+
+
+H. Weather
+→ one actual Open-Meteo briefing
+
+
+I. Full Moon / New Moon
+→ inspect generated real timestamps
+
+
+J. Location change
+→ astronomy automatically regenerated
+
+
+K. LaunchAgent
+→ real runtime uses .venv
+
+
+==================================================
+51. REMOVE DEAD CODE
+==================================================
+
+После implementation сделать cleanup search.
+
+
+Искать obsolete concepts:
+
+snooze
+quiet_hours
+template
+
+и связанные names.
+
+
+Не оставлять мертвые imports/classes/UI,
+кроме deliberately documented migration compatibility
+если она реально необходима.
+
+
+==================================================
+52. НЕ ПЕРЕПИСЫВАТЬ СИСТЕМУ
+==================================================
+
+Несмотря на cleanup,
+не превращать это в refactor ради refactor.
+
+
+Сохраняем:
+
+JSON
+watcher.py
+SwiftUI
+Skyfield/JPL
+Open-Meteo
+ntfy
+LaunchAgent
+AttentionManager
+
+
+Никакого SQLite.
+
+
+==================================================
+53. ПОРЯДОК РАБОТЫ
+==================================================
+
+PHASE 0
+Audit.
+Backup.
+Baseline tests.
+
+
+PHASE 1
+Remove Snooze.
+Remove Quiet Hours.
+Remove Templates legacy.
+
+
+PHASE 2
+Separate Event Active from Attention start.
+
+
+PHASE 3
+Weather fetch simplification
++ High today / Low tonight.
+
+
+PHASE 4
+Full Moon / New Moon
++ reliable Moon status
++ polar/no-event cases.
+
+
+PHASE 5
+Lunar/Solar eclipse implementation and validation.
+
+
+PHASE 6
+Location authoritative validation
++ automatic Astronomy regeneration
++ revision/fingerprint consistency.
+
+
+PHASE 7
+Recurrence idempotency.
+
+
+PHASE 8
+Background runner/resource audit
++ queue reconcile cadence
++ heartbeat/log bounding.
+
+
+PHASE 9
+Blink.app auto-start / LaunchAgent venv verification
++ System Health UI.
+
+
+PHASE 10
+Full automated + manual tests.
+
+
+==================================================
+54. ЕСЛИ УПРЕШЬСЯ В ECLIPSE MATH
+==================================================
+
+Не делай approximation молча.
+
+
+Если exact/local solar eclipse contacts требуют
+другой astronomy library:
+
+остановись только на этом subtask,
+исследуй authoritative option,
+опиши dependency,
+и реализуй надежный вариант.
+
+
+Не откатывай остальные принятые изменения.
+
+
+==================================================
+55. FINAL REPORT
+==================================================
+
+После работы дай полный report:
+
+
+A. Backup/checkpoint.
+
+B. Baseline test result.
+
+C. Snooze removal:
+what deleted/migrated.
+
+D. Quiet Hours removal.
+
+E. Templates cleanup.
+
+F. Event lifecycle vs Attention separation.
+
+G. Weather:
+exact fetch behavior;
+High today;
+Low tonight;
+network cadence.
+
+H. Full Moon/New Moon:
+calculation method;
+tests;
+example outputs.
+
+I. Moon status:
+above/below horizon;
+rise/set edge cases.
+
+J. Polar cases.
+
+K. Lunar eclipse implementation.
+
+L. Solar eclipse implementation.
+
+M. Location:
+validation;
+revision;
+auto-regeneration.
+
+N. ntfy:
+queue behavior;
+state names;
+priority mapping.
+
+O. Recurrence idempotency.
+
+P. Background processes:
+list every persistent process/timer.
+
+Q. Idle behavior:
+CPU/network/disk behavior.
+
+R. LaunchAgent:
+exact Python executable used.
+
+S. Blink.app auto-start.
+
+T. System Health view.
+
+U. Files deleted.
+
+V. Files changed/created.
+
+W. Full automated tests.
+
+X. Manual tests completed.
+
+Y. Anything still technically incomplete.
+
+
+Главное:
+
+не объявлять feature finished,
+если она только compiles.
+
+Особенно Astronomy, sleep/wake и ntfy scheduled delivery
+должны быть проверены по реальному behavior.

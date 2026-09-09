@@ -1,0 +1,37 @@
+{
+  "presets": [
+    {
+      "label": "1 day before",
+      "minutes_before": 1440
+    },
+    {
+      "label": "12 hours before",
+      "minutes_before": 720
+    },
+    {
+      "label": "5 hours before",
+      "minutes_before": 300
+    },
+    {
+      "label": "60 min before",
+      "minutes_before": 60
+    },
+    {
+      "label": "30 min before",
+      "minutes_before": 30
+    },
+    {
+      "label": "10 min before",
+      "minutes_before": 10
+    },
+    {
+      "label": "5 min before",
+      "minutes_before": 5
+    },
+    {
+      "label": "At time",
+      "minutes_before": 0
+    }
+  ],
+  "version": 1
+}

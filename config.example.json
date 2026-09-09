@@ -1,0 +1,8 @@
+{
+  "ntfy_server": "https://ntfy.sh",
+  "ntfy_topic": "REPLACE_WITH_THE_FULL_PRIVATE_TOPIC",
+  "poll_interval_seconds": 10,
+  "late_delivery_grace_minutes": 180,
+  "default_priority": "high",
+  "default_tags": ["calendar"]
+}

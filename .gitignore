@@ -1,0 +1,34 @@
+config.json
+agenda.json
+location.json
+watcher_state.json
+watcher_runtime.json
+ntfy_schedule_state.json
+watcher.log
+watcher.pid
+watcher.stdout.log
+watcher.stderr.log
+*.tmp
+*.log
+*.pid
+__pycache__/
+.DS_Store
+.build/
+app/BlinkSwiftUI/.build/
+
+# Local weather and astronomy runtime state
+weather/weather_config.json
+weather/weather_cache.json
+weather/weather_state.json
+astronomy/astronomy_config.json
+astronomy/astronomy_schedule.json
+astronomy/ephemeris/
+
+# Local applications, virtual environments, backups, and experiments
+Blink.app/
+.venv/
+backups/
+docs/checkpoints/
+memory_os_benchmark/
+personal_mapping_experiment/
+personal_mapping_experiment_*.zip
