@@ -672,6 +672,16 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains(".frame(maxWidth: 620, alignment: .leading)"), "Editor form should use a centered readable content width")
 }
 
+func testImportancePickerUsesEventColor() throws {
+    let contentView = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: contentView, encoding: .utf8)
+    try expect(source.contains(".tint(color(for: draft.attentionLevel))"), "Importance picker should tint its selected segment with the event color")
+}
+
 func testActiveAttentionUiContracts() throws {
     let sourceURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -788,6 +798,7 @@ let tests: [(String, () throws -> Void)] = [
     ("editable event writes recurrence contracts", testEditableEventWritesRecurrenceContracts),
     ("editor backdrop and time field UI contracts", testEditorBackdropAndTimeFieldUiContracts),
     ("event editor layout contracts", testEventEditorLayoutContracts),
+    ("importance picker uses event color", testImportancePickerUsesEventColor),
     ("active attention UI contracts", testActiveAttentionUiContracts),
     ("location search and custom coordinate contracts", testLocationSearchAndCustomCoordinateContracts),
     ("GUI store has no sender symbols", testGuiStoreDoesNotContainSenderSymbols),

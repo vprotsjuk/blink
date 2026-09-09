@@ -566,6 +566,7 @@ struct EventEditorView: View {
                 Text("Critical").tag(AttentionState.red)
             }
             .pickerStyle(.segmented)
+            .tint(color(for: draft.attentionLevel))
             Section {
                 Picker("Repeat", selection: recurrenceModeBinding) {
                     Text("None").tag("none")
