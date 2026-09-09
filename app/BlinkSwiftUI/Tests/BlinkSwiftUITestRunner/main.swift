@@ -659,6 +659,19 @@ func testEditorBackdropAndTimeFieldUiContracts() throws {
     try expect(saveButtonTitle(defaultTitle: "Save Weather", saved: true) == "Saved", "Saved button should show completion feedback")
 }
 
+func testEventEditorLayoutContracts() throws {
+    let contentView = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: contentView, encoding: .utf8)
+    try expect(source.contains("TextField(\"\", text: $draft.title, prompt: Text(\"Required\"))"), "Title field should not duplicate its external label")
+    try expect(source.contains("HStack(spacing: 18)"), "Reminder controls should use aligned columns")
+    try expect(source.contains(".frame(width: 230, alignment: .leading)"), "Reminder columns should have a stable width")
+    try expect(source.contains(".frame(maxWidth: 620, alignment: .leading)"), "Editor form should use a centered readable content width")
+}
+
 func testActiveAttentionUiContracts() throws {
     let sourceURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -774,6 +787,7 @@ let tests: [(String, () throws -> Void)] = [
     ("menu bar summary shows active and next events", testMenuBarSummaryShowsActiveAndNextEvents),
     ("editable event writes recurrence contracts", testEditableEventWritesRecurrenceContracts),
     ("editor backdrop and time field UI contracts", testEditorBackdropAndTimeFieldUiContracts),
+    ("event editor layout contracts", testEventEditorLayoutContracts),
     ("active attention UI contracts", testActiveAttentionUiContracts),
     ("location search and custom coordinate contracts", testLocationSearchAndCustomCoordinateContracts),
     ("GUI store has no sender symbols", testGuiStoreDoesNotContainSenderSymbols),

@@ -538,7 +538,7 @@ struct EventEditorView: View {
 
     var body: some View {
         Form {
-            TextField("Title", text: $draft.title, prompt: Text("Required"))
+            TextField("", text: $draft.title, prompt: Text("Required"))
                 .formLabel("Title", required: true)
             TextField("Description", text: $draft.description)
             DatePicker(selection: $draft.date, displayedComponents: .date) {
@@ -583,15 +583,20 @@ struct EventEditorView: View {
                 }
             }
             Section {
-                ForEach(reminderConfig.presets) { preset in
-                    HStack {
-                        Toggle(preset.label, isOn: reminderBinding(preset.minutes_before))
-                        Spacer()
-                        Toggle("Turn on blinker", isOn: blinkerBinding(preset.minutes_before))
-                            .toggleStyle(.checkbox)
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(reminderConfig.presets) { preset in
+                        HStack(spacing: 18) {
+                            Toggle(preset.label, isOn: reminderBinding(preset.minutes_before))
+                                .frame(width: 230, alignment: .leading)
+                                .disabled(!isReminderAvailable(preset.minutes_before))
+                                .foregroundStyle(isReminderAvailable(preset.minutes_before) ? .primary : .secondary)
+                            Toggle("Turn on blinker", isOn: blinkerBinding(preset.minutes_before))
+                                .toggleStyle(.checkbox)
+                                .frame(width: 230, alignment: .leading)
+                                .disabled(!isReminderAvailable(preset.minutes_before))
+                                .foregroundStyle(isReminderAvailable(preset.minutes_before) ? .primary : .secondary)
+                        }
                     }
-                    .disabled(!isReminderAvailable(preset.minutes_before))
-                    .foregroundStyle(isReminderAvailable(preset.minutes_before) ? .primary : .secondary)
                 }
             } header: {
                 RequiredLabel("Reminders")
@@ -608,7 +613,9 @@ struct EventEditorView: View {
                 .disabled(!canSave)
             }
         }
-        .padding()
+        .frame(maxWidth: 620, alignment: .leading)
+        .padding(.horizontal, 30)
+        .padding(.vertical, 16)
         .onChange(of: draft.date) {
             pruneUnavailableReminders()
         }
