@@ -160,15 +160,13 @@ def build_morning_briefing_message(forecast: dict[str, Any]) -> str:
     if show_temperature:
         lines.extend([
             "🌡️ Temperature:",
-            f"Max today: {forecast.get('high_today_f', forecast['high_f'])}°F",
-            f"Min tonight: {forecast.get('low_tonight_f', forecast['low_f'])}°F",
+            f"☀️ {forecast.get('high_today_f', forecast['high_f'])}°F   🌙 {forecast.get('low_tonight_f', forecast['low_f'])}°F",
         ])
     if show_humidity and forecast.get("humidity_min_percent") is not None and forecast.get("humidity_max_percent") is not None:
         lines.extend([
             "",
             "💧 Humidity:",
-            f"Max: {forecast['humidity_max_percent']}%",
-            f"Min: {forecast['humidity_min_percent']}%",
+            f"☀️ {forecast['humidity_max_percent']}%   🌙 {forecast['humidity_min_percent']}%",
         ])
     if show_rain:
         rain = f"🌧️ Rain: probability {forecast.get('rain_probability_percent', 0)}%"

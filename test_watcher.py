@@ -886,6 +886,60 @@ class WatcherCoreTests(unittest.TestCase):
         self.assertIn("🌤️", item["payload"]["body"])
         self.assertNotIn('"message"', item["payload"]["body"])
 
+    def test_weather_briefing_leaves_astronomy_separate_when_configured(self):
+        sent = []
+        schedule = {
+            "daily_records": [
+                {
+                    "date": "2026-09-07",
+                    "sunrise": {"time": "2026-09-07T06:42:00-07:00"},
+                    "sunset": {"time": "2026-09-07T19:25:00-07:00"},
+                    "day_length_minutes": 763,
+                }
+            ]
+        }
+        settings = {
+            "timezone": "America/Los_Angeles",
+            "briefing": {
+                "enabled": True,
+                "time": "11:52",
+                "include_day_night": True,
+                "include_weather": False,
+            },
+        }
+        watcher.update_weather_briefing(
+            config=self._notification_config(),
+            location=self._location(),
+            weather_config=weather_store.default_config(),
+            now=datetime.fromisoformat("2026-09-07T07:00:00-07:00"),
+            weather_state_path=Path(tempfile.mkdtemp()) / "weather_state.json",
+            weather_cache_path=Path(tempfile.mkdtemp()) / "weather_cache.json",
+            fetch_func=lambda _location: {
+                "daily": {
+                    "time": ["2026-09-07"],
+                    "temperature_2m_max": [68],
+                    "temperature_2m_min": [48],
+                    "precipitation_probability_max": [0],
+                    "rain_sum": [0],
+                    "snowfall_sum": [0],
+                    "wind_speed_10m_max": [5],
+                    "wind_gusts_10m_max": [8],
+                },
+                "hourly": {
+                    "time": ["2026-09-07T13:00"],
+                    "relative_humidity_2m": [50],
+                    "precipitation_probability": [0],
+                    "rain": [0],
+                    "snowfall": [0],
+                },
+            },
+            send_now_func=lambda _config, item: sent.append(item) or True,
+            astronomy_schedule=schedule,
+            astronomy_settings=settings,
+        )
+        self.assertEqual(len(sent), 1)
+        self.assertNotIn("ASTRONOMY", sent[0]["payload"]["body"])
+
     def test_astronomy_briefing_contains_day_and_night_duration(self):
         message = watcher.build_astronomy_briefing_message(
             {
@@ -901,14 +955,14 @@ class WatcherCoreTests(unittest.TestCase):
             "2026-09-07",
             {"briefing": {"enabled": True, "include_day_night": True}},
         )
-        self.assertTrue(message.startswith("**ASTRONOMY**\n"))
+        self.assertTrue(message.startswith("ASTRONOMY\n"))
         self.assertIn("☀️ Sunrise:", message)
         self.assertIn("06:42", message)
         self.assertIn("☀️ Sunset: 19:25", message)
         self.assertIn("Day length: 12 h 43 min", message)
         self.assertIn("Night length: 11 h 17 min", message)
 
-    def test_weather_notification_enables_markdown_for_bold_section_headings(self):
+    def test_weather_notification_does_not_send_literal_markdown_markers(self):
         captured = {}
 
         class FakeResponse:
@@ -929,12 +983,62 @@ class WatcherCoreTests(unittest.TestCase):
             self._weather_forecast(),
             "2026-09-07T06:30:00-07:00",
             self._notification_config(),
-            body="🌤️ Sunnyvale\n\n**ASTRONOMY**\n2026-09-07",
+            body="🌤️ Sunnyvale\n\nASTRONOMY\n2026-09-07",
         )
         with patch("watcher.urllib.request.urlopen", fake_urlopen):
             self.assertTrue(watcher.send_weather_ntfy_notification(self._notification_config(), item))
 
-        self.assertEqual(captured["request"].headers["Markdown"], "yes")
+        self.assertNotIn("Markdown", captured["request"].headers)
+        self.assertNotIn("**", captured["request"].data.decode("utf-8"))
+
+    def test_separate_astronomy_briefing_sends_after_its_time_once(self):
+        schedule = {
+            "daily_records": [
+                {
+                    "date": "2026-09-09",
+                    "timezone": "America/Los_Angeles",
+                    "sunrise": {"time": "2026-09-09T06:45:00-07:00"},
+                    "sunset": {"time": "2026-09-09T19:24:00-07:00"},
+                    "day_length_minutes": 759,
+                }
+            ]
+        }
+        settings = {
+            "timezone": "America/Los_Angeles",
+            "briefing": {
+                "enabled": True,
+                "time": "11:52",
+                "include_day_night": True,
+                "include_weather": False,
+            },
+        }
+        state = {"version": 1, "delivered": {}}
+        sent = []
+
+        result = watcher.process_astronomy_briefing(
+            config=self._notification_config(),
+            state=state,
+            schedule=schedule,
+            settings=settings,
+            now=datetime.fromisoformat("2026-09-09T11:53:00-07:00"),
+            send_now_func=lambda _config, item: sent.append(item) or True,
+        )
+
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0]["payload"]["title"], "ASTRONOMY")
+        self.assertNotIn("|", sent[0]["sequence_id"])
+        self.assertTrue(sent[0]["payload"]["body"].startswith("2026-09-09\n"))
+        self.assertEqual(len(result["delivered"]), 1)
+
+        watcher.process_astronomy_briefing(
+            config=self._notification_config(),
+            state=result,
+            schedule=schedule,
+            settings=settings,
+            now=datetime.fromisoformat("2026-09-09T12:00:00-07:00"),
+            send_now_func=lambda _config, item: sent.append(item) or True,
+        )
+        self.assertEqual(len(sent), 1)
 
     def test_moon_messages_are_compact_and_do_not_repeat_direction_or_event_names(self):
         record = {

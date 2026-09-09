@@ -248,12 +248,10 @@ The ntfy title/header identifies the block as `WEATHER`. The body begins with th
 September 8, 2026
 
 🌡️ Temperature:
-Max today: 90°F
-Min tonight: 66°F
+☀️ 90°F   🌙 66°F
 
 💧 Humidity:
-Max: 73%
-Min: 16%
+☀️ 73%   🌙 16%
 🌧️ Rain: probability 1%
 ❄️ Snow: probability 0%
 💨 Wind: 7 mph, gusts up to 14 mph
@@ -263,7 +261,7 @@ The visible app weather summary uses the same icons and metric order. Before eac
 
 ### Astronomy briefing push
 
-The body contains the selected Sun and Moon information, solar day/night duration, location/date context, and the same icons used in the app. If `Include with weather briefing` / `Use Weather briefing time` is enabled, the Astronomy section is appended to the Weather briefing rather than sent as a second briefing at another time. Its in-body heading is `**ASTRONOMY**`, and the watcher enables ntfy Markdown for the briefing so it is rendered bold like the `WEATHER` ntfy title. Standalone personal and Astronomy event titles use ntfy's title/header styling as well, keeping all top-level notification headings visually consistent.
+The body contains the selected Sun and Moon information, solar day/night duration, location/date context, and the same icons used in the app. If `Include with weather briefing` / `Use Weather briefing time` is enabled, the Astronomy section is appended to the Weather briefing rather than sent as a second briefing at another time; the section label is plain `ASTRONOMY` because the phone app displays Markdown markers literally. If the option is disabled, the watcher sends a separate briefing with the native ntfy title/header `ASTRONOMY` and a body beginning with the date. Standalone personal and Astronomy event titles use ntfy's title/header styling as well.
 
 ### Individual astronomy push
 

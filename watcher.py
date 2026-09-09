@@ -272,10 +272,14 @@ def load_astronomy_settings(path: Path | None = None) -> dict[str, Any]:
     raw = load_json_file(settings_path)
     if not isinstance(raw, dict):
         LOGGER.warning("Using empty astronomy settings because astronomy_config.json is missing or invalid")
-        return {"notifications": {}}
+        return {
+            "timezone": None,
+            "notifications": {},
+            "briefing": {"enabled": False, "time": "06:30", "include_day_night": True, "include_weather": True},
+        }
     notifications = raw.get("notifications")
     if not isinstance(notifications, dict):
-        return {"notifications": {}}
+        notifications = {}
     # Astronomy supports only Sun and Moon groups. Legacy groups and reminder
     # offsets are ignored at this boundary so old JSON remains loadable without
     # reintroducing retired behavior.
@@ -286,7 +290,11 @@ def load_astronomy_settings(path: Path | None = None) -> dict[str, Any]:
     briefing = raw.get("briefing")
     if not isinstance(briefing, dict):
         briefing = {"enabled": True, "time": "06:30", "include_day_night": True, "include_weather": True}
-    return {"notifications": notifications, "briefing": briefing}
+    return {
+        "timezone": str(raw.get("timezone", "")).strip() or None,
+        "notifications": notifications,
+        "briefing": briefing,
+    }
 
 
 def astronomy_event_enabled(settings: dict[str, Any], group: str, event_name: str) -> bool:
@@ -651,7 +659,11 @@ def _moon_phase_time(value: Any) -> datetime | None:
 
 
 def build_astronomy_briefing_message(
-    schedule: dict[str, Any] | None, forecast_date: str, settings: dict[str, Any]
+    schedule: dict[str, Any] | None,
+    forecast_date: str,
+    settings: dict[str, Any],
+    *,
+    include_heading: bool = True,
 ) -> str:
     """Build only the astronomy section for the grouped daily briefing."""
     briefing = settings.get("briefing", {})
@@ -661,7 +673,7 @@ def build_astronomy_briefing_message(
     record = next((item for item in records if isinstance(item, dict) and item.get("date") == forecast_date), None)
     if record is None:
         return ""
-    lines = ["**ASTRONOMY**", forecast_date]
+    lines = (["ASTRONOMY", forecast_date] if include_heading else [forecast_date])
     sunrise = record.get("sunrise")
     sunset = record.get("sunset")
     if isinstance(sunrise, dict) and sunrise.get("time"):
@@ -699,6 +711,91 @@ def build_astronomy_briefing_message(
         )
     lines.extend(moon_notification_tail(record))
     return "\n".join(lines) if len(lines) > 2 else ""
+
+
+def astronomy_briefing_key(forecast_date: str, briefing_time: str) -> str:
+    return f"astronomy-briefing|{forecast_date}|{briefing_time}"
+
+
+def build_astronomy_briefing_item(
+    schedule: dict[str, Any],
+    forecast_date: str,
+    settings: dict[str, Any],
+    delivery_time: str,
+    config: dict[str, Any],
+) -> dict[str, Any] | None:
+    body = build_astronomy_briefing_message(
+        schedule,
+        forecast_date,
+        settings,
+        include_heading=False,
+    )
+    if not body:
+        return None
+    briefing_time = str(settings.get("briefing", {}).get("time", "06:30"))
+    safe_briefing_time = briefing_time.replace(":", "")
+    return {
+        "sequence_id": f"blink-astronomy-briefing-{forecast_date}-{safe_briefing_time}",
+        "delivery_time": delivery_time,
+        "payload": {
+            "title": "ASTRONOMY",
+            "body": body,
+            "priority": config.get("default_priority", "default"),
+            "tags": ["astronomy"],
+        },
+    }
+
+
+def process_astronomy_briefing(
+    *,
+    config: dict[str, Any],
+    state: dict[str, Any],
+    schedule: dict[str, Any] | None,
+    settings: dict[str, Any],
+    now: datetime,
+    send_now_func: Callable[[dict[str, Any], dict[str, Any]], bool] | None = None,
+) -> dict[str, Any]:
+    briefing = settings.get("briefing", {})
+    if not isinstance(briefing, dict) or briefing.get("enabled") is not True:
+        return state
+    if briefing.get("include_weather") is True:
+        return state
+    if not isinstance(schedule, dict):
+        return state
+    records = schedule.get("daily_records")
+    if not isinstance(records, list):
+        return state
+    timezone_name = str(
+        settings.get("timezone")
+        or schedule.get("timezone")
+        or ((schedule.get("location") or {}).get("timezone") if isinstance(schedule.get("location"), dict) else "")
+        or "UTC"
+    )
+    try:
+        local_now = now.astimezone(ZoneInfo(timezone_name))
+    except Exception:  # noqa: BLE001 - invalid settings must not stop the watcher.
+        LOGGER.error("Astronomy briefing timezone is invalid: %s", timezone_name)
+        return state
+    briefing_time = str(briefing.get("time", "06:30"))
+    try:
+        hour, minute = [int(part) for part in briefing_time.split(":", 1)]
+        target = local_now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    except (ValueError, TypeError):
+        LOGGER.error("Astronomy briefing time is invalid: %s", briefing_time)
+        return state
+    forecast_date = local_now.date().isoformat()
+    key = astronomy_briefing_key(forecast_date, briefing_time)
+    delivered = state.setdefault("delivered", {})
+    if key in delivered or local_now < target:
+        return state
+    item = build_astronomy_briefing_item(schedule, forecast_date, settings, now.isoformat(), config)
+    send_now = send_now_func or send_astronomy_briefing_notification
+    if item is None or not send_now(config, item):
+        return state
+    delivered[key] = {"delivered_at": now.isoformat()}
+    cleanup_old_state(state, now)
+    LOGGER.info("Astronomy briefing sent: date=%s time=%s", forecast_date, briefing_time)
+    return state
 
 
 def moon_phase_icon(phase_degrees: int | float) -> str:
@@ -831,7 +928,6 @@ def build_ntfy_request(
     tags: list[str],
     sequence_id: str | None = None,
     delivery_time: str | None = None,
-    markdown: bool = False,
 ) -> urllib.request.Request:
     # Use ntfy's documented topic endpoint. Metadata stays in headers and the
     # user sees only the plain message body, never a JSON envelope.
@@ -842,8 +938,6 @@ def build_ntfy_request(
     }
     if title:
         headers["Title"] = _ntfy_header_value(title)
-    if markdown:
-        headers["Markdown"] = "yes"
     if sequence_id:
         headers["X-Sequence-ID"] = _header_value(sequence_id)
     if delivery_time:
@@ -992,6 +1086,31 @@ def send_scheduled_ntfy_notification(config: dict[str, Any], item: dict[str, Any
     return 200 <= status < 300
 
 
+def send_astronomy_briefing_notification(config: dict[str, Any], item: dict[str, Any]) -> bool:
+    payload = item["payload"]
+    request = build_ntfy_request(
+        config=config,
+        title=str(payload["title"]),
+        message=str(payload["body"]),
+        priority=str(payload["priority"]),
+        tags=list(payload["tags"]),
+        sequence_id=str(item["sequence_id"]),
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            status = response.getcode()
+    except urllib.error.HTTPError as exc:
+        LOGGER.error(
+            "Astronomy briefing notification failure: seq=%s HTTP %s: %s",
+            item["sequence_id"], exc.code, _http_error_detail(exc),
+        )
+        return False
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        LOGGER.error("Astronomy briefing notification failure: seq=%s error=%s", item["sequence_id"], exc)
+        return False
+    return 200 <= status < 300
+
+
 def send_weather_ntfy_notification(config: dict[str, Any], item: dict[str, Any]) -> bool:
     payload = item["payload"]
     request = build_ntfy_request(
@@ -1001,7 +1120,6 @@ def send_weather_ntfy_notification(config: dict[str, Any], item: dict[str, Any])
         priority=str(payload["priority"]),
         tags=list(payload["tags"]),
         sequence_id=str(item["sequence_id"]),
-        markdown=True,
     )
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
@@ -1203,6 +1321,15 @@ def update_weather_briefing(
         return result
 
     weather_store.save_json_atomic(weather_cache_path, forecast)
+    astronomy_message = ""
+    if isinstance(astronomy_settings, dict):
+        briefing = astronomy_settings.get("briefing", {})
+        if isinstance(briefing, dict) and briefing.get("include_weather") is True:
+            astronomy_message = build_astronomy_briefing_message(
+                astronomy_schedule,
+                str(forecast["forecast_date"]),
+                astronomy_settings,
+            )
     result = process_weather_briefing(
         config=config,
         weather_config=weather_config,
@@ -1211,11 +1338,7 @@ def update_weather_briefing(
         now=now,
         send_now_func=send_now_func,
         schedule_func=None,
-        astronomy_message=build_astronomy_briefing_message(
-            astronomy_schedule,
-            str(forecast["forecast_date"]),
-            astronomy_settings or {},
-        ),
+        astronomy_message=astronomy_message,
     )
     weather_store.save_json_atomic(weather_state_path, result)
     return result
@@ -1233,6 +1356,20 @@ def run_weather_cycle(config: dict[str, Any], now: datetime) -> dict[str, Any]:
         now=now,
         astronomy_schedule=astronomy_schedule,
         astronomy_settings=astronomy_settings,
+    )
+
+
+def run_astronomy_briefing_cycle(
+    config: dict[str, Any], state: dict[str, Any], now: datetime
+) -> dict[str, Any]:
+    schedule = load_json_file(project_path("astronomy/astronomy_schedule.json"))
+    settings = load_astronomy_settings()
+    return process_astronomy_briefing(
+        config=config,
+        state=state,
+        schedule=schedule,
+        settings=settings,
+        now=now,
     )
 
 
@@ -1290,6 +1427,8 @@ def main() -> int:
             events = load_notification_events(config)
             state = load_state(state_path)
             run_weather_cycle(config, now)
+            state = run_astronomy_briefing_cycle(config, state, now)
+            save_state_atomic(state_path, state)
             if remote_reconcile_due(events, now):
                 remote_schedule_state = reconcile_remote_schedule(config, events, now)
             else:

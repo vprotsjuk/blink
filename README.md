@@ -44,7 +44,7 @@ The Location editor supports global Open-Meteo city search and validated custom 
 
 ## Push format
 
-ntfy metadata is sent in headers. The phone receives plain readable text with a title and body, never a JSON envelope. Weather and astronomy messages begin with their block name, location/date, and relevant facts. The combined daily briefing keeps `WEATHER` as the ntfy title and renders the in-body `**ASTRONOMY**` section heading bold through ntfy Markdown, so all top-level message headings share one visual style.
+ntfy metadata is sent in headers. The phone receives plain readable text with a title and body, never a JSON envelope. Weather and astronomy messages begin with their block name, location/date, and relevant facts. A combined briefing keeps `WEATHER` as the ntfy title and adds a plain `ASTRONOMY` section; with a separate Astronomy briefing, `ASTRONOMY` is the ntfy title/header so the phone renders it in its native bold title style.
 
 ## Public repository hygiene
 
