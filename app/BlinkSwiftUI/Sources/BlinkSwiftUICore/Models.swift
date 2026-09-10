@@ -987,9 +987,13 @@ public struct BlinkStore {
             let seriesID = (event["series_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             return seriesID.isEmpty ? (event["id"] as? String) : seriesID
         }
-        document["events"] = events.filter { ($0["id"] as? String) != eventID }
+        let remainingEvents = events.filter { ($0["id"] as? String) != eventID }
+        let shouldTrashAttachments = ownerID.map { owner in
+            !remainingEvents.contains { attachmentOwnerID(for: $0) == owner }
+        } ?? false
+        document["events"] = remainingEvents
         try saveAgendaObject(document)
-        if let ownerID {
+        if shouldTrashAttachments, let ownerID {
             try? AttachmentWorkspace(root: root).moveOwnerToTrash(ownerID: ownerID)
         }
     }

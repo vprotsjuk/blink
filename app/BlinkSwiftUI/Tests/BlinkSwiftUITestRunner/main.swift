@@ -935,6 +935,23 @@ func testHistorySaveIsRejectedAndAttachmentMetadataPersists() throws {
     try expect(rejected, "History event edit should be rejected")
 }
 
+func testRecurringDeleteKeepsSharedAttachmentOwner() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try """
+    {"version":1,"events":[
+      {"id":"series-g1","series_id":"series","title":"Past","start":"2026-09-08T10:00:00-07:00","reminders_minutes_before":[0],"enabled":true,"requires_done":true,"done":true,"done_at":"2026-09-08T10:00:00-07:00"},
+      {"id":"series-g2","series_id":"series","title":"Next","start":"2026-09-15T10:00:00-07:00","reminders_minutes_before":[0],"enabled":true,"requires_done":true,"done":false}
+    ]}
+    """.write(to: agenda, atomically: true, encoding: .utf8)
+    let workspace = AttachmentWorkspace(root: root)
+    let owner = workspace.attachmentURL(ownerID: "series")
+    try FileManager.default.createDirectory(at: owner, withIntermediateDirectories: true)
+    try Data("shared".utf8).write(to: owner.appendingPathComponent("shared.txt"))
+    try BlinkStore(root: root).delete(eventID: "series-g1")
+    try expect(FileManager.default.fileExists(atPath: owner.appendingPathComponent("shared.txt").path), "Shared recurring attachments should remain while the series has another occurrence")
+}
+
 let tests: [(String, () throws -> Void)] = [
     ("upsert preserves unknown fields", testUpsertPreservesUnknownFields),
     ("Los Angeles DST offset", testBuildEventUsesLosAngelesDstOffset),
@@ -978,7 +995,8 @@ let tests: [(String, () throws -> Void)] = [
     ("attachment draft cancel and multiline event contract", testAttachmentDraftCancelAndMultilineEventContract),
     ("saving event commits attachments", testSavingEventCommitsAttachmentsAndPreservesDraftOnFailure),
     ("event rows expose attachment and history contracts", testEventRowsExposeAttachmentAndHistoryContracts),
-    ("history save is rejected", testHistorySaveIsRejectedAndAttachmentMetadataPersists)
+    ("history save is rejected", testHistorySaveIsRejectedAndAttachmentMetadataPersists),
+    ("recurring delete keeps shared attachments", testRecurringDeleteKeepsSharedAttachmentOwner)
 ]
 
 do {
