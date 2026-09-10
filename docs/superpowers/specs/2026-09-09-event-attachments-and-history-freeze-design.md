@@ -48,7 +48,7 @@ No absolute paths or file contents are stored in `agenda.json`. A missing or mal
 
 Opening New Event creates a draft UUID and a Blink-owned draft directory. File selection and screenshot paste copy bytes into that directory immediately. The event is not written to `agenda.json` until Save.
 
-On Save, the app validates the draft, chooses the permanent event/series owner, atomically moves the draft directory to `event_data/attachments/<owner-id>`, and atomically persists the event metadata. If persistence fails, the draft is retained and the user sees a recoverable error. Cancel, Escape, or a rejected dirty-modal close removes only the current Blink-created draft. Startup removes only stale directories under `event_data/drafts/` that carry Blink's draft marker; it never scans or deletes arbitrary user folders.
+On Save, the app validates the draft, chooses the permanent event/series owner, materializes the staged files under `event_data/attachments/<owner-id>`, and atomically persists the event metadata. The draft marker is removed only after the JSON save succeeds; if persistence fails, the staged draft is retained and the user sees a recoverable error. Cancel, Escape, or a rejected dirty-modal close removes only the current Blink-created draft. Startup removes only stale directories under `event_data/drafts/` that carry Blink's draft marker; it never scans or deletes arbitrary user folders.
 
 Deleting an event with attachments requires confirmation and moves the Blink-owned attachment directory to the macOS Trash rather than silently deleting user files. A later dedicated cleanup action is not part of the first implementation.
 

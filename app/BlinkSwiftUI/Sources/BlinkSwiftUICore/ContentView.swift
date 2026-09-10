@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 public enum BlinkDesign {
     public static let pagePadding: CGFloat = 18
@@ -113,10 +114,13 @@ public struct ContentView: View {
     @State private var weatherCache: WeatherCache?
     @State private var reminderConfig = defaultReminderConfig()
     @State private var editorEvent: EditableEvent?
+    @State private var editorAttachmentWorkspace: AttachmentWorkspace?
+    @State private var editorDraftID: String?
     @State private var editorIsDirty = false
     @State private var locationEditor: EditableLocation?
     @State private var searchQuery = ""
     @State private var errorMessage: String?
+    @State private var pendingDelete: BlinkEvent?
     @State private var attentionPulseOn = true
     @State private var selectedTab: BlinkTab = .today
 
@@ -164,8 +168,31 @@ public struct ContentView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .confirmationDialog(
+            "Delete event?",
+            isPresented: Binding(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                guard let event = pendingDelete else { return }
+                pendingDelete = nil
+                perform {
+                    try store.delete(eventID: event.id)
+                    reload()
+                }
+            }
+            Button("Cancel", role: .cancel) { pendingDelete = nil }
+        } message: {
+            Text(pendingDelete?.hasAttachments == true
+                ? "The event will be removed and its Blink attachments moved to Trash."
+                : "The event will be removed from Blink.")
+        }
         .onAppear(perform: reload)
         .onChange(of: newEventToken) {
+            guard newEventToken != nil else { return }
             openEditor(EditableEvent.blank())
         }
         .onReceive(Timer.publish(every: 30, on: .main, in: .common).autoconnect()) { _ in
@@ -187,22 +214,28 @@ public struct ContentView: View {
                 .ignoresSafeArea()
                 .onTapGesture {
                     if shouldDismissEventEditorOnBackdropTap(editorIsDirty: editorIsDirty) {
-                        editorEvent = nil
+                        closeEditor()
                     }
                 }
             EventEditorView(
                 event: event,
                 reminderConfig: reminderConfig,
+                attachmentWorkspace: editorAttachmentWorkspace,
+                draftID: editorDraftID,
                 onDirtyChange: { editorIsDirty = $0 },
-                onCancel: { editorEvent = nil }
+                onCancel: { closeEditor() }
             ) { savedEvent in
                 perform {
-                    try store.save(savedEvent)
+                    try store.save(
+                        savedEvent,
+                        attachmentWorkspace: editorAttachmentWorkspace,
+                        draftID: editorDraftID
+                    )
                     reload()
-                    editorEvent = nil
+                    closeEditor(discardDraft: false)
                 }
             }
-            .frame(width: 760, height: 740)
+            .frame(width: 760, height: 820)
             .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(radius: 18)
@@ -267,7 +300,22 @@ public struct ContentView: View {
     private var actions: EventRowActions {
         EventRowActions(
             newEvent: { openEditor(EditableEvent.blank()) },
-            edit: { openEditor(EditableEvent(event: $0)) },
+            edit: { event in
+                guard !eventIsHistoryFrozen(event) else { return }
+                openEditor(EditableEvent(event: event))
+            },
+            duplicate: { event in
+                openEditor(duplicateEditableEvent(from: event))
+            },
+            addFiles: { event in
+                chooseFiles(for: event)
+            },
+            pasteScreenshot: { event in
+                pasteScreenshot(for: event)
+            },
+            openAttachments: { event in
+                openAttachmentsFolder(for: event)
+            },
             done: { event in
                 perform {
                     try store.complete(eventID: event.id)
@@ -281,17 +329,73 @@ public struct ContentView: View {
                 }
             },
             delete: { event in
-                perform {
-                    try store.delete(eventID: event.id)
-                    reload()
-                }
+                pendingDelete = event
             }
         )
     }
 
-    private func openEditor(_ event: EditableEvent) {
+    private func openEditor(_ event: EditableEvent, workspace: AttachmentWorkspace? = nil, draftID: String? = nil) {
         editorIsDirty = false
+        let resolvedWorkspace = workspace ?? AttachmentWorkspace(root: store.root)
+        let resolvedDraftID: String?
+        if let draftID {
+            resolvedDraftID = draftID
+        } else {
+            resolvedDraftID = try? resolvedWorkspace.createDraft()
+        }
+        editorAttachmentWorkspace = resolvedWorkspace
+        editorDraftID = resolvedDraftID
         editorEvent = event
+    }
+
+    private func closeEditor(discardDraft: Bool = true) {
+        if discardDraft,
+           let workspace = editorAttachmentWorkspace,
+           let draftID = editorDraftID {
+            try? workspace.discard(draftID: draftID)
+        }
+        editorEvent = nil
+        editorAttachmentWorkspace = nil
+        editorDraftID = nil
+        editorIsDirty = false
+    }
+
+    private func duplicateEditableEvent(from event: BlinkEvent) -> EditableEvent {
+        var duplicate = EditableEvent(event: event)
+        duplicate.id = "event-\(UUID().uuidString.lowercased())"
+        duplicate.attachments = nil
+        duplicate.seriesID = nil
+        duplicate.recurrence = nil
+        duplicate.enabled = true
+        return duplicate
+    }
+
+    private func chooseFiles(for event: BlinkEvent) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+        perform {
+            try store.addFiles(eventID: event.id, urls: panel.urls)
+            reload()
+        }
+    }
+
+    private func pasteScreenshot(for event: BlinkEvent) {
+        guard let imageData = clipboardJPEGData() else {
+            errorMessage = "No image was found in the clipboard."
+            return
+        }
+        perform {
+            try store.addJPEG(eventID: event.id, data: imageData)
+            reload()
+        }
+    }
+
+    private func openAttachmentsFolder(for event: BlinkEvent) {
+        let workspace = AttachmentWorkspace(root: store.root)
+        NSWorkspace.shared.open(workspace.attachmentURL(ownerID: event.attachmentOwnerID))
     }
 
     private func filtered(_ source: [BlinkEvent]) -> [BlinkEvent] {
@@ -434,7 +538,8 @@ struct EventListView: View {
                 actions: actions,
                 activeEventIDs: activeEventIDs,
                 pulseVisible: pulseVisible,
-                showsToggle: title != "History"
+                showsToggle: title != "History",
+                showsHistory: title == "History"
             )
             Spacer()
         }
@@ -449,54 +554,23 @@ struct EventRows: View {
     let pulseVisible: Bool
     var showsDone = false
     var showsToggle = true
+    var showsHistory = false
 
     var body: some View {
         if events.isEmpty {
             Text("No events").foregroundStyle(.secondary)
         } else {
             List(events) { event in
-                HStack {
-                    Group {
-                        Text(eventDateTimeLabel(event.start))
-                            .font(.system(.body, design: .monospaced))
-                            .frame(width: 150, alignment: .leading)
-                    }
-                    .opacity(rowContentOpacity(for: event))
-                    .animation(.easeInOut(duration: 0.3), value: pulseVisible)
-                    Circle()
-                        .fill(color(for: event.attentionLevel))
-                        .frame(width: 12, height: 12)
-                    VStack(alignment: .leading) {
-                        Text(event.title)
-                        if let description = event.description, !description.isEmpty {
-                            Text(description).foregroundStyle(.secondary)
-                        }
-                    }
-                    .opacity(rowContentOpacity(for: event))
-                    .animation(.easeInOut(duration: 0.3), value: pulseVisible)
-                    Spacer()
-                    if showsDone {
-                        Button("Done") {
-                            actions.done(event)
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    if showsToggle {
-                        Button(event.enabled ? "On" : "Off") {
-                            actions.toggle(event)
-                        }
-                        .buttonStyle(.bordered)
-                        .foregroundStyle(event.enabled ? .green : .red)
-                    }
-                    Button("Edit") {
-                        actions.edit(event)
-                    }
-                    .buttonStyle(.bordered)
-                    Button("Delete", role: .destructive) {
-                        actions.delete(event)
-                    }
-                    .buttonStyle(.bordered)
-                }
+                EventRowView(
+                    event: event,
+                    actions: actions,
+                    activeEventIDs: activeEventIDs,
+                    pulseVisible: pulseVisible,
+                    showsDone: showsDone,
+                    showsToggle: showsToggle,
+                    showsHistory: showsHistory,
+                    rowContentOpacity: rowContentOpacity(for:)
+                )
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -511,11 +585,95 @@ struct EventRows: View {
     }
 }
 
+private struct EventRowView: View {
+    let event: BlinkEvent
+    let actions: EventRowActions
+    let activeEventIDs: Set<String>
+    let pulseVisible: Bool
+    let showsDone: Bool
+    let showsToggle: Bool
+    let showsHistory: Bool
+    let rowContentOpacity: (BlinkEvent) -> Double
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack {
+            rowContent
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if !showsHistory { actions.edit(event) }
+                }
+            Spacer()
+            if showsDone {
+                Button("Done") { actions.done(event) }
+                    .buttonStyle(.borderedProminent)
+            }
+            if showsToggle {
+                Button(event.enabled ? "On" : "Off") { actions.toggle(event) }
+                    .buttonStyle(.bordered)
+                    .foregroundStyle(event.enabled ? .green : .red)
+            }
+            if !showsHistory {
+                Button("Edit") { actions.edit(event) }
+                    .buttonStyle(.bordered)
+            }
+            Button("Delete", role: .destructive) { actions.delete(event) }
+                .buttonStyle(.bordered)
+        }
+        .padding(.vertical, 4)
+        .background(isHovered ? Color.primary.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 6))
+        .onHover { isHovered = $0 }
+        .contextMenu {
+            if !showsHistory {
+                Button("Edit") { actions.edit(event) }
+                Button("Add Files") { actions.addFiles(event) }
+                Button("Paste Screenshot") { actions.pasteScreenshot(event) }
+            }
+            Button("Duplicate as new event") { actions.duplicate(event) }
+            if event.hasAttachments {
+                Button("Open Attachments Folder") { actions.openAttachments(event) }
+            }
+            if showsDone {
+                Button("Done") { actions.done(event) }
+            }
+            if showsToggle {
+                Button(event.enabled ? "Turn Off" : "Turn On") { actions.toggle(event) }
+            }
+            Button("Delete", role: .destructive) { actions.delete(event) }
+        }
+    }
+
+    private var rowContent: some View {
+        HStack {
+            Text(eventDateTimeLabel(event.start))
+                .font(.system(.body, design: .monospaced))
+                .frame(width: 150, alignment: .leading)
+            Circle()
+                .fill(color(for: event.attentionLevel))
+                .frame(width: 12, height: 12)
+            VStack(alignment: .leading) {
+                HStack(spacing: 6) {
+                    Text(event.title)
+                    if event.hasAttachments { Text("📎") }
+                }
+                if let description = event.description, !description.isEmpty {
+                    Text(description).foregroundStyle(.secondary).lineLimit(2)
+                }
+            }
+        }
+        .opacity(rowContentOpacity(event))
+        .animation(.easeInOut(duration: 0.3), value: pulseVisible)
+    }
+}
+
 struct EventEditorView: View {
     @State private var draft: EditableEvent
     @State private var timeText: String
+    @State private var stagedAttachmentCount: Int
     private let original: EditableEvent
     let reminderConfig: ReminderConfig
+    let attachmentWorkspace: AttachmentWorkspace?
+    let draftID: String?
     let onDirtyChange: (Bool) -> Void
     let onCancel: () -> Void
     let onSave: (EditableEvent) -> Void
@@ -523,14 +681,19 @@ struct EventEditorView: View {
     init(
         event: EditableEvent,
         reminderConfig: ReminderConfig,
+        attachmentWorkspace: AttachmentWorkspace?,
+        draftID: String?,
         onDirtyChange: @escaping (Bool) -> Void,
         onCancel: @escaping () -> Void,
         onSave: @escaping (EditableEvent) -> Void
     ) {
         self._draft = State(initialValue: event)
         self._timeText = State(initialValue: clockTimeText(hour: event.hour, minute: event.minute))
+        self._stagedAttachmentCount = State(initialValue: event.attachments?.count ?? 0)
         self.original = event
         self.reminderConfig = reminderConfig
+        self.attachmentWorkspace = attachmentWorkspace
+        self.draftID = draftID
         self.onDirtyChange = onDirtyChange
         self.onCancel = onCancel
         self.onSave = onSave
@@ -538,9 +701,37 @@ struct EventEditorView: View {
 
     var body: some View {
         Form {
-            TextField("", text: $draft.title, prompt: Text("Required"))
-                .formLabel("Title", required: true)
-            TextField("Description", text: $draft.description)
+            VStack(alignment: .leading, spacing: 4) {
+                RequiredLabel("Title")
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $draft.title)
+                    if draft.title.isEmpty {
+                        Text("Required")
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 8)
+                            .padding(.leading, 5)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .frame(minHeight: 42, maxHeight: 90)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Description")
+                TextEditor(text: $draft.description)
+                    .frame(minHeight: 72, maxHeight: 180)
+            }
+            Section {
+                HStack(spacing: 12) {
+                    Button("📎 Attach Files") { chooseFiles() }
+                    Button("Paste Screenshot") { pasteScreenshot() }
+                    if stagedAttachmentCount > 0 {
+                        Text("\(stagedAttachmentCount) attached")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("Attachments")
+            }
             DatePicker(selection: $draft.date, displayedComponents: .date) {
                 RequiredLabel("Date")
             }
@@ -630,8 +821,49 @@ struct EventEditorView: View {
             applyTimeText()
         }
         .onChange(of: draft) {
-            onDirtyChange(draft != original)
+            onDirtyChange(draft != original || stagedAttachmentCount != (original.attachments?.count ?? 0))
         }
+        .onChange(of: stagedAttachmentCount) {
+            onDirtyChange(draft != original || stagedAttachmentCount != (original.attachments?.count ?? 0))
+        }
+    }
+
+    private func chooseFiles() {
+        guard let attachmentWorkspace, let draftID else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        guard panel.runModal() == .OK else { return }
+        do {
+            try attachmentWorkspace.addFiles(panel.urls, to: draftID)
+            stagedAttachmentCount = stagedCount()
+        } catch {
+            // The parent owns the error surface; a failed staging operation
+            // simply leaves the editor draft untouched.
+        }
+    }
+
+    private func pasteScreenshot() {
+        guard let attachmentWorkspace, let draftID,
+              let data = clipboardJPEGData() else { return }
+        do {
+            try attachmentWorkspace.addJPEG(data, to: draftID)
+            stagedAttachmentCount = stagedCount()
+        } catch {
+            // See chooseFiles().
+        }
+    }
+
+    private func stagedCount() -> Int {
+        guard let attachmentWorkspace, let draftID,
+              let values = try? FileManager.default.contentsOfDirectory(
+                at: attachmentWorkspace.draftURL(draftID),
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+              ) else { return stagedAttachmentCount }
+        return values.filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }.count
+            + (original.attachments?.count ?? 0)
     }
 
     private func reminderBinding(_ offset: Int) -> Binding<Bool> {
@@ -1530,9 +1762,23 @@ extension View {
 struct EventRowActions {
     var newEvent: () -> Void
     var edit: (BlinkEvent) -> Void
+    var duplicate: (BlinkEvent) -> Void
+    var addFiles: (BlinkEvent) -> Void
+    var pasteScreenshot: (BlinkEvent) -> Void
+    var openAttachments: (BlinkEvent) -> Void
     var done: (BlinkEvent) -> Void
     var toggle: (BlinkEvent) -> Void
     var delete: (BlinkEvent) -> Void
+}
+
+private func clipboardJPEGData() -> Data? {
+    let pasteboard = NSPasteboard.general
+    let sourceData = pasteboard.data(forType: .tiff) ?? pasteboard.data(forType: .png)
+    guard let sourceData,
+          let image = NSImage(data: sourceData),
+          let tiff = image.tiffRepresentation,
+          let bitmap = NSBitmapImageRep(data: tiff) else { return nil }
+    return bitmap.representation(using: .jpeg, properties: [:])
 }
 
 private func reminderLabel(_ minutes: Int) -> String {

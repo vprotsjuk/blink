@@ -1,7 +1,11 @@
 import unittest
 from datetime import datetime
 
-from app.notification_format import build_event_notification
+from app.notification_format import (
+    MAX_NTFY_BODY_BYTES,
+    MAX_NTFY_TITLE_BYTES,
+    build_event_notification,
+)
 
 
 class NotificationFormatTests(unittest.TestCase):
@@ -46,11 +50,39 @@ class NotificationFormatTests(unittest.TestCase):
 
         self.assertTrue(body.startswith("September 14, 2026 at 15:00"))
 
+    def test_event_notification_marks_local_attachments_after_attention_icon(self):
+        title, _ = build_event_notification(
+            {
+                "title": "Bring documents",
+                "description": "Files are in Blink",
+                "start": "2026-09-14T15:00:00-07:00",
+                "attachments": {"owner_id": "event-1", "count": 2, "has_files": True},
+            },
+            0,
+        )
+        self.assertEqual(title, "🟢 📎 Bring documents")
+
+    def test_event_notification_preserves_paragraphs_and_bounds_utf8_push_projection(self):
+        description = "First paragraph\n\n" + ("Очень длинная строка. " * 500)
+        title, body = build_event_notification(
+            {
+                "title": "First line\nSecond line should stay local",
+                "description": description,
+                "start": "2026-09-14T15:00:00-07:00",
+            },
+            0,
+        )
+        self.assertEqual(title, "🟢 First line")
+        self.assertLessEqual(len(title.encode("utf-8")), MAX_NTFY_TITLE_BYTES)
+        self.assertLessEqual(len(body.encode("utf-8")), MAX_NTFY_BODY_BYTES)
+        self.assertIn("First paragraph\n\n", body)
+        self.assertIn("Event starts now", body)
+
     def test_astronomy_title_uses_approved_sun_icons(self):
         cases = (
-            ("Sunrise", ["astronomy", "sunrise"], "☀️ Sunrise"),
+            ("Sunrise", ["astronomy", "sunrise"], "☀️ ↑ Sunrise"),
             ("Solar noon", ["astronomy", "solar-noon"], "☀️ Solar noon"),
-            ("Sunset", ["astronomy", "sunset", "moon"], "☀️ Sunset"),
+            ("Sunset", ["astronomy", "sunset", "moon"], "☀️ ↓ Sunset"),
             ("Civil twilight ends", ["astronomy", "civil-twilight"], "✨ Civil twilight ends"),
         )
 
@@ -68,7 +100,7 @@ class NotificationFormatTests(unittest.TestCase):
                 )
                 self.assertEqual(actual, expected)
 
-    def test_lunar_title_uses_phase_and_trend_marker_when_provided(self):
+    def test_lunar_rise_title_uses_thin_rise_arrow(self):
         title, _ = build_event_notification(
             {
                 "title": "Moonrise",
@@ -81,7 +113,7 @@ class NotificationFormatTests(unittest.TestCase):
             },
             0,
         )
-        self.assertEqual(title, "🌗 ⬇️ Moonrise")
+        self.assertEqual(title, "🌙 ↑ Moonrise")
 
     def test_exact_new_and_full_moon_titles_omit_direction_arrow(self):
         for title, icon, tags in (

@@ -301,7 +301,7 @@ func testCompleteWeeklyFixedRecurringAppendsNextWeekday() throws {
     try expect(events.last?["start"] as? String == "2026-09-14T08:00:00-07:00", "Next weekly event start is wrong")
 }
 
-func testEditPreservesExistingDoneState() throws {
+func testEditingDoneEventIsRejected() throws {
     let root = try temporaryRoot()
     let agenda = root.appendingPathComponent("agenda.json")
     try """
@@ -319,14 +319,16 @@ func testEditPreservesExistingDoneState() throws {
         enabled: true,
         attentionLevel: .yellow
     )
-    try store.save(event)
-    let object = try readJSONObject(agenda)
-    let events = object["events"] as? [[String: Any]] ?? []
-    try expect(events.first?["done"] as? Bool == true, "Edit should preserve done flag")
-    try expect(events.first?["done_at"] as? String == "2026-09-07T14:32:18-07:00", "Edit should preserve done_at")
+    var rejected = false
+    do {
+        try store.save(event)
+    } catch {
+        rejected = true
+    }
+    try expect(rejected, "Completed history event should be frozen")
 }
 
-func testEditingDoneEventToFutureReopensIt() throws {
+func testEditingDoneEventToFutureIsRejected() throws {
     let root = try temporaryRoot()
     let agenda = root.appendingPathComponent("agenda.json")
     try """
@@ -344,10 +346,13 @@ func testEditingDoneEventToFutureReopensIt() throws {
         enabled: true,
         attentionLevel: .green
     )
-    try store.save(event)
-    let snapshot = store.loadSnapshot(now: parseISODate("2026-09-08T09:00:00-07:00")!)
-    try expect(snapshot.upcoming.map(\.id) == ["event"], "Moving a done event to the future should reopen it")
-    try expect(snapshot.history.isEmpty, "Reopened event should leave history")
+    var rejected = false
+    do {
+        try store.save(event)
+    } catch {
+        rejected = true
+    }
+    try expect(rejected, "Moving a history event to the future should be rejected")
 }
 
 func testLoadingStaleCompletedFutureEventRepairsAndMovesIt() throws {
@@ -524,6 +529,45 @@ func testSaveWeatherSettingsPreservesUnknownFields() throws {
     try expect(config.weather_enabled, "Weather config should remain mutable in the editor")
 }
 
+func testBriefingSavesRecordConfigurationChangeInstant() throws {
+    let root = try temporaryRoot()
+    try FileManager.default.createDirectory(at: root.appendingPathComponent("weather"), withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: root.appendingPathComponent("astronomy"), withIntermediateDirectories: true)
+    try """
+    {"version":1,"weather_enabled":true,"morning_briefing":{"enabled":true,"time":"06:30"}}
+    """.write(to: root.appendingPathComponent("weather/weather_config.json"), atomically: true, encoding: .utf8)
+    try """
+    {"version":1,"last_weather_briefing_status":"delivered"}
+    """.write(to: root.appendingPathComponent("weather/weather_state.json"), atomically: true, encoding: .utf8)
+    try """
+    {"version":2,"timezone":"America/Los_Angeles","notifications":{"sun":{"enabled":true,"events":{}}},"briefing":{"enabled":true,"time":"06:30","include_day_night":true,"include_weather":false}}
+    """.write(to: root.appendingPathComponent("astronomy/astronomy_config.json"), atomically: true, encoding: .utf8)
+
+    let store = BlinkStore(root: root)
+    let weather = WeatherConfig(
+        weather_enabled: true,
+        morning_briefing: WeatherConfig.MorningBriefing(enabled: true, time: "06:00"),
+        include: WeatherConfig.Include(temperature: true, humidity: true, wind: true, rain: true, snow: true)
+    )
+    try store.saveWeatherSettings(weather)
+    let weatherState = try readJSONObject(root.appendingPathComponent("weather/weather_state.json"))
+    try expect((weatherState["briefing_config_changed_at"] as? String)?.isEmpty == false, "Weather briefing save should record its change instant")
+
+    var astronomy = try expectLoadedAstronomyConfig(store)
+    astronomy.briefing = AstronomyConfig.Briefing(enabled: true, time: "06:00", include_day_night: true, include_weather: false)
+    try store.saveAstronomySettings(astronomy)
+    let astronomyObject = try readJSONObject(root.appendingPathComponent("astronomy/astronomy_config.json"))
+    let briefing = astronomyObject["briefing"] as? [String: Any]
+    try expect((briefing?["config_changed_at"] as? String)?.isEmpty == false, "Astronomy briefing save should record its change instant")
+}
+
+func expectLoadedAstronomyConfig(_ store: BlinkStore) throws -> AstronomyConfig {
+    guard let config = store.loadAstronomyConfig() else {
+        throw TestFailure(description: "Astronomy config did not load")
+    }
+    return config
+}
+
 func testSaveLocationInvalidatesDerivedCaches() throws {
     let root = try temporaryRoot()
     try FileManager.default.createDirectory(at: root.appendingPathComponent("weather"), withIntermediateDirectories: true)
@@ -666,7 +710,7 @@ func testEventEditorLayoutContracts() throws {
         .deletingLastPathComponent()
         .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
     let source = try String(contentsOf: contentView, encoding: .utf8)
-    try expect(source.contains("TextField(\"\", text: $draft.title, prompt: Text(\"Required\"))"), "Title field should not duplicate its external label")
+    try expect(source.contains("TextEditor(text: $draft.title)"), "Title editor should support multiline text")
     try expect(source.contains("HStack(spacing: 18)"), "Reminder controls should use aligned columns")
     try expect(source.contains(".frame(width: 230, alignment: .leading)"), "Reminder columns should have a stable width")
     try expect(source.contains(".frame(maxWidth: 620, alignment: .leading)"), "Editor form should use a centered readable content width")
@@ -767,6 +811,130 @@ func testAstronomyUsesDirectionalPhaseLabels() throws {
     try expect(source.contains("record.new_moon == nil && record.full_moon == nil"), "SwiftUI must omit trend arrows on exact phase-event days")
 }
 
+func testAttachmentWorkspaceRoundTrip() throws {
+    let root = try temporaryRoot()
+    let workspace = AttachmentWorkspace(root: root)
+    let draftID = try workspace.createDraft()
+    let secondDraftID = try workspace.createDraft()
+    try expect(draftID != secondDraftID && draftID.hasPrefix("draft-"), "Draft IDs should be unique UUIDs")
+    try workspace.discard(draftID: secondDraftID)
+    let source = root.appendingPathComponent("source.txt")
+    try "attachment".write(to: source, atomically: true, encoding: .utf8)
+    try workspace.addFiles([source], to: draftID)
+    try workspace.addJPEG(Data([0xFF, 0xD8, 0xFF, 0xD9]), to: draftID, date: Date(timeIntervalSince1970: 0))
+    let manifest = try workspace.finalize(draftID: draftID, ownerID: "event-1")
+    try expect(manifest.ownerID == "event-1", "Attachment owner ID is wrong")
+    try expect(manifest.count == 2 && manifest.hasFiles, "Attachment manifest did not count the files")
+    let target = workspace.attachmentURL(ownerID: "event-1")
+    try expect(FileManager.default.fileExists(atPath: target.appendingPathComponent("source.txt").path), "Final attachment was not materialized")
+    let names = try FileManager.default.contentsOfDirectory(at: target, includingPropertiesForKeys: nil).map(\.lastPathComponent)
+    try expect(names.contains(where: { $0.hasPrefix("screenshot-") && $0.hasSuffix(".jpg") && !$0.contains("(formatter") }), "Screenshot should use a timestamped JPEG name")
+}
+
+func testAttachmentDraftCancelAndMultilineEventContract() throws {
+    let root = try temporaryRoot()
+    let workspace = AttachmentWorkspace(root: root)
+    let draftID = try workspace.createDraft()
+    try workspace.discard(draftID: draftID)
+    try expect(!FileManager.default.fileExists(atPath: workspace.draftURL(draftID).path), "Discarded draft still exists")
+
+    let event = EditableEvent(
+        id: "event-1",
+        title: "First line\nSecond line",
+        date: DateComponents(calendar: Calendar(identifier: .gregorian), year: 2026, month: 9, day: 12).date!,
+        hour: 12,
+        minute: 30,
+        description: "Paragraph one\n\nParagraph two",
+        reminderOffsets: [0],
+        enabled: true,
+        attachments: AttachmentManifest(ownerID: "event-1", count: 1, hasFiles: true)
+    )
+    let dictionary = event.toDictionary()
+    try expect(dictionary["title"] as? String == "First line\nSecond line", "Title paragraphs were not preserved")
+    try expect(dictionary["description"] as? String == "Paragraph one\n\nParagraph two", "Description paragraphs were not preserved")
+    try expect((dictionary["attachments"] as? [String: Any])?["has_files"] as? Bool == true, "Attachment manifest was not serialized")
+
+    let legacyAgenda = try JSONSerialization.data(withJSONObject: [
+        "events": [[
+            "id": "legacy",
+            "title": "Legacy",
+            "start": "2099-09-12T12:30:00-07:00",
+            "reminders_minutes_before": [0],
+            "enabled": true,
+            "attachments": ["unexpected": "shape"]
+        ]]
+    ])
+    let decoded = try JSONDecoder().decode(AgendaDocument.self, from: legacyAgenda)
+    try expect(decoded.events.count == 1 && decoded.events[0].attachments?.hasFiles == false, "Malformed attachment metadata should migrate as empty")
+}
+
+func testSavingEventCommitsAttachmentsAndPreservesDraftOnFailure() throws {
+    let root = try temporaryRoot()
+    let store = BlinkStore(root: root)
+    let workspace = AttachmentWorkspace(root: root)
+    let draftID = try workspace.createDraft()
+    let source = root.appendingPathComponent("meeting-notes.txt")
+    try "notes".write(to: source, atomically: true, encoding: .utf8)
+    try workspace.addFiles([source], to: draftID)
+    let event = EditableEvent(
+        id: "meeting",
+        title: "Meeting",
+        date: DateComponents(calendar: Calendar(identifier: .gregorian), year: 2099, month: 9, day: 12).date!,
+        hour: 12,
+        minute: 30,
+        description: "Agenda",
+        reminderOffsets: [0],
+        enabled: true
+    )
+    try store.save(event, attachmentWorkspace: workspace, draftID: draftID)
+    let object = try readJSONObject(root.appendingPathComponent("agenda.json"))
+    let saved = (object["events"] as? [[String: Any]])?.first
+    try expect((saved?["attachments"] as? [String: Any])?["has_files"] as? Bool == true, "Saved event should advertise attachments")
+    try expect(!FileManager.default.fileExists(atPath: workspace.draftURL(draftID).path), "Committed draft should be removed")
+    try expect(FileManager.default.fileExists(atPath: workspace.attachmentURL(ownerID: "meeting").appendingPathComponent("meeting-notes.txt").path), "Committed file should remain under Blink root")
+}
+
+func testEventRowsExposeAttachmentAndHistoryContracts() throws {
+    let sourceURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: sourceURL, encoding: .utf8)
+    try expect(source.contains("TextEditor(text: $draft.title)"), "Title should use a multiline editor")
+    try expect(source.contains("TextEditor(text: $draft.description)"), "Description should use a multiline editor")
+    try expect(source.contains("Paste Screenshot"), "Context menu should expose screenshot paste")
+    try expect(source.contains("Duplicate as new event"), "Context menu should expose History duplication")
+    try expect(source.contains("contextMenu"), "Event rows should expose a context menu")
+    try expect(source.contains("showsHistory"), "Event rows should know when History is frozen")
+}
+
+func testHistorySaveIsRejectedAndAttachmentMetadataPersists() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try """
+    {"version":1,"events":[{"id":"past","title":"Past","start":"2026-09-08T10:00:00-07:00","reminders_minutes_before":[0],"enabled":true,"requires_done":true,"done":true,"done_at":"2026-09-08T10:00:00-07:00"}]}
+    """.write(to: agenda, atomically: true, encoding: .utf8)
+    let store = BlinkStore(root: root)
+    let past = EditableEvent(
+        id: "past",
+        title: "Changed",
+        date: DateComponents(calendar: Calendar(identifier: .gregorian), year: 2026, month: 9, day: 8).date!,
+        hour: 10,
+        minute: 0,
+        description: "Changed",
+        reminderOffsets: [0],
+        enabled: true
+    )
+    var rejected = false
+    do {
+        try store.save(past)
+    } catch {
+        rejected = true
+    }
+    try expect(rejected, "History event edit should be rejected")
+}
+
 let tests: [(String, () throws -> Void)] = [
     ("upsert preserves unknown fields", testUpsertPreservesUnknownFields),
     ("Los Angeles DST offset", testBuildEventUsesLosAngelesDstOffset),
@@ -781,8 +949,8 @@ let tests: [(String, () throws -> Void)] = [
     ("done and attention writes preserve unknown fields", testDoneAndAttentionWritesPreserveUnknownFields),
     ("complete after done days recurring appends next event", testCompleteAfterDoneDaysRecurringAppendsNextEvent),
     ("complete weekly fixed recurring appends next weekday", testCompleteWeeklyFixedRecurringAppendsNextWeekday),
-    ("edit preserves existing done state", testEditPreservesExistingDoneState),
-    ("editing done event to future reopens it", testEditingDoneEventToFutureReopensIt),
+    ("editing done event is rejected", testEditingDoneEventIsRejected),
+    ("editing done event to future is rejected", testEditingDoneEventToFutureIsRejected),
     ("loading stale completed future event repairs and moves it", testLoadingStaleCompletedFutureEventRepairsAndMovesIt),
     ("attention output mapping and transitions", testAttentionOutputMappingAndTransitions),
     ("loads astronomy v2 location and weather read-only files", testLoadsAstronomyV2LocationAndWeatherReadOnlyFiles),
@@ -793,6 +961,7 @@ let tests: [(String, () throws -> Void)] = [
     ("loads reminder config with fallback", testLoadsReminderConfigWithFallback),
     ("save weather config toggle preserves morning time", testSaveWeatherConfigTogglePreservesMorningTime),
     ("save weather settings preserves unknown fields", testSaveWeatherSettingsPreservesUnknownFields),
+    ("briefing saves record configuration change instant", testBriefingSavesRecordConfigurationChangeInstant),
     ("save location invalidates derived caches", testSaveLocationInvalidatesDerivedCaches),
     ("menu bar summary shows active and next events", testMenuBarSummaryShowsActiveAndNextEvents),
     ("editable event writes recurrence contracts", testEditableEventWritesRecurrenceContracts),
@@ -804,7 +973,12 @@ let tests: [(String, () throws -> Void)] = [
     ("GUI store has no sender symbols", testGuiStoreDoesNotContainSenderSymbols),
     ("Astronomy uses shared push icons", testAstronomyUsesSharedPushIcons),
     ("Astronomy uses shared aligned columns", testAstronomyUsesSharedAlignedColumns),
-    ("Astronomy uses directional phase labels", testAstronomyUsesDirectionalPhaseLabels)
+    ("Astronomy uses directional phase labels", testAstronomyUsesDirectionalPhaseLabels),
+    ("attachment workspace round trip", testAttachmentWorkspaceRoundTrip),
+    ("attachment draft cancel and multiline event contract", testAttachmentDraftCancelAndMultilineEventContract),
+    ("saving event commits attachments", testSavingEventCommitsAttachmentsAndPreservesDraftOnFailure),
+    ("event rows expose attachment and history contracts", testEventRowsExposeAttachmentAndHistoryContracts),
+    ("history save is rejected", testHistorySaveIsRejectedAndAttachmentMetadataPersists)
 ]
 
 do {

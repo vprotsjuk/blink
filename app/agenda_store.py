@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from app import attachment_store
 from app.event_timing import effective_event_start
 
 
@@ -101,7 +102,37 @@ def build_personal_event(
         "done": False,
         "done_at": None,
         "attention_level": attention,
+        "attachments": {"owner_id": event_id, "count": 0, "has_files": False},
     }
+
+
+def duplicate_event(
+    event: dict[str, Any],
+    new_id: str,
+    new_start: str | None = None,
+    preserve_recurrence: bool = False,
+) -> dict[str, Any]:
+    """Create a new unfinished event without mutating the source record."""
+    result = json.loads(json.dumps(event))
+    new_id = str(new_id).strip()
+    if not new_id:
+        raise ValueError("new_id is required")
+    result["id"] = new_id
+    if new_start is not None:
+        result["start"] = str(new_start).strip()
+    result["enabled"] = True
+    result["requires_done"] = True
+    result["done"] = False
+    result["done_at"] = None
+    result.pop("recurrence_parent_id", None)
+    result.pop("generation", None)
+    result.pop("series_id", None)
+    if not preserve_recurrence:
+        result.pop("recurrence", None)
+    else:
+        result["series_id"] = new_id
+    result["attachments"] = attachment_store.attachment_manifest(None, result)
+    return result
 
 
 def upsert_event(
@@ -111,24 +142,10 @@ def upsert_event(
     events = result.setdefault("events", [])
     for index, existing in enumerate(events):
         if existing.get("id") == event.get("id"):
+            if existing.get("done") is True:
+                raise ValueError("history events are frozen; duplicate the event instead")
             merged = dict(existing)
             merged.update(event)
-            if existing.get("done") is True:
-                old_start = existing.get("start")
-                new_start = event.get("start")
-                parsed_new_start = parse_aware_start(merged)
-                current = now or datetime.now(ZoneInfo(LOCAL_TIMEZONE))
-                reopened = (
-                    old_start != new_start
-                    and parsed_new_start is not None
-                    and parsed_new_start > current.astimezone(parsed_new_start.tzinfo)
-                )
-                if reopened:
-                    merged["done"] = False
-                    merged["done_at"] = None
-                else:
-                    merged["done"] = True
-                    merged["done_at"] = existing.get("done_at")
             events[index] = merged
             return result
     events.append(dict(event))

@@ -6,6 +6,10 @@ from datetime import datetime
 from typing import Any
 
 
+MAX_NTFY_BODY_BYTES = 4096
+MAX_NTFY_TITLE_BYTES = 1024
+_ELLIPSIS = "…"
+
 _MONTHS = (
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
@@ -25,17 +29,49 @@ def build_event_notification(
     event: dict[str, Any], offset_minutes: int, start_value: str | None = None
 ) -> tuple[str, str]:
     """Return ntfy title and a concise, user-facing message body."""
-    title = str(event.get("title", "")).strip()
+    title = _single_line_title(event.get("title", ""))
     if event.get("source") == "astronomy":
         title = f"{_astronomy_icon(event)} {title}"
     else:
-        title = f"{_attention_icon(event)} {title}"
-    lines = [_event_date_label(event, start_value)]
+        marker = " 📎" if _has_attachments(event) else ""
+        title = f"{_attention_icon(event)}{marker} {title}"
+    title = _truncate_utf8(title, MAX_NTFY_TITLE_BYTES)
+    date_line = _event_date_label(event, start_value)
     description = str(event.get("description", "")).strip()
-    if description:
-        lines.append(description)
-    lines.append(_reminder_label(offset_minutes))
-    return title, "\n".join(lines)
+    reminder_line = _reminder_label(offset_minutes)
+    return title, _build_bounded_body(date_line, description, reminder_line)
+
+
+def _single_line_title(value: Any) -> str:
+    lines = [line.strip() for line in str(value or "").splitlines() if line.strip()]
+    return lines[0] if lines else "Reminder"
+
+
+def _has_attachments(event: dict[str, Any]) -> bool:
+    manifest = event.get("attachments")
+    return isinstance(manifest, dict) and bool(manifest.get("has_files"))
+
+
+def _truncate_utf8(value: str, limit: int) -> str:
+    encoded = value.encode("utf-8")
+    if len(encoded) <= limit:
+        return value
+    suffix = _ELLIPSIS.encode("utf-8")
+    if limit <= len(suffix):
+        return suffix[:limit].decode("utf-8", "ignore")
+    prefix = encoded[: limit - len(suffix)].decode("utf-8", "ignore")
+    return prefix + _ELLIPSIS
+
+
+def _build_bounded_body(date_line: str, description: str, reminder_line: str) -> str:
+    if not description:
+        return _truncate_utf8(f"{date_line}\n{reminder_line}", MAX_NTFY_BODY_BYTES)
+    fixed_bytes = len(date_line.encode("utf-8")) + len(reminder_line.encode("utf-8")) + 2
+    available = MAX_NTFY_BODY_BYTES - fixed_bytes
+    if available <= 0:
+        return _truncate_utf8(f"{date_line}\n{reminder_line}", MAX_NTFY_BODY_BYTES)
+    bounded_description = _truncate_utf8(description, available)
+    return f"{date_line}\n{bounded_description}\n{reminder_line}"
 
 
 def push_tags_for_event(event: dict[str, Any], default_tags: list[str] | None = None) -> list[str]:
@@ -49,10 +85,18 @@ def push_tags_for_event(event: dict[str, Any], default_tags: list[str] | None = 
 
 def _astronomy_icon(event: dict[str, Any]) -> str:
     tags = {str(tag).lower() for tag in event.get("tags", [])}
-    if "sunrise" in tags or "sunset" in tags or "solar-noon" in tags:
+    if "sunrise" in tags:
+        return "☀️ ↑"
+    if "sunset" in tags:
+        return "☀️ ↓"
+    if "solar-noon" in tags:
         return "☀️"
     if "civil-twilight" in tags:
         return "✨"
+    if "moonrise" in tags:
+        return "🌙 ↑"
+    if "moonset" in tags:
+        return "🌙 ↓"
     explicit_icon = str(event.get("notification_icon", "")).strip()
     if explicit_icon:
         return explicit_icon

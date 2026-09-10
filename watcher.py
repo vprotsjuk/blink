@@ -20,6 +20,7 @@ from typing import Any, Callable
 
 from app import agenda_store, location_store, watcher_lifecycle, weather_store
 from app import ntfy_schedule
+from app import attachment_store
 from app.event_timing import effective_event_start
 from app.notification_format import build_event_notification, push_tags_for_event
 
@@ -193,6 +194,7 @@ def validate_event(
         LOGGER.warning("Invalid event %s: bad effective start", event_id)
         return None
 
+    source = str(event.get("source", "personal")).strip() or "personal"
     return {
         "id": event_id,
         "title": title,
@@ -204,13 +206,20 @@ def validate_event(
         "priority": str(event.get("priority", "default")).strip() or "default",
         "tags": [str(tag).strip() for tag in (tags or []) if str(tag).strip()],
         "enabled": True,
-        "source": str(event.get("source", "personal")).strip() or "personal",
+        "source": source,
         "requires_done": event.get("requires_done"),
         "done": event.get("done"),
         "done_at": event.get("done_at"),
         "attention_level": str(event.get("attention_level", "green")).strip().lower() or "green",
         "blinker_minutes_before": event.get("blinker_minutes_before"),
         "notification_icon": str(event.get("notification_icon", "")).strip(),
+        # Astronomy IDs include ISO timestamps and are not filesystem owner IDs;
+        # only personal events participate in the local attachment store.
+        "attachments": (
+            attachment_store.attachment_manifest(event.get("attachments"), event)
+            if source == "personal"
+            else None
+        ),
     }
 
 
@@ -290,6 +299,11 @@ def load_astronomy_settings(path: Path | None = None) -> dict[str, Any]:
     briefing = raw.get("briefing")
     if not isinstance(briefing, dict):
         briefing = {"enabled": True, "time": "06:30", "include_day_night": True, "include_weather": True}
+    if "config_changed_at" not in briefing:
+        marker = legacy_config_change_marker(settings_path)
+        if marker:
+            briefing = dict(briefing)
+            briefing["config_changed_at"] = marker
     return {
         "timezone": str(raw.get("timezone", "")).strip() or None,
         "notifications": notifications,
@@ -545,9 +559,9 @@ def build_evening_astronomy_description(
     if "above_horizon" in moon_status:
         lines.append("Above horizon" if moon_status["above_horizon"] else "Below horizon")
     if moon_status.get("moonset"):
-        lines.append(f"🌙 Moonset: {format_time_label(str(moon_status['moonset']))}")
+        lines.append(f"🌙 ↓ Moonset: {format_time_label(str(moon_status['moonset']))}")
     if moon_status.get("moonrise"):
-        lines.append(f"🌙 Moonrise: {format_time_label(str(moon_status['moonrise']))}")
+        lines.append(f"🌙 ↑ Moonrise: {format_time_label(str(moon_status['moonrise']))}")
     moon_context = dict(record or {})
     moon_context["moon_status_at_sunset"] = moon_status
     lines.extend(moon_notification_tail(moon_context, sunset.get("time")))
@@ -677,13 +691,13 @@ def build_astronomy_briefing_message(
     sunrise = record.get("sunrise")
     sunset = record.get("sunset")
     if isinstance(sunrise, dict) and sunrise.get("time"):
-        lines.append(f"☀️ Sunrise: {format_time_label(str(sunrise['time']))}")
+        lines.append(f"☀️ ↑ Sunrise: {format_time_label(str(sunrise['time']))}")
     elif record.get("sunrise_status") == "no_event_today":
-        lines.append("☀️ Sunrise: no event today")
+        lines.append("☀️ ↑ Sunrise: no event today")
     if isinstance(sunset, dict) and sunset.get("time"):
-        lines.append(f"☀️ Sunset: {format_time_label(str(sunset['time']))}")
+        lines.append(f"☀️ ↓ Sunset: {format_time_label(str(sunset['time']))}")
     elif record.get("sunset_status") == "no_event_today":
-        lines.append("☀️ Sunset: no event today")
+        lines.append("☀️ ↓ Sunset: no event today")
     if briefing.get("include_day_night") is True:
         day_length = record.get("day_length_minutes")
         if isinstance(day_length, int):
@@ -696,18 +710,18 @@ def build_astronomy_briefing_message(
     moonrise = record.get("moonrise") or (moon or {}).get("moonrise")
     moonset = record.get("moonset") or (moon or {}).get("moonset")
     if moonrise:
-        lines.append(f"🌙 Moonrise: {format_time_label(str(moonrise))}")
+        lines.append(f"🌙 ↑ Moonrise: {format_time_label(str(moonrise))}")
     else:
         next_rise = record.get("next_moonrise")
         lines.append(
-            f"🌙 Moonrise: {format_time_label(str(next_rise))} next" if next_rise else "🌙 Moonrise: no event today"
+            f"🌙 ↑ Moonrise: {format_time_label(str(next_rise))} next" if next_rise else "🌙 ↑ Moonrise: no event today"
         )
     if moonset:
-        lines.append(f"🌙 Moonset: {format_time_label(str(moonset))}")
+        lines.append(f"🌙 ↓ Moonset: {format_time_label(str(moonset))}")
     else:
         next_set = record.get("next_moonset")
         lines.append(
-            f"🌙 Moonset: {format_time_label(str(next_set))} next" if next_set else "🌙 Moonset: no event today"
+            f"🌙 ↓ Moonset: {format_time_label(str(next_set))} next" if next_set else "🌙 ↓ Moonset: no event today"
         )
     lines.extend(moon_notification_tail(record))
     return "\n".join(lines) if len(lines) > 2 else ""
@@ -786,7 +800,13 @@ def process_astronomy_briefing(
     forecast_date = local_now.date().isoformat()
     key = astronomy_briefing_key(forecast_date, briefing_time)
     delivered = state.setdefault("delivered", {})
-    if key in delivered or local_now < target:
+    if (
+        key in delivered
+        or local_now < target
+        or weather_store.briefing_config_changed_after_target(
+            briefing.get("config_changed_at"), target, forecast_date
+        )
+    ):
         return state
     item = build_astronomy_briefing_item(schedule, forecast_date, settings, now.isoformat(), config)
     send_now = send_now_func or send_astronomy_briefing_notification
@@ -1216,12 +1236,30 @@ def load_weather_config(path: Path | None = None) -> dict[str, Any]:
 
 
 def load_weather_state(path: Path | None = None) -> dict[str, Any]:
-    raw = load_json_file(path or project_path("weather/weather_state.json"))
+    state_path = path or project_path("weather/weather_state.json")
+    raw = load_json_file(state_path)
     if not isinstance(raw, dict):
         return weather_store.default_state()
     default = weather_store.default_state()
     default.update(raw)
+    # Older SwiftUI builds already marked a save as config_changed but did not
+    # persist its timestamp. Use the state file mtime once as a migration
+    # fallback so restarting the watcher cannot replay a past target.
+    if (
+        default.get("briefing_config_changed_at") is None
+        and default.get("last_weather_briefing_status") == "config_changed"
+    ):
+        marker = legacy_config_change_marker(state_path)
+        if marker:
+            default["briefing_config_changed_at"] = marker
     return default
+
+
+def legacy_config_change_marker(path: Path) -> str | None:
+    try:
+        return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat()
+    except OSError:
+        return None
 
 
 def build_weather_briefing_item(
@@ -1325,11 +1363,29 @@ def update_weather_briefing(
     if isinstance(astronomy_settings, dict):
         briefing = astronomy_settings.get("briefing", {})
         if isinstance(briefing, dict) and briefing.get("include_weather") is True:
-            astronomy_message = build_astronomy_briefing_message(
-                astronomy_schedule,
-                str(forecast["forecast_date"]),
-                astronomy_settings,
-            )
+            try:
+                briefing_hour, briefing_minute = [
+                    int(part)
+                    for part in str(weather_config.get("morning_briefing", {}).get("time", "06:30")).split(":", 1)
+                ]
+                weather_target = local_now.replace(
+                    hour=briefing_hour,
+                    minute=briefing_minute,
+                    second=0,
+                    microsecond=0,
+                )
+            except (ValueError, TypeError):
+                weather_target = None
+            if weather_target is None or not weather_store.briefing_config_changed_after_target(
+                briefing.get("config_changed_at"),
+                weather_target,
+                forecast_date,
+            ):
+                astronomy_message = build_astronomy_briefing_message(
+                    astronomy_schedule,
+                    str(forecast["forecast_date"]),
+                    astronomy_settings,
+                )
     result = process_weather_briefing(
         config=config,
         weather_config=weather_config,

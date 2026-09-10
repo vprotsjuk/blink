@@ -18,6 +18,8 @@ public struct BlinkEvent: Codable, Identifiable {
     public let attention_level: String?
     public let blinker_minutes_before: Int?
     public let recurrence: EventRecurrence?
+    public let series_id: String?
+    public let attachments: AttachmentManifest?
 
     public init(
         id: String,
@@ -32,7 +34,9 @@ public struct BlinkEvent: Codable, Identifiable {
         done_at: String?,
         attention_level: String?,
         blinker_minutes_before: Int? = nil,
-        recurrence: EventRecurrence? = nil
+        recurrence: EventRecurrence? = nil,
+        series_id: String? = nil,
+        attachments: AttachmentManifest? = nil
     ) {
         self.id = id
         self.title = title
@@ -47,6 +51,8 @@ public struct BlinkEvent: Codable, Identifiable {
         self.attention_level = attention_level
         self.blinker_minutes_before = blinker_minutes_before
         self.recurrence = recurrence
+        self.series_id = series_id
+        self.attachments = attachments
     }
 
     public var attentionLevel: AttentionState {
@@ -59,6 +65,15 @@ public struct BlinkEvent: Codable, Identifiable {
 
     public var isPersonal: Bool {
         (source ?? "personal") == "personal"
+    }
+
+    public var hasAttachments: Bool {
+        attachments?.hasFiles == true
+    }
+
+    public var attachmentOwnerID: String {
+        let candidate = series_id?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return candidate.isEmpty ? id : candidate
     }
 }
 
@@ -368,6 +383,8 @@ public struct EditableEvent: Identifiable, Equatable {
     public var recurrence: EventRecurrence?
     public var enabled: Bool
     public var attentionLevel: AttentionState
+    public var attachments: AttachmentManifest?
+    public var seriesID: String?
 
     public init(
         id: String,
@@ -380,7 +397,9 @@ public struct EditableEvent: Identifiable, Equatable {
         enabled: Bool,
         attentionLevel: AttentionState = .green,
         blinkerMinutesBefore: Int? = nil,
-        recurrence: EventRecurrence? = nil
+        recurrence: EventRecurrence? = nil,
+        attachments: AttachmentManifest? = nil,
+        seriesID: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -393,6 +412,8 @@ public struct EditableEvent: Identifiable, Equatable {
         self.recurrence = recurrence
         self.enabled = enabled
         self.attentionLevel = attentionLevel
+        self.attachments = attachments
+        self.seriesID = seriesID
     }
 
     public init(event: BlinkEvent) {
@@ -411,6 +432,8 @@ public struct EditableEvent: Identifiable, Equatable {
         self.recurrence = event.recurrence
         self.enabled = event.enabled
         self.attentionLevel = event.attentionLevel
+        self.attachments = event.attachments
+        self.seriesID = event.series_id
     }
 
     public static func blank() -> EditableEvent {
@@ -436,7 +459,9 @@ public struct EditableEvent: Identifiable, Equatable {
             enabled: true,
             attentionLevel: .green,
             blinkerMinutesBefore: 0,
-            recurrence: nil
+            recurrence: nil,
+            attachments: nil,
+            seriesID: nil
         )
     }
 
@@ -455,6 +480,14 @@ public struct EditableEvent: Identifiable, Equatable {
             "attention_level": attentionLevel.rawValue,
             "blinker_minutes_before": blinkerMinutesBefore ?? NSNull()
         ]
+        let ownerID = seriesID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? seriesID! : id
+        let manifest = attachments ?? AttachmentManifest(ownerID: ownerID, count: 0, hasFiles: false)
+        output["attachments"] = manifest.toDictionary()
+        if let seriesID, !seriesID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            output["series_id"] = seriesID
+        } else if recurrence != nil {
+            output["series_id"] = id
+        }
         if let recurrence {
             output["recurrence"] = normalizedRecurrence(recurrence, start: start)
         } else {
@@ -653,6 +686,15 @@ public func attentionEligible(_ event: BlinkEvent, now: Date) -> Bool {
     return attentionStartDate(event: event, start: start) <= now
 }
 
+public func eventIsHistoryFrozen(_ event: BlinkEvent, now: Date = Date()) -> Bool {
+    if event.done == true { return true }
+    guard let start = parseISODate(event.start), start < now else { return false }
+    if event.requires_done == true && event.enabled && event.done != true {
+        return false
+    }
+    return true
+}
+
 public struct BlinkStore {
     public let root: URL
 
@@ -724,7 +766,9 @@ public struct BlinkStore {
         let encoded = try JSONEncoder().encode(config)
         let configObject = try JSONSerialization.jsonObject(with: encoded) as? [String: Any] ?? [:]
         object["timezone"] = config.timezone
-        object["briefing"] = configObject["briefing"] ?? NSNull()
+        var briefing = configObject["briefing"] as? [String: Any] ?? [:]
+        briefing["config_changed_at"] = configurationChangedAt(timezoneName: config.timezone)
+        object["briefing"] = briefing
         object["notifications"] = configObject["notifications"] ?? [:]
         try saveJSONObject(object, to: url)
     }
@@ -765,8 +809,12 @@ public struct BlinkStore {
             "morning_briefing": ["enabled": true, "time": "06:30"],
             "include": defaultWeatherInclude()
         ])
+        let previousEnabled = object["weather_enabled"] as? Bool
         object["weather_enabled"] = enabled
         try saveJSONObject(object, to: url)
+        if previousEnabled != enabled {
+            resetWeatherDeliveryState()
+        }
     }
 
     public func saveWeatherSettings(_ config: WeatherConfig) throws {
@@ -805,7 +853,17 @@ public struct BlinkStore {
         object["last_weather_briefing_scheduled_date"] = NSNull()
         object["last_weather_briefing_scheduled_key"] = NSNull()
         object["last_weather_briefing_status"] = "config_changed"
+        object["briefing_config_changed_at"] = configurationChangedAt(
+            timezoneName: loadLocation()?.timezone ?? blinkTimeZone.identifier
+        )
         try? saveJSONObject(object, to: url)
+    }
+
+    private func configurationChangedAt(timezoneName: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.timeZone = TimeZone(identifier: timezoneName) ?? blinkTimeZone
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.string(from: Date())
     }
 
     public func saveLocation(_ location: BlinkLocation) throws {
@@ -831,27 +889,35 @@ public struct BlinkStore {
         try invalidateAstronomySchedule(for: location)
     }
 
-    public func save(_ event: EditableEvent) throws {
+    public func save(
+        _ event: EditableEvent,
+        attachmentWorkspace: AttachmentWorkspace? = nil,
+        draftID: String? = nil
+    ) throws {
         var document = try loadAgendaObject()
         var events = document["events"] as? [[String: Any]] ?? []
-        let newValues = event.toDictionary()
-        if let index = events.firstIndex(where: { ($0["id"] as? String) == event.id }) {
+        var newValues = event.toDictionary()
+        let existingIndex = events.firstIndex(where: { ($0["id"] as? String) == event.id })
+        if let index = existingIndex {
+            if rawEventIsHistoryFrozen(events[index]) {
+                throw NSError(
+                    domain: "BlinkEvent",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "History events are frozen. Use Duplicate as new event."]
+                )
+            }
+        }
+        if let attachmentWorkspace, let draftID {
+            let ownerID = event.seriesID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? event.seriesID!
+                : (event.attachments?.ownerID.isEmpty == false ? event.attachments!.ownerID : event.id)
+            let manifest = try attachmentWorkspace.finalize(draftID: draftID, ownerID: ownerID)
+            newValues["attachments"] = manifest.toDictionary()
+        }
+        if let index = existingIndex {
             var merged = events[index]
             for (key, value) in newValues {
                 merged[key] = value
-            }
-            if events[index]["done"] as? Bool == true {
-                let oldStart = events[index]["start"] as? String
-                let newStart = newValues["start"] as? String
-                let movedToFuture = oldStart != newStart
-                    && newStart.flatMap(parseISODate).map { $0 > Date() } == true
-                if movedToFuture {
-                    merged["done"] = false
-                    merged["done_at"] = NSNull()
-                } else {
-                    merged["done"] = true
-                    merged["done_at"] = events[index]["done_at"] ?? NSNull()
-                }
             }
             events[index] = merged
         } else {
@@ -859,6 +925,22 @@ public struct BlinkStore {
         }
         document["events"] = events
         try saveAgendaObject(document)
+        if let attachmentWorkspace, let draftID {
+            try? attachmentWorkspace.discard(draftID: draftID)
+        }
+    }
+
+    private func rawEventIsHistoryFrozen(_ event: [String: Any], now: Date = Date()) -> Bool {
+        if event["done"] as? Bool == true { return true }
+        guard let startText = event["start"] as? String,
+              let start = parseISODate(startText),
+              start < now else { return false }
+        let requiresDone = event["requires_done"] as? Bool ?? false
+        let enabled = event["enabled"] as? Bool ?? true
+        if requiresDone && enabled && event["done"] as? Bool != true {
+            return false
+        }
+        return true
     }
 
     public func complete(eventID: String, now: Date = Date()) throws {
@@ -901,8 +983,64 @@ public struct BlinkStore {
     public func delete(eventID: String) throws {
         var document = try loadAgendaObject()
         let events = document["events"] as? [[String: Any]] ?? []
+        let ownerID = events.first(where: { ($0["id"] as? String) == eventID }).flatMap { event in
+            let seriesID = (event["series_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return seriesID.isEmpty ? (event["id"] as? String) : seriesID
+        }
         document["events"] = events.filter { ($0["id"] as? String) != eventID }
         try saveAgendaObject(document)
+        if let ownerID {
+            try? AttachmentWorkspace(root: root).moveOwnerToTrash(ownerID: ownerID)
+        }
+    }
+
+    public func addFiles(eventID: String, urls: [URL]) throws {
+        guard !urls.isEmpty else { return }
+        var document = try loadAgendaObject()
+        var events = document["events"] as? [[String: Any]] ?? []
+        guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else { return }
+        let event = events[index]
+        let ownerID = attachmentOwnerID(for: event)
+        let workspace = AttachmentWorkspace(root: root)
+        let draftID = try workspace.createDraft()
+        do {
+            try workspace.addFiles(urls, to: draftID)
+            let manifest = try workspace.finalize(draftID: draftID, ownerID: ownerID)
+            events[index]["attachments"] = manifest.toDictionary()
+            document["events"] = events
+            try saveAgendaObject(document)
+            try? workspace.discard(draftID: draftID)
+        } catch {
+            try? workspace.discard(draftID: draftID)
+            throw error
+        }
+    }
+
+    public func addJPEG(eventID: String, data: Data) throws {
+        var document = try loadAgendaObject()
+        var events = document["events"] as? [[String: Any]] ?? []
+        guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else { return }
+        let event = events[index]
+        let ownerID = attachmentOwnerID(for: event)
+        let workspace = AttachmentWorkspace(root: root)
+        let draftID = try workspace.createDraft()
+        do {
+            try workspace.addJPEG(data, to: draftID)
+            let manifest = try workspace.finalize(draftID: draftID, ownerID: ownerID)
+            events[index]["attachments"] = manifest.toDictionary()
+            document["events"] = events
+            try saveAgendaObject(document)
+            try? workspace.discard(draftID: draftID)
+        } catch {
+            try? workspace.discard(draftID: draftID)
+            throw error
+        }
+    }
+
+    private func attachmentOwnerID(for event: [String: Any]) -> String {
+        let seriesID = (event["series_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !seriesID.isEmpty { return seriesID }
+        return (event["id"] as? String) ?? "event"
     }
 
     private var agendaURL: URL {

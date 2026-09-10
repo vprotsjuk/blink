@@ -181,6 +181,37 @@ class WeatherStoreTests(unittest.TestCase):
         )
         self.assertEqual(decision["action"], "send_now")
 
+    def test_config_saved_after_briefing_time_defers_until_next_day(self):
+        config = weather_store.default_config()
+        config["morning_briefing"]["time"] = "06:00"
+        forecast = weather_store.normalize_open_meteo_forecast(
+            payload=self.sample_payload(),
+            location=location_store.default_location(),
+            fetched_at=datetime.fromisoformat("2026-09-07T16:00:00-07:00"),
+            config=config,
+        )
+        state = {
+            "briefing_config_changed_at": "2026-09-07T16:00:00-07:00",
+            "last_weather_briefing_key": None,
+        }
+        decision = weather_store.morning_briefing_decision(
+            config=config,
+            state=state,
+            forecast=forecast,
+            now=datetime.fromisoformat("2026-09-07T16:00:00-07:00"),
+        )
+        self.assertEqual(decision["action"], "none")
+
+        next_day_forecast = dict(forecast)
+        next_day_forecast["forecast_date"] = "2026-09-08"
+        decision = weather_store.morning_briefing_decision(
+            config=config,
+            state=state,
+            forecast=next_day_forecast,
+            now=datetime.fromisoformat("2026-09-08T06:00:00-07:00"),
+        )
+        self.assertEqual(decision["action"], "send_now")
+
     def test_atomic_weather_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "weather_cache.json"

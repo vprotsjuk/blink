@@ -42,6 +42,7 @@ def default_state() -> dict[str, Any]:
         "last_fetch_attempt_at": None,
         "last_weather_briefing_date": None,
         "last_weather_briefing_status": None,
+        "briefing_config_changed_at": None,
     }
 
 
@@ -208,6 +209,10 @@ def morning_briefing_decision(
     local_now = now.astimezone(ZoneInfo(timezone_name))
     hour, minute = [int(part) for part in config["morning_briefing"]["time"].split(":", 1)]
     delivery_time = local_now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if briefing_config_changed_after_target(
+        state.get("briefing_config_changed_at"), delivery_time, forecast_date
+    ):
+        return {"action": "none"}
     if local_now >= delivery_time:
         return {"action": "send_now"}
     # Weather is fetched and sent only when the local briefing time is due.
@@ -225,7 +230,27 @@ def briefing_due(*, config: dict[str, Any], state: dict[str, Any], forecast_date
     local_now = now.astimezone(ZoneInfo(timezone_name))
     hour, minute = [int(part) for part in briefing_time.split(":", 1)]
     due = local_now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if briefing_config_changed_after_target(
+        state.get("briefing_config_changed_at"), due, forecast_date
+    ):
+        return False
     return local_now >= due
+
+
+def briefing_config_changed_after_target(
+    changed_at: Any, target: datetime, target_date: str
+) -> bool:
+    """Return whether a saved briefing config superseded today's target time."""
+    if not isinstance(changed_at, str) or not changed_at.strip():
+        return False
+    try:
+        changed = datetime.fromisoformat(changed_at)
+    except ValueError:
+        return False
+    if changed.tzinfo is None or changed.utcoffset() is None:
+        return False
+    changed_local = changed.astimezone(target.tzinfo)
+    return changed_local.date().isoformat() == target_date and changed_local >= target
 
 
 def retry_allowed(state: dict[str, Any], now: datetime, minimum_minutes: int = 15) -> bool:

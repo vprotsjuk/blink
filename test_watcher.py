@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -6,10 +7,40 @@ from pathlib import Path
 from unittest.mock import patch
 
 import watcher
-from app import weather_store
+from app import notification_format, weather_store
 
 
 class WatcherCoreTests(unittest.TestCase):
+    def test_legacy_briefing_config_change_uses_contract_file_time(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            weather_path = root / "weather_state.json"
+            weather_path.write_text(
+                '{"version":1,"last_weather_briefing_status":"config_changed"}',
+                encoding="utf-8",
+            )
+            astronomy_path = root / "astronomy_config.json"
+            astronomy_path.write_text(
+                '{"version":2,"timezone":"America/Los_Angeles","briefing":{"enabled":true,"time":"06:00"}}',
+                encoding="utf-8",
+            )
+            changed_at = datetime.fromisoformat("2026-09-09T16:00:00-07:00")
+            timestamp = changed_at.timestamp()
+            os.utime(weather_path, (timestamp, timestamp))
+            os.utime(astronomy_path, (timestamp, timestamp))
+
+            weather_state = watcher.load_weather_state(weather_path)
+            astronomy_settings = watcher.load_astronomy_settings(astronomy_path)
+
+            self.assertEqual(
+                weather_state.get("briefing_config_changed_at"),
+                "2026-09-09T23:00:00+00:00",
+            )
+            self.assertEqual(
+                astronomy_settings["briefing"].get("config_changed_at"),
+                "2026-09-09T23:00:00+00:00",
+            )
+
     def test_valid_config_loads(self):
         config = watcher.validate_config(
             {
@@ -133,6 +164,24 @@ class WatcherCoreTests(unittest.TestCase):
             "enabled": True,
         }
         self.assertIsNone(watcher.validate_event(event, set(), 0))
+
+    def test_validated_event_preserves_safe_attachment_manifest(self):
+        event = watcher.validate_event(
+            {
+                "id": "event-1",
+                "title": "With files",
+                "start": "2026-08-02T11:00:00-07:00",
+                "reminders_minutes_before": [0],
+                "enabled": True,
+                "attachments": {"owner_id": "event-1", "count": 2, "has_files": True},
+            },
+            set(),
+            0,
+        )
+        self.assertEqual(
+            event["attachments"],
+            {"owner_id": "event-1", "count": 2, "has_files": True},
+        )
 
     def test_malformed_agenda_json_returns_none(self):
         with tempfile.TemporaryDirectory(dir=watcher.PROJECT_DIR) as tmp:
@@ -956,11 +1005,46 @@ class WatcherCoreTests(unittest.TestCase):
             {"briefing": {"enabled": True, "include_day_night": True}},
         )
         self.assertTrue(message.startswith("ASTRONOMY\n"))
-        self.assertIn("☀️ Sunrise:", message)
+        self.assertIn("☀️ ↑ Sunrise:", message)
         self.assertIn("06:42", message)
-        self.assertIn("☀️ Sunset: 19:25", message)
+        self.assertIn("☀️ ↓ Sunset: 19:25", message)
         self.assertIn("Day length: 12 h 43 min", message)
         self.assertIn("Night length: 11 h 17 min", message)
+
+    def test_astronomy_briefing_marks_rise_and_set_with_thin_arrows(self):
+        message = watcher.build_astronomy_briefing_message(
+            {
+                "daily_records": [
+                    {
+                        "date": "2026-09-07",
+                        "sunrise": {"time": "2026-09-07T06:42:00-07:00"},
+                        "sunset": {"time": "2026-09-07T19:25:00-07:00"},
+                        "moonrise": "2026-09-07T16:00:00-07:00",
+                        "moonset": "2026-09-07T02:00:00-07:00",
+                        "moon_status_at_sunset": {
+                            "summary": "75% illuminated",
+                            "phase_trend": "waxing",
+                        },
+                    }
+                ]
+            },
+            "2026-09-07",
+            {"briefing": {"enabled": True, "include_day_night": False}},
+        )
+        self.assertIn("☀️ ↑ Sunrise: 06:42", message)
+        self.assertIn("☀️ ↓ Sunset: 19:25", message)
+        self.assertIn("🌙 ↑ Moonrise: 16:00", message)
+        self.assertIn("🌙 ↓ Moonset: 02:00", message)
+
+    def test_individual_astronomy_rise_and_set_titles_use_thin_arrows(self):
+        events = [
+            {"source": "astronomy", "title": "Sunrise", "tags": ["astronomy", "sunrise"], "start": "2026-09-07T06:42:00-07:00"},
+            {"source": "astronomy", "title": "Sunset", "tags": ["astronomy", "sunset"], "start": "2026-09-07T19:25:00-07:00"},
+            {"source": "astronomy", "title": "Moonrise", "tags": ["astronomy", "moonrise"], "start": "2026-09-07T16:00:00-07:00"},
+            {"source": "astronomy", "title": "Moonset", "tags": ["astronomy", "moonset"], "start": "2026-09-07T02:00:00-07:00"},
+        ]
+        titles = [notification_format.build_event_notification(event, 0)[0] for event in events]
+        self.assertEqual(titles, ["☀️ ↑ Sunrise", "☀️ ↓ Sunset", "🌙 ↑ Moonrise", "🌙 ↓ Moonset"])
 
     def test_weather_notification_does_not_send_literal_markdown_markers(self):
         captured = {}
@@ -1040,6 +1124,61 @@ class WatcherCoreTests(unittest.TestCase):
         )
         self.assertEqual(len(sent), 1)
 
+    def test_astronomy_briefing_saved_after_time_waits_for_next_day(self):
+        schedule = {
+            "daily_records": [
+                {
+                    "date": "2026-09-09",
+                    "timezone": "America/Los_Angeles",
+                    "sunrise": {"time": "2026-09-09T06:45:00-07:00"},
+                    "sunset": {"time": "2026-09-09T19:24:00-07:00"},
+                    "day_length_minutes": 759,
+                },
+                {
+                    "date": "2026-09-10",
+                    "timezone": "America/Los_Angeles",
+                    "sunrise": {"time": "2026-09-10T06:45:00-07:00"},
+                    "sunset": {"time": "2026-09-10T19:23:00-07:00"},
+                    "day_length_minutes": 758,
+                },
+            ]
+        }
+        settings = {
+            "timezone": "America/Los_Angeles",
+            "briefing": {
+                "enabled": True,
+                "time": "06:00",
+                "include_day_night": True,
+                "include_weather": False,
+                "config_changed_at": "2026-09-09T16:00:00-07:00",
+            },
+        }
+        state = {"version": 1, "delivered": {}}
+        sent = []
+        send = lambda _config, item: sent.append(item) or True
+
+        result = watcher.process_astronomy_briefing(
+            config=self._notification_config(),
+            state=state,
+            schedule=schedule,
+            settings=settings,
+            now=datetime.fromisoformat("2026-09-09T16:00:00-07:00"),
+            send_now_func=send,
+        )
+        self.assertEqual(sent, [])
+        self.assertEqual(result["delivered"], {})
+
+        result = watcher.process_astronomy_briefing(
+            config=self._notification_config(),
+            state=result,
+            schedule=schedule,
+            settings=settings,
+            now=datetime.fromisoformat("2026-09-10T06:00:00-07:00"),
+            send_now_func=send,
+        )
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(len(result["delivered"]), 1)
+
     def test_moon_messages_are_compact_and_do_not_repeat_direction_or_event_names(self):
         record = {
             "date": "2026-09-09",
@@ -1078,8 +1217,8 @@ class WatcherCoreTests(unittest.TestCase):
             self.assertNotIn("Moon is waning.", message)
         self.assertNotIn("\nSunset.\n", evening)
         self.assertIn("Below horizon", evening)
-        self.assertIn("🌙 Moonset: 18:41", evening)
-        self.assertIn("🌙 Moonrise: 05:06", evening)
+        self.assertIn("🌙 ↓ Moonset: 18:41", evening)
+        self.assertIn("🌙 ↑ Moonrise: 05:06", evening)
         self.assertIn("1 day until New Moon.", grouped)
         self.assertIn("1 day until New Moon.", evening)
         self.assertNotIn("Moonrise.", moonrise)

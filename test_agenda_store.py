@@ -123,6 +123,10 @@ class AgendaStoreTests(unittest.TestCase):
         self.assertFalse(event["done"])
         self.assertIsNone(event["done_at"])
         self.assertEqual(event["attention_level"], "green")
+        self.assertEqual(
+            event["attachments"],
+            {"owner_id": "new", "count": 0, "has_files": False},
+        )
 
     def test_personal_lifecycle_future_active_done_history_reload(self):
         document = {
@@ -428,7 +432,7 @@ class AgendaStoreTests(unittest.TestCase):
         self.assertEqual(event["attention_level"], "red")
         self.assertTrue(event["done"])
 
-    def test_edit_preserves_existing_done_state(self):
+    def test_editing_done_event_is_rejected(self):
         document = {
             "version": 1,
             "events": [
@@ -444,24 +448,23 @@ class AgendaStoreTests(unittest.TestCase):
                 }
             ],
         }
-        updated = agenda_store.upsert_event(
-            document,
-            {
-                "id": "event",
-                "title": "Renamed",
-                "start": "2026-09-07T11:00:00-07:00",
-                "reminders_minutes_before": [0],
-                "enabled": True,
-                "requires_done": True,
-                "done": False,
-                "done_at": None,
-                "attention_level": "yellow",
-            },
-        )
-        self.assertTrue(updated["events"][0]["done"])
-        self.assertEqual(updated["events"][0]["done_at"], "2026-09-07T14:32:18-07:00")
+        with self.assertRaises(ValueError):
+            agenda_store.upsert_event(
+                document,
+                {
+                    "id": "event",
+                    "title": "Renamed",
+                    "start": "2026-09-07T11:00:00-07:00",
+                    "reminders_minutes_before": [0],
+                    "enabled": True,
+                    "requires_done": True,
+                    "done": False,
+                    "done_at": None,
+                    "attention_level": "yellow",
+                },
+            )
 
-    def test_editing_done_event_to_future_reopens_it(self):
+    def test_editing_done_event_to_future_is_rejected(self):
         document = {
             "version": 1,
             "events": [{
@@ -475,18 +478,12 @@ class AgendaStoreTests(unittest.TestCase):
                 "done_at": "2026-09-07T14:32:18-07:00",
             }],
         }
-        updated = agenda_store.upsert_event(
-            document,
-            {**document["events"][0], "start": "2026-09-10T11:00:00-07:00", "done": False, "done_at": None},
-            now=datetime.fromisoformat("2026-09-08T09:00:00-07:00"),
-        )
-        event = updated["events"][0]
-        self.assertFalse(event["done"])
-        self.assertIsNone(event["done_at"])
-        sections = agenda_store.split_personal_event_sections(
-            updated, datetime.fromisoformat("2026-09-08T09:00:00-07:00")
-        )
-        self.assertEqual([item["id"] for item in sections["upcoming"]], ["event"])
+        with self.assertRaises(ValueError):
+            agenda_store.upsert_event(
+                document,
+                {**document["events"][0], "start": "2026-09-10T11:00:00-07:00", "done": False, "done_at": None},
+                now=datetime.fromisoformat("2026-09-08T09:00:00-07:00"),
+            )
 
     def test_loading_stale_completed_future_event_repairs_and_moves_it(self):
         with tempfile.TemporaryDirectory() as directory:
