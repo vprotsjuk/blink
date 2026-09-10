@@ -116,7 +116,7 @@ Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is
 - Custom Coordinates allows independent coordinate entry plus timezone selection. Invalid or inconsistent values must be rejected, not silently guessed.
 - Saving a changed location invalidates Weather cache and marks Astronomy for regeneration.
 - All application times use 24-hour `HH:mm`; persisted event timestamps remain timezone-aware ISO timestamps.
-- Weather settings include enable/disable, briefing time, and independent content selection for temperature, humidity, wind, rain, and snow. A fresh forecast is fetched before each due weather push. The weather state keeps `briefing_config_changed_at` so a saved time that is already past today is scheduled for the next local day.
+- Weather settings include enable/disable, briefing time, and independent content selection for temperature, humidity, wind, rain, and snow. A fresh forecast is fetched before each due weather push. Humidity is date-scoped from Open-Meteo hourly values and is presented as a `Today` range plus the value for the local fetch hour (`Now`); it is not labeled as day/night. The weather state keeps `briefing_config_changed_at` so a saved time that is already past today is scheduled for the next local day.
 
 ## 7. GUI and UX Contract
 

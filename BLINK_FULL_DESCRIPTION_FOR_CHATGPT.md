@@ -383,7 +383,8 @@ September 8, 2026
 ☀️ 90°F   🌙 66°F
 
 💧 Humidity:
-☀️ 73%   🌙 16%
+Today: 16–73%
+Now: 30%
 🌧️ Rain: probability 1%
 ❄️ Snow: probability 0%
 💨 Wind: 7 mph, gusts up to 14 mph
@@ -413,6 +414,8 @@ If Sunset and Moon Status At Sunset are both enabled and occur at the same calcu
 ### Data source and normalization
 
 `app/weather_store.py` calls Open-Meteo with the active coordinates and IANA timezone. It obtains daily high/low, precipitation probability, rain/snow values, wind and gust values, and hourly humidity/temperature/precipitation inputs. It writes a normalized cache with a location fingerprint and fetch timestamp.
+
+Humidity is normalized only from hourly `relative_humidity_2m` values whose local date equals `forecast_date`; the second day returned by `forecast_days=2` is never mixed into today's range. The push shows `Today: <min>–<max>%` and `Now: <value>%`. `Now` is the raw hourly value for the local hour containing the cache's `fetched_at` timestamp in the active IANA timezone. The app's legacy `humidity_min_percent`/`humidity_max_percent` fields remain aliases for the date-scoped range.
 
 ### UI
 

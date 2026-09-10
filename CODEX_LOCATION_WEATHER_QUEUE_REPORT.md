@@ -54,7 +54,7 @@ Added `app/weather_store.py` and default files:
 - `weather/weather_cache.json`
 - `weather/weather_state.json`
 
-The weather source is Open-Meteo. The normalized cache stores high/low, humidity range, rain probability/window, snow flag, wind speed/gust, and wind warning. Morning briefing text is factual only and intentionally avoids clothing advice.
+The weather source is Open-Meteo. The normalized cache stores high/low, a humidity range scoped to the forecast date, the raw value for the local fetch hour, rain probability/window, snow flag, wind speed/gust, and wind warning. Morning briefing text is factual only and intentionally avoids clothing advice. Humidity pushes use `Today: <min>–<max>%` followed by `Now: <value>%`; the old sun/moon labels were removed because humidity is not a day/night pair.
 
 Watcher integration:
 

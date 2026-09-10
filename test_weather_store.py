@@ -22,15 +22,17 @@ class WeatherStoreTests(unittest.TestCase):
             },
             "hourly": {
                 "time": [
+                    "2026-09-07T06:00",
                     "2026-09-07T13:00",
                     "2026-09-07T14:00",
                     "2026-09-07T15:00",
                     "2026-09-07T18:00",
+                    "2026-09-08T06:00",
                 ],
-                "relative_humidity_2m": [45, 70, 82, 60],
-                "precipitation_probability": [10, 70, 65, 15],
-                "rain": [0.0, 0.05, 0.07, 0.0],
-                "snowfall": [0.0, 0.0, 0.0, 0.0],
+                "relative_humidity_2m": [52, 45, 70, 82, 60, 99],
+                "precipitation_probability": [10, 10, 70, 65, 15, 0],
+                "rain": [0.0, 0.0, 0.05, 0.07, 0.0, 0.0],
+                "snowfall": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             },
         }
 
@@ -61,6 +63,10 @@ class WeatherStoreTests(unittest.TestCase):
         self.assertEqual(forecast["low_f"], 48)
         self.assertEqual(forecast["humidity_min_percent"], 45)
         self.assertEqual(forecast["humidity_max_percent"], 82)
+        self.assertEqual(forecast["humidity_today_min_percent"], 45)
+        self.assertEqual(forecast["humidity_today_max_percent"], 82)
+        self.assertEqual(forecast["humidity_now_percent"], 52)
+        self.assertEqual(forecast["humidity_now_time"], "06:00")
         self.assertEqual(forecast["rain_probability_percent"], 70)
         self.assertEqual(forecast["rain_window"], "14:00-15:00")
         self.assertFalse(forecast["snow_expected"])
@@ -103,7 +109,8 @@ class WeatherStoreTests(unittest.TestCase):
         self.assertNotIn("Min tonight", message)
         self.assertIn("🌡️ Temperature:", message)
         self.assertIn("💧 Humidity:", message)
-        self.assertIn("☀️ 82%   🌙 45%", message)
+        self.assertIn("Today: 45–82%", message)
+        self.assertIn("Now: 52%", message)
         self.assertNotIn("Max: 82%", message)
         self.assertNotIn("Min: 45%", message)
         self.assertIn("🌧️ Rain: probability 70%", message)

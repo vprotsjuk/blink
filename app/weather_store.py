@@ -101,7 +101,12 @@ def normalize_open_meteo_forecast(
     daily = payload.get("daily", {})
     hourly = payload.get("hourly", {})
     forecast_date = _first(daily.get("time"))
-    humidity_values = [int(value) for value in hourly.get("relative_humidity_2m", []) if value is not None]
+    humidity_summary = _humidity_summary(
+        hourly,
+        forecast_date=forecast_date,
+        timezone_name=location["timezone"],
+        fetched_at=fetched_at,
+    )
     rain_probability = int(_first(daily.get("precipitation_probability_max"), 0) or 0)
     rain_window = _precip_window(hourly, "rain", config["thresholds"]["rain_probability_percent"])
     snow_amount = float(_first(daily.get("snowfall_sum"), 0) or 0)
@@ -127,8 +132,14 @@ def normalize_open_meteo_forecast(
         "low_f": low_tonight,
         "high_today_f": high_today,
         "low_tonight_f": low_tonight,
-        "humidity_min_percent": min(humidity_values) if humidity_values else None,
-        "humidity_max_percent": max(humidity_values) if humidity_values else None,
+        # Keep the original keys as aliases for the app UI, but scope them to
+        # the forecast date instead of accidentally spanning forecast_days=2.
+        "humidity_min_percent": humidity_summary["today_min_percent"],
+        "humidity_max_percent": humidity_summary["today_max_percent"],
+        "humidity_today_min_percent": humidity_summary["today_min_percent"],
+        "humidity_today_max_percent": humidity_summary["today_max_percent"],
+        "humidity_now_percent": humidity_summary["now_percent"],
+        "humidity_now_time": humidity_summary["now_time"],
         "rain_probability_percent": rain_probability,
         "rain_amount_in": float(_first(daily.get("rain_sum"), 0) or 0),
         "rain_window": rain_window,
@@ -163,12 +174,12 @@ def build_morning_briefing_message(forecast: dict[str, Any]) -> str:
             "🌡️ Temperature:",
             f"☀️ {forecast.get('high_today_f', forecast['high_f'])}°F   🌙 {forecast.get('low_tonight_f', forecast['low_f'])}°F",
         ])
-    if show_humidity and forecast.get("humidity_min_percent") is not None and forecast.get("humidity_max_percent") is not None:
-        lines.extend([
-            "",
-            "💧 Humidity:",
-            f"☀️ {forecast['humidity_max_percent']}%   🌙 {forecast['humidity_min_percent']}%",
-        ])
+    humidity_min = forecast.get("humidity_today_min_percent", forecast.get("humidity_min_percent"))
+    humidity_max = forecast.get("humidity_today_max_percent", forecast.get("humidity_max_percent"))
+    if show_humidity and humidity_min is not None and humidity_max is not None:
+        lines.extend(["", "💧 Humidity:", f"Today: {humidity_min}–{humidity_max}%"])
+        if forecast.get("humidity_now_percent") is not None:
+            lines.append(f"Now: {forecast['humidity_now_percent']}%")
     if show_rain:
         rain = f"🌧️ Rain: probability {forecast.get('rain_probability_percent', 0)}%"
         if forecast.get("rain_window"):
@@ -303,6 +314,57 @@ def _low_tonight(hourly: dict[str, Any], forecast_date: str | None, timezone_nam
         elif stamp.date().isoformat() != forecast_date and stamp.hour <= 8 and candidates:
             candidates.append(float(value))
     return round(min(candidates)) if candidates else None
+
+
+def _humidity_summary(
+    hourly: dict[str, Any],
+    *,
+    forecast_date: str | None,
+    timezone_name: str,
+    fetched_at: datetime,
+) -> dict[str, Any]:
+    """Return date-scoped and fetch-hour humidity values from Open-Meteo.
+
+    Open-Meteo emits local wall-clock timestamps when ``timezone`` is passed
+    to the request.  Treat those timestamps as local values in the requested
+    IANA timezone and never aggregate the second forecast day into today's
+    range.  ``now`` is the value for the local hour containing ``fetched_at``;
+    keeping that hour in the cache makes the push traceable and deterministic.
+    """
+    result: dict[str, Any] = {
+        "today_min_percent": None,
+        "today_max_percent": None,
+        "now_percent": None,
+        "now_time": None,
+    }
+    if not forecast_date:
+        return result
+    times = hourly.get("time", [])
+    values = hourly.get("relative_humidity_2m", [])
+    today_values: list[int] = []
+    now_key: str | None = None
+    try:
+        local_now = fetched_at.astimezone(ZoneInfo(timezone_name))
+        now_key = local_now.strftime("%Y-%m-%dT%H:00")
+    except (TypeError, ValueError):
+        now_key = None
+    for index, timestamp in enumerate(times):
+        if index >= len(values) or values[index] is None:
+            continue
+        try:
+            parsed = datetime.fromisoformat(str(timestamp))
+            value = int(values[index])
+        except (TypeError, ValueError):
+            continue
+        if parsed.date().isoformat() == str(forecast_date):
+            today_values.append(value)
+        if now_key is not None and str(timestamp) == now_key:
+            result["now_percent"] = value
+            result["now_time"] = f"{parsed.hour:02d}:00"
+    if today_values:
+        result["today_min_percent"] = min(today_values)
+        result["today_max_percent"] = max(today_values)
+    return result
 
 
 def save_json_atomic(path: Path, payload: dict[str, Any]) -> None:
