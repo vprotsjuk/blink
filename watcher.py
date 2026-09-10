@@ -1352,12 +1352,13 @@ def update_weather_briefing(
     if not weather_store.retry_allowed(state, now):
         return state
     state["last_fetch_attempt_at"] = now.isoformat()
+    fetch_started_at = datetime.now(timezone.utc).astimezone(ZoneInfo(str(location["timezone"])))
     try:
         payload = fetch_func(location)
         forecast = weather_store.normalize_open_meteo_forecast(
             payload=payload,
             location=location,
-            fetched_at=now,
+            fetched_at=fetch_started_at,
             config=weather_config,
         )
     except Exception as exc:  # noqa: BLE001 - watcher must keep running after weather failures.

@@ -973,7 +973,7 @@ class WatcherCoreTests(unittest.TestCase):
         self.assertEqual(len(fetches), 1)
         self.assertEqual(len(sent), 1)
         self.assertEqual(result["last_weather_briefing_status"], "direct_sent")
-        self.assertIn("Updated 10:00", sent[0]["payload"]["body"])
+        self.assertRegex(sent[0]["payload"]["body"], r"Updated \d{2}:\d{2}")
 
     def test_weather_before_briefing_time_does_not_fetch_or_schedule(self):
         sent = []
