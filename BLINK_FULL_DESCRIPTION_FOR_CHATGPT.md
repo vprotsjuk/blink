@@ -282,7 +282,7 @@ The same event object can be viewed in different tabs based on its state. Tabs a
 - `Delete`: removes the event record intentionally. This is the destructive action and is separate from Off.
 - `Snooze`: moves the active event's effective due time forward while preserving the original scheduled time and the snooze history. The event remains active, continues blinking, and retains Done.
 
-Today shows `Done`, `On/Off`, `Edit`, attachment actions, and `Delete`. Upcoming shows `On/Off`, `Edit`, attachment actions, and `Delete`. History shows `Duplicate as new event`, attachment actions, and `Delete`; it never shows Edit or edit-on-click. The UI must not hide Done merely because an event has become overdue or has been snoozed.
+Today shows `Done`, a folder button, `On/Off`, `Edit`, attachment actions, and `Delete`. Upcoming shows a folder button, `On/Off`, `Edit`, attachment actions, and `Delete`. History shows `Duplicate as new event`, a folder button only when attachments exist, and `Delete`; it never shows Edit or edit-on-click. In Today/Upcoming, the row content opens the editor by double-click, not single-click. The UI must not hide Done merely because an event has become overdue or has been snoozed.
 
 ## 7. Attention, Colors, and Blinker
 
@@ -480,11 +480,11 @@ The editor has two mutually exclusive modes:
 
 ### Today
 
-Shows active events for today, including overdue unfinished items. The header places one compact round blue `+` button immediately to the left of `Today` for creating a new event. Each row displays date/time, saturated priority dot, title, description, `📎` when attachments exist, `Done`, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on click and reacts to hover. Overdue rows and the Today tab may pulse according to attention rules.
+Shows active events for today, including overdue unfinished items. The header places one compact round blue `+` button immediately to the left of `Today` for creating a new event. Each row displays date/time, saturated priority dot, title, description, `📎` when attachments exist, a compact scrollable attachment filename/type column when files exist, a folder button, `Done`, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on double-click and reacts to hover. Overdue rows and the Today tab may pulse according to attention rules.
 
 ### Upcoming
 
-Shows future enabled events sorted by effective time. Each row displays full date including year, time, priority dot, title, description, `📎` when attachments exist, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on click.
+Shows future enabled events sorted by effective time. Each row displays full date including year, time, priority dot, title, description, `📎` when attachments exist, a compact scrollable attachment filename/type column when files exist, a folder button, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on double-click.
 
 ### History
 
@@ -514,7 +514,7 @@ All navigation tabs use Blink-owned buttons with a subtle pointer-hover backgrou
 
 ### New Event
 
-Opens the event editor with the default final-row blinker selection. The modal supports date picking, direct 24-hour time entry, stepper arrows, importance, enabled state, recurrence, reminders, multiline Title/Description, Finder multi-file selection, file-URL paste, and screenshot paste. It creates a temporary draft ID/folder before Save. Clicking outside a clean modal closes it. A dirty form requires the user to choose whether to discard, so accidental outside clicks do not erase edits.
+Opens the event editor with the default final-row blinker selection. The modal supports date picking, direct 24-hour time entry, stepper arrows, importance, enabled state, recurrence, reminders, multiline Title/Description, Finder multi-file selection, file-URL paste, screenshot paste, and a folder button beside the attachment count. It creates a temporary draft ID/folder before Save. Clicking outside a clean modal closes it. A dirty form requires the user to choose whether to discard, so accidental outside clicks do not erase edits.
 
 ### Event context menu
 

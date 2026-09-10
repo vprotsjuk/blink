@@ -982,6 +982,20 @@ func testAttachmentFolderMenuAndPreviewContracts() throws {
     try expect(source.contains("Remove"), "Draft attachments should have a remove action")
 }
 
+func testEventRowAttachmentListAndFolderButtonContracts() throws {
+    let sourceURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: sourceURL, encoding: .utf8)
+    try expect(source.contains(".onTapGesture(count: 2)"), "Event rows should open on double click")
+    try expect(source.contains("AttachmentFileList"), "Event rows should show an attachment filename list")
+    try expect(source.contains("lineLimit(1)"), "Attachment filenames should be shortened to one line")
+    try expect(source.contains("ScrollView(.vertical"), "Many attachment filenames should scroll vertically")
+    try expect(source.contains("systemName: \"folder\""), "Rows and editor should expose a folder button")
+}
+
 func testAttachmentWorkspaceFolderContracts() throws {
     let sourceURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -1083,6 +1097,7 @@ let tests: [(String, () throws -> Void)] = [
     ("saving event commits attachments", testSavingEventCommitsAttachmentsAndPreservesDraftOnFailure),
     ("event rows expose attachment and history contracts", testEventRowsExposeAttachmentAndHistoryContracts),
     ("attachment folder menu and preview contracts", testAttachmentFolderMenuAndPreviewContracts),
+    ("event row attachment list and folder button contracts", testEventRowAttachmentListAndFolderButtonContracts),
     ("attachment workspace folder contracts", testAttachmentWorkspaceFolderContracts),
     ("history save is rejected", testHistorySaveIsRejectedAndAttachmentMetadataPersists),
     ("recurring delete keeps shared attachments", testRecurringDeleteKeepsSharedAttachmentOwner)

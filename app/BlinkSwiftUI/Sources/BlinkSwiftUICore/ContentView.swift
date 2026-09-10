@@ -229,7 +229,19 @@ public struct ContentView: View {
                 attachmentWorkspace: editorAttachmentWorkspace,
                 draftID: editorDraftID,
                 onDirtyChange: { editorIsDirty = $0 },
-                onCancel: { closeEditor() }
+                onCancel: { closeEditor() },
+                onOpenAttachments: {
+                    let workspace = editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root)
+                    if event.attachments != nil || event.seriesID != nil {
+                        let series = event.seriesID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        let manifestOwner = event.attachments?.ownerID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        let ownerID = series.isEmpty ? (manifestOwner.isEmpty ? event.id : manifestOwner) : series
+                        _ = try? workspace.ensureAttachmentFolder(ownerID: ownerID)
+                        NSWorkspace.shared.open(workspace.attachmentURL(ownerID: ownerID))
+                    } else if let draftID = editorDraftID {
+                        NSWorkspace.shared.open(workspace.draftURL(draftID))
+                    }
+                }
             ) { savedEvent in
                 perform {
                     try store.save(
@@ -258,6 +270,7 @@ public struct ContentView: View {
                     actions: actions,
                     searchQuery: searchQuery,
                     attachmentNames: { store.attachmentNames(for: $0) },
+                    attachmentRoot: store.root,
                     activeEventIDs: activeEventIDs,
                     pulseVisible: attentionPulseOn
                 )
@@ -266,6 +279,7 @@ public struct ContentView: View {
                     title: "Upcoming",
                     events: filtered(snapshot.upcoming),
                     actions: actions,
+                    attachmentRoot: store.root,
                     activeEventIDs: activeEventIDs,
                     pulseVisible: attentionPulseOn
                 )
@@ -274,6 +288,7 @@ public struct ContentView: View {
                     title: "History",
                     events: filtered(snapshot.history),
                     actions: actions,
+                    attachmentRoot: store.root,
                     activeEventIDs: activeEventIDs,
                     pulseVisible: attentionPulseOn
                 )
@@ -517,6 +532,7 @@ struct TodayView: View {
     let actions: EventRowActions
     let searchQuery: String
     let attachmentNames: (BlinkEvent) -> [String]
+    let attachmentRoot: URL
     let activeEventIDs: Set<String>
     let pulseVisible: Bool
 
@@ -539,6 +555,7 @@ struct TodayView: View {
             EventRows(
                 events: filtered(snapshot.active),
                 actions: actions,
+                attachmentRoot: attachmentRoot,
                 activeEventIDs: activeEventIDs,
                 pulseVisible: pulseVisible,
                 showsDone: true
@@ -548,8 +565,9 @@ struct TodayView: View {
             EventRows(
                 events: filtered(snapshot.today),
                 actions: actions,
+                attachmentRoot: attachmentRoot,
                 activeEventIDs: activeEventIDs,
-                pulseVisible: pulseVisible
+                pulseVisible: pulseVisible,
             )
             Spacer()
         }
@@ -565,6 +583,7 @@ struct EventListView: View {
     let title: String
     let events: [BlinkEvent]
     let actions: EventRowActions
+    let attachmentRoot: URL
     let activeEventIDs: Set<String>
     let pulseVisible: Bool
 
@@ -574,6 +593,7 @@ struct EventListView: View {
             EventRows(
                 events: events,
                 actions: actions,
+                attachmentRoot: attachmentRoot,
                 activeEventIDs: activeEventIDs,
                 pulseVisible: pulseVisible,
                 showsToggle: title != "History",
@@ -588,6 +608,7 @@ struct EventListView: View {
 struct EventRows: View {
     let events: [BlinkEvent]
     let actions: EventRowActions
+    let attachmentRoot: URL
     let activeEventIDs: Set<String>
     let pulseVisible: Bool
     var showsDone = false
@@ -602,6 +623,7 @@ struct EventRows: View {
                 EventRowView(
                     event: event,
                     actions: actions,
+                    attachmentRoot: attachmentRoot,
                     activeEventIDs: activeEventIDs,
                     pulseVisible: pulseVisible,
                     showsDone: showsDone,
@@ -626,6 +648,7 @@ struct EventRows: View {
 private struct EventRowView: View {
     let event: BlinkEvent
     let actions: EventRowActions
+    let attachmentRoot: URL
     let activeEventIDs: Set<String>
     let pulseVisible: Bool
     let showsDone: Bool
@@ -638,13 +661,20 @@ private struct EventRowView: View {
         HStack {
             rowContent
                 .contentShape(Rectangle())
-                .onTapGesture {
+                .onTapGesture(count: 2) {
                     if !showsHistory { actions.edit(event) }
                 }
             Spacer()
             if showsDone {
                 Button("Done") { actions.done(event) }
                     .buttonStyle(.borderedProminent)
+            }
+            if !showsHistory || event.hasAttachments {
+                Button { actions.openAttachments(event) } label: {
+                    Image(systemName: "folder")
+                }
+                .buttonStyle(.bordered)
+                .help("Open Attachments Folder")
             }
             if showsToggle {
                 Button(event.enabled ? "On" : "Off") { actions.toggle(event) }
@@ -702,9 +732,54 @@ private struct EventRowView: View {
                     Text(description).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
+            AttachmentFileList(
+                root: attachmentRoot,
+                ownerID: event.attachmentOwnerID,
+                refreshToken: event.attachments?.count ?? 0
+            )
         }
         .opacity(rowContentOpacity(event))
         .animation(.easeInOut(duration: 0.3), value: pulseVisible)
+    }
+}
+
+private struct AttachmentFileList: View {
+    let root: URL
+    let ownerID: String
+    let refreshToken: Int
+    @State private var files: [URL] = []
+
+    var body: some View {
+        Group {
+            if files.isEmpty {
+                EmptyView()
+            } else {
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(files, id: \.self) { file in
+                            HStack(spacing: 5) {
+                                Image(systemName: attachmentSymbol(for: file))
+                                    .foregroundStyle(.secondary)
+                                Text(file.lastPathComponent)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .help(file.lastPathComponent)
+                            }
+                            .font(.caption)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(width: 220, alignment: .leading)
+                .frame(maxHeight: 54, alignment: .leading)
+            }
+        }
+        .onAppear(perform: reload)
+        .onChange(of: refreshToken) { reload() }
+    }
+
+    private func reload() {
+        files = (try? AttachmentWorkspace(root: root).files(ownerID: ownerID)) ?? []
     }
 }
 
@@ -809,6 +884,7 @@ struct EventEditorView: View {
     let draftID: String?
     let onDirtyChange: (Bool) -> Void
     let onCancel: () -> Void
+    let onOpenAttachments: () -> Void
     let onSave: (EditableEvent) -> Void
 
     init(
@@ -818,6 +894,7 @@ struct EventEditorView: View {
         draftID: String?,
         onDirtyChange: @escaping (Bool) -> Void,
         onCancel: @escaping () -> Void,
+        onOpenAttachments: @escaping () -> Void,
         onSave: @escaping (EditableEvent) -> Void
     ) {
         self._draft = State(initialValue: event)
@@ -829,6 +906,7 @@ struct EventEditorView: View {
         self.draftID = draftID
         self.onDirtyChange = onDirtyChange
         self.onCancel = onCancel
+        self.onOpenAttachments = onOpenAttachments
         self.onSave = onSave
     }
 
@@ -865,6 +943,11 @@ struct EventEditorView: View {
                         Text("\(stagedAttachmentCount) attached")
                             .foregroundStyle(.secondary)
                     }
+                    Button(action: onOpenAttachments) {
+                        Image(systemName: "folder")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Open Attachments Folder")
                 }
             } header: {
                 Text("Attachments")
@@ -1986,6 +2069,17 @@ private func fileSizeLabel(_ url: URL) -> String {
     let formatter = ByteCountFormatter()
     formatter.countStyle = .file
     return formatter.string(fromByteCount: Int64(bytes))
+}
+
+private func attachmentSymbol(for url: URL) -> String {
+    switch url.pathExtension.lowercased() {
+    case "pdf": return "doc.richtext"
+    case "xls", "xlsx", "xlsm", "csv": return "tablecells"
+    case "jpg", "jpeg", "png", "heic", "gif", "tiff": return "photo"
+    case "doc", "docx", "rtf", "txt": return "doc.text"
+    case "zip", "7z", "rar": return "archivebox"
+    default: return "doc"
+    }
 }
 
 private func reminderLabel(_ minutes: Int) -> String {
