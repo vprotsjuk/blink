@@ -81,7 +81,6 @@ private struct BlinkTopToolbar: ToolbarContent {
     let todayAttentionColor: Color?
     let pulseVisible: Bool
     @Binding var searchQuery: String
-    let onNewEvent: () -> Void
 
     var body: some ToolbarContent {
         ToolbarItem(placement: .principal) {
@@ -95,7 +94,6 @@ private struct BlinkTopToolbar: ToolbarContent {
             TextField("Search", text: $searchQuery)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 220)
-            Button("New Event", action: onNewEvent)
         }
     }
 }
@@ -146,8 +144,7 @@ public struct ContentView: View {
                 selectedTab: $selectedTab,
                 todayAttentionColor: todayTabAttentionColor,
                 pulseVisible: attentionPulseOn,
-                searchQuery: $searchQuery,
-                onNewEvent: { openEditor(EditableEvent.blank()) }
+                searchQuery: $searchQuery
             )
         }
         .sheet(item: $locationEditor) { location in
@@ -295,6 +292,15 @@ public struct ContentView: View {
             }
         }
         .padding(18)
+        .safeAreaInset(edge: .top, spacing: 8) {
+            HStack {
+                Spacer()
+                Button("New Event") { openEditor(EditableEvent.blank()) }
+                    .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 18)
+        }
     }
 
     private var actions: EventRowActions {

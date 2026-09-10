@@ -716,6 +716,18 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains(".frame(maxWidth: 620, alignment: .leading)"), "Editor form should use a centered readable content width")
 }
 
+func testNewEventActionStaysInsideWindowContent() throws {
+    let contentView = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: contentView, encoding: .utf8)
+    try expect(source.contains(".safeAreaInset(edge: .top"), "New Event should use an in-window content inset")
+    try expect(source.contains("Button(\"New Event\""), "The in-window action row should keep the New Event action")
+    try expect(!source.contains("ToolbarItemGroup(placement: .automatic) {\n            TextField(\"Search\", text: $searchQuery)\n                .textFieldStyle(.roundedBorder)\n                .frame(width: 220)\n            Button(\"New Event\", action: onNewEvent)"), "New Event should not live in the overflowing automatic toolbar group")
+}
+
 func testImportancePickerUsesEventColor() throws {
     let contentView = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -984,6 +996,7 @@ let tests: [(String, () throws -> Void)] = [
     ("editable event writes recurrence contracts", testEditableEventWritesRecurrenceContracts),
     ("editor backdrop and time field UI contracts", testEditorBackdropAndTimeFieldUiContracts),
     ("event editor layout contracts", testEventEditorLayoutContracts),
+    ("new event action stays inside window content", testNewEventActionStaysInsideWindowContent),
     ("importance picker uses event color", testImportancePickerUsesEventColor),
     ("active attention UI contracts", testActiveAttentionUiContracts),
     ("location search and custom coordinate contracts", testLocationSearchAndCustomCoordinateContracts),
