@@ -149,11 +149,25 @@ public final class AttachmentWorkspace {
 
     public func addFiles(_ urls: [URL], to draftID: String) throws {
         let draft = try validatedDraftURL(draftID)
-        for source in urls {
+        let sources = try urls.map { source -> URL in
             guard source.isFileURL,
-                  (try? source.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+                  (try? source.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
+                throw NSError(
+                    domain: "BlinkAttachments",
+                    code: 5,
+                    userInfo: [NSLocalizedDescriptionKey: "Only regular files can be attached: \(source.lastPathComponent)"]
+                )
+            }
+            return source
+        }
+        do {
+            for source in sources {
             let destination = uniqueDestination(for: source.lastPathComponent, in: draft)
             try fileManager.copyItem(at: source, to: destination)
+            }
+        } catch {
+            // The caller discards this isolated draft on failure.
+            throw error
         }
     }
 
@@ -181,16 +195,35 @@ public final class AttachmentWorkspace {
         ).filter { url in
             (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
         }
-        for source in stagedFiles {
-            let sameName = target.appendingPathComponent(source.lastPathComponent)
-            if fileManager.fileExists(atPath: sameName.path), sameFile(source, sameName) { continue }
-            if let existingFiles = try? files(in: target), existingFiles.contains(where: { sameFile(source, $0) }) { continue }
-            let destination = uniqueDestination(for: source.lastPathComponent, in: target)
-            try fileManager.copyItem(at: source, to: destination)
+        var createdFiles: [URL] = []
+        do {
+            let existingFiles = try files(in: target)
+            for source in stagedFiles {
+                let sameName = target.appendingPathComponent(source.lastPathComponent)
+                if fileManager.fileExists(atPath: sameName.path), sameFile(source, sameName) { continue }
+                if existingFiles.contains(where: { sameFile(source, $0) }) { continue }
+                let destination = uniqueDestination(for: source.lastPathComponent, in: target)
+                try fileManager.copyItem(at: source, to: destination)
+                createdFiles.append(destination)
+            }
+            // Keep the draft until the agenda JSON is saved. This makes a failed
+            // save recoverable and lets the editor retry without losing files.
+            return try manifest(ownerID: ownerID)
+        } catch {
+            for file in createdFiles {
+                try? fileManager.removeItem(at: file)
+            }
+            throw error
         }
-        // Keep the draft until the agenda JSON is saved. This makes a failed
-        // save recoverable and lets the editor retry without losing files.
-        return try manifest(ownerID: ownerID)
+    }
+
+    /// Removes only files created by a just-failed immediate operation. Existing
+    /// user attachments are preserved; this is never used for editor Cancel.
+    public func rollbackNewFiles(ownerID: String, preserving paths: Set<String>) {
+        guard let current = try? files(ownerID: ownerID) else { return }
+        for file in current where !paths.contains(file.path) {
+            try? fileManager.removeItem(at: file)
+        }
     }
 
     public func manifest(ownerID: String) throws -> AttachmentManifest {

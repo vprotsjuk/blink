@@ -997,6 +997,44 @@ func testSavingEventCommitsAttachmentsAndPreservesDraftOnFailure() throws {
     try expect(FileManager.default.fileExists(atPath: workspace.attachmentURL(ownerID: "meeting").appendingPathComponent("meeting-notes.txt").path), "Committed file should remain under Blink root")
 }
 
+func testImmediateAddFilesIsAllOrNothing() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try """
+    {"version":1,"events":[{"id":"batch","title":"Batch","start":"2099-09-12T12:00:00-07:00","reminders_minutes_before":[0],"enabled":true}]}
+    """.write(to: agenda, atomically: true, encoding: .utf8)
+    let valid = root.appendingPathComponent("valid.pdf")
+    try Data("pdf".utf8).write(to: valid)
+    let missing = root.appendingPathComponent("missing.pdf")
+    let store = BlinkStore(root: root)
+    var failed = false
+    do {
+        try store.addFiles(eventID: "batch", urls: [valid, missing])
+    } catch {
+        failed = true
+    }
+    try expect(failed, "A missing batch input must fail the immediate attachment operation")
+    let files = (try? AttachmentWorkspace(root: root).files(ownerID: "batch")) ?? []
+    try expect(files.isEmpty, "Failed batch must not leave partial finalized files")
+    let object = try readJSONObject(agenda)
+    let event = (object["events"] as? [[String: Any]])?.first
+    try expect(event?["attachments"] == nil, "Failed batch must not write a partial manifest")
+}
+
+func testEventLoadResultDistinguishesErrorFromEmptyAgenda() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try "{\"version\":1,\"events\":[]}".write(to: agenda, atomically: true, encoding: .utf8)
+    let store = BlinkStore(root: root)
+    let empty = store.loadEventResult()
+    try expect(empty.state == .loaded, "A valid empty agenda must be a loaded state")
+    try expect(empty.events.isEmpty, "A valid empty agenda must contain zero events")
+    try "{\"events\": [".write(to: agenda, atomically: false, encoding: .utf8)
+    let failed = store.loadEventResult()
+    try expect(failed.state == .error, "Malformed agenda must be an error state")
+    try expect(failed.errorMessage != nil, "Malformed agenda must expose a diagnostic")
+}
+
 func testEventRowsExposeAttachmentAndHistoryContracts() throws {
     let sourceURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -1013,6 +1051,26 @@ func testEventRowsExposeAttachmentAndHistoryContracts() throws {
     try expect(source.contains("Duplicate as new event"), "Context menu should expose History duplication")
     try expect(source.contains("contextMenu"), "Event rows should expose a context menu")
     try expect(source.contains("showsHistory"), "Event rows should know when History is frozen")
+    try expect(source.contains("store.addFiles(eventID: event.id"), "Row Add Files should attach immediately without opening the editor")
+    try expect(source.contains("store.addJPEG(eventID: event.id"), "Row Paste image should attach immediately without opening the editor")
+    try expect(!source.contains("stageFilesAndOpenEditor(event: event, urls: panel.urls)"), "Row Add Files must not use editor draft staging")
+    try expect(!source.contains("stageFilesAndOpenEditor(event: event, urls: urls)"), "Row Paste files must not use editor draft staging")
+}
+
+func testEventReloadUsesLastGoodSnapshotAndExplicitErrorBanner() throws {
+    let contentURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let content = try String(contentsOf: contentURL, encoding: .utf8)
+    let appURL = contentURL.deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().appendingPathComponent("Sources/BlinkSwiftUI/BlinkApp.swift")
+    let app = try String(contentsOf: appURL, encoding: .utf8)
+    try expect(content.contains("if result.state == .loaded"), "UI reload should replace the snapshot only after a successful load")
+    try expect(content.contains("hasLoadedEventSnapshot"), "UI should retain whether a last-good event snapshot exists")
+    try expect(content.contains("Couldn’t refresh events"), "UI should distinguish load errors from an empty agenda")
+    try expect(app.contains("guard result.state == .loaded else"), "Menu-bar state should preserve its last-good snapshot on reload errors")
 }
 
 func testAttachmentFolderMenuAndPreviewContracts() throws {
@@ -1043,6 +1101,8 @@ func testEventRowAttachmentListAndFolderButtonContracts() throws {
     try expect(source.contains("onChange(of: draftID)"), "Editor previews should reload when the draft changes")
     try expect(source.contains(".id(attachmentPreviewIdentity)"), "Editor previews should reset when the editor owner changes")
     try expect(source.contains(".task(id: previewReloadIdentity)"), "Editor previews should load after the attachment inputs are ready")
+    try expect(source.contains(".frame(minHeight: 56, maxHeight: 180)"), "Editor preview list must not collapse to zero height")
+    try expect(source.contains("fileTypeLabel(item.url)"), "Editor previews should show the attachment type")
 }
 
 func testAttachmentWorkspaceFolderContracts() throws {
@@ -1151,7 +1211,10 @@ let tests: [(String, () throws -> Void)] = [
     ("attachment finalize preserves collisions", testAttachmentFinalizeNeverOverwritesExistingFile),
     ("attachment draft cancel and multiline event contract", testAttachmentDraftCancelAndMultilineEventContract),
     ("saving event commits attachments", testSavingEventCommitsAttachmentsAndPreservesDraftOnFailure),
+    ("immediate add files is all or nothing", testImmediateAddFilesIsAllOrNothing),
+    ("event load result distinguishes error from empty agenda", testEventLoadResultDistinguishesErrorFromEmptyAgenda),
     ("event rows expose attachment and history contracts", testEventRowsExposeAttachmentAndHistoryContracts),
+    ("event reload uses last good snapshot and explicit error banner", testEventReloadUsesLastGoodSnapshotAndExplicitErrorBanner),
     ("attachment folder menu and preview contracts", testAttachmentFolderMenuAndPreviewContracts),
     ("event row attachment list and folder button contracts", testEventRowAttachmentListAndFolderButtonContracts),
     ("attachment workspace folder contracts", testAttachmentWorkspaceFolderContracts),

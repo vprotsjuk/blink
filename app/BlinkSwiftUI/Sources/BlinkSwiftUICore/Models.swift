@@ -693,6 +693,37 @@ public func eventIsHistoryFrozen(_ event: BlinkEvent, now: Date = Date()) -> Boo
     return true
 }
 
+public enum EventLoadState: Equatable {
+    case loaded
+    case error
+}
+
+public struct EventLoadResult {
+    public let events: [BlinkEvent]
+    public let state: EventLoadState
+    public let sourcePath: String
+    public let loadedAt: Date?
+    public let errorMessage: String?
+
+    public var isLoaded: Bool { state == .loaded }
+
+    public static func loaded(events: [BlinkEvent], sourcePath: String, at date: Date = Date()) -> EventLoadResult {
+        EventLoadResult(events: events, state: .loaded, sourcePath: sourcePath, loadedAt: date, errorMessage: nil)
+    }
+
+    public static func error(_ message: String, sourcePath: String) -> EventLoadResult {
+        EventLoadResult(events: [], state: .error, sourcePath: sourcePath, loadedAt: nil, errorMessage: message)
+    }
+
+    public init(events: [BlinkEvent], state: EventLoadState, sourcePath: String, loadedAt: Date?, errorMessage: String?) {
+        self.events = events
+        self.state = state
+        self.sourcePath = sourcePath
+        self.loadedAt = loadedAt
+        self.errorMessage = errorMessage
+    }
+}
+
 public struct BlinkStore {
     public let root: URL
 
@@ -715,44 +746,55 @@ public struct BlinkStore {
             .deletingLastPathComponent()
     }
 
-    public func loadEvents(now: Date = Date()) -> [BlinkEvent] {
-        guard var object = try? loadAgendaObject(),
-              var rawEvents = object["events"] as? [[String: Any]] else {
-            return []
-        }
-        var repaired = false
-        let attachmentWorkspace = AttachmentWorkspace(root: root)
-        _ = attachmentWorkspace.migrateLegacySeriesFolders(events: rawEvents)
-        for index in rawEvents.indices {
-            let ownerID = attachmentOwnerID(for: rawEvents[index])
-            if let manifest = try? attachmentWorkspace.manifest(ownerID: ownerID) {
-                let current = rawEvents[index]["attachments"] as? [String: Any]
-                let currentOwner = current?["owner_id"] as? String
-                let currentCount = current?["count"] as? Int
-                let currentHasFiles = current?["has_files"] as? Bool
-                if currentOwner != manifest.ownerID || currentCount != manifest.count || currentHasFiles != manifest.hasFiles {
-                    rawEvents[index]["attachments"] = manifest.toDictionary()
-                    repaired = true
-                }
+    public func loadEventResult(now: Date = Date()) -> EventLoadResult {
+        let sourcePath = agendaURL.path
+        do {
+            var object = try loadAgendaObject()
+            guard var rawEvents = object["events"] as? [[String: Any]] else {
+                throw NSError(domain: "BlinkEvents", code: 1, userInfo: [NSLocalizedDescriptionKey: "agenda.json does not contain an events array."])
             }
-            guard (rawEvents[index]["source"] as? String ?? "personal") == "personal",
-                  rawEvents[index]["requires_done"] as? Bool == true,
-                  rawEvents[index]["done"] as? Bool == true,
-                  let startText = rawEvents[index]["start"] as? String,
-                  let start = parseISODate(startText), start > now else { continue }
-            rawEvents[index]["done"] = false
-            rawEvents[index]["done_at"] = NSNull()
-            repaired = true
+            var repaired = false
+            let attachmentWorkspace = AttachmentWorkspace(root: root)
+            _ = attachmentWorkspace.migrateLegacySeriesFolders(events: rawEvents)
+            for index in rawEvents.indices {
+                let ownerID = attachmentOwnerID(for: rawEvents[index])
+                if let manifest = try? attachmentWorkspace.manifest(ownerID: ownerID) {
+                    let current = rawEvents[index]["attachments"] as? [String: Any]
+                    let currentOwner = current?["owner_id"] as? String
+                    let currentCount = current?["count"] as? Int
+                    let currentHasFiles = current?["has_files"] as? Bool
+                    if currentOwner != manifest.ownerID || currentCount != manifest.count || currentHasFiles != manifest.hasFiles {
+                        rawEvents[index]["attachments"] = manifest.toDictionary()
+                        repaired = true
+                    }
+                }
+                guard (rawEvents[index]["source"] as? String ?? "personal") == "personal",
+                      rawEvents[index]["requires_done"] as? Bool == true,
+                      rawEvents[index]["done"] as? Bool == true,
+                      let startText = rawEvents[index]["start"] as? String,
+                      let start = parseISODate(startText), start > now else { continue }
+                rawEvents[index]["done"] = false
+                rawEvents[index]["done_at"] = NSNull()
+                repaired = true
+            }
+            if repaired {
+                object["events"] = rawEvents
+                try? saveAgendaObject(object)
+            }
+            guard let data = try? JSONSerialization.data(withJSONObject: object),
+                  let document = try? JSONDecoder().decode(AgendaDocument.self, from: data) else {
+                throw NSError(domain: "BlinkEvents", code: 2, userInfo: [NSLocalizedDescriptionKey: "agenda.json contains invalid event data."])
+            }
+            return .loaded(events: document.events.filter { ($0.source ?? "personal") == "personal" }, sourcePath: sourcePath)
+        } catch {
+            return .error(error.localizedDescription, sourcePath: sourcePath)
         }
-        if repaired {
-            object["events"] = rawEvents
-            try? saveAgendaObject(object)
-        }
-        guard let data = try? JSONSerialization.data(withJSONObject: object),
-              let document = try? JSONDecoder().decode(AgendaDocument.self, from: data) else {
-            return []
-        }
-        return document.events.filter { ($0.source ?? "personal") == "personal" }
+    }
+
+    /// Compatibility API for non-UI callers. UI callers must use loadEventResult
+    /// so a read error cannot be mistaken for a valid empty agenda.
+    public func loadEvents(now: Date = Date()) -> [BlinkEvent] {
+        loadEventResult(now: now).events
     }
 
     public func loadSnapshot(now: Date = Date()) -> EventSnapshot {
@@ -1007,10 +1049,13 @@ public struct BlinkStore {
         guard !urls.isEmpty else { return }
         var document = try loadAgendaObject()
         var events = document["events"] as? [[String: Any]] ?? []
-        guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else { return }
+        guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else {
+            throw NSError(domain: "BlinkEvents", code: 4, userInfo: [NSLocalizedDescriptionKey: "Event no longer exists."])
+        }
         let event = events[index]
         let ownerID = attachmentOwnerID(for: event)
         let workspace = AttachmentWorkspace(root: root)
+        let existingPaths = Set((try? workspace.files(ownerID: ownerID))?.map(\.path) ?? [])
         let draftID = try workspace.createDraft()
         do {
             try workspace.addFiles(urls, to: draftID)
@@ -1020,6 +1065,7 @@ public struct BlinkStore {
             try saveAgendaObject(document)
             try? workspace.discard(draftID: draftID)
         } catch {
+            workspace.rollbackNewFiles(ownerID: ownerID, preserving: existingPaths)
             try? workspace.discard(draftID: draftID)
             throw error
         }
@@ -1028,10 +1074,13 @@ public struct BlinkStore {
     public func addJPEG(eventID: String, data: Data) throws {
         var document = try loadAgendaObject()
         var events = document["events"] as? [[String: Any]] ?? []
-        guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else { return }
+        guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else {
+            throw NSError(domain: "BlinkEvents", code: 4, userInfo: [NSLocalizedDescriptionKey: "Event no longer exists."])
+        }
         let event = events[index]
         let ownerID = attachmentOwnerID(for: event)
         let workspace = AttachmentWorkspace(root: root)
+        let existingPaths = Set((try? workspace.files(ownerID: ownerID))?.map(\.path) ?? [])
         let draftID = try workspace.createDraft()
         do {
             try workspace.addJPEG(data, to: draftID)
@@ -1041,6 +1090,7 @@ public struct BlinkStore {
             try saveAgendaObject(document)
             try? workspace.discard(draftID: draftID)
         } catch {
+            workspace.rollbackNewFiles(ownerID: ownerID, preserving: existingPaths)
             try? workspace.discard(draftID: draftID)
             throw error
         }
@@ -1059,7 +1109,10 @@ public struct BlinkStore {
             return ["version": 1, "events": []]
         }
         let data = try Data(contentsOf: agendaURL)
-        return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? ["version": 1, "events": []]
+        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NSError(domain: "BlinkEvents", code: 3, userInfo: [NSLocalizedDescriptionKey: "agenda.json must contain a JSON object."])
+        }
+        return object
     }
 
     private func saveAgendaObject(_ document: [String: Any]) throws {

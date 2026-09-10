@@ -64,7 +64,13 @@ final class BlinkAppState: ObservableObject {
     }
 
     func refreshAttention() {
-        applySnapshot(store.loadSnapshot())
+        let result = store.loadEventResult()
+        guard result.state == .loaded else {
+            // Keep the last-good menu-bar snapshot visible when agenda.json is
+            // temporarily unreadable or malformed.
+            return
+        }
+        applySnapshot(EventSnapshot(events: result.events, now: Date()))
     }
 
     func applySnapshot(_ snapshot: EventSnapshot) {

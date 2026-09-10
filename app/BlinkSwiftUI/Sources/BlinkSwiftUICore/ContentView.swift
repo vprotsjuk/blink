@@ -131,6 +131,11 @@ public struct ContentView: View {
     let onSnapshotChange: ((EventSnapshot) -> Void)?
     @State private var events: [BlinkEvent] = []
     @State private var snapshot = EventSnapshot(events: [], now: Date())
+    @State private var eventLoadState: EventLoadState = .error
+    @State private var eventLoadError: String?
+    @State private var eventSourcePath = ""
+    @State private var eventLastSuccessfulLoad: Date?
+    @State private var hasLoadedEventSnapshot = false
     @State private var astronomyConfig: AstronomyConfig?
     @State private var astronomySchedule: AstronomySchedule?
     @State private var blinkLocation: BlinkLocation?
@@ -144,6 +149,7 @@ public struct ContentView: View {
     @State private var locationEditor: EditableLocation?
     @State private var searchQuery = ""
     @State private var errorMessage: String?
+    @State private var feedbackMessage: String?
     @State private var pendingDelete: BlinkEvent?
     @State private var attentionPulseOn = true
     @State private var selectedTab: BlinkTab = .today
@@ -190,6 +196,18 @@ public struct ContentView: View {
             Button("OK") { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
+        }
+        .overlay(alignment: .bottom) {
+            if let feedbackMessage {
+                Text(feedbackMessage)
+                    .font(.callout.weight(.medium))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(radius: 8)
+                    .padding(.bottom, 14)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .confirmationDialog(
             "Delete event?",
@@ -243,7 +261,9 @@ public struct ContentView: View {
             EventEditorView(
                 event: event,
                 reminderConfig: reminderConfig,
-                attachmentWorkspace: editorAttachmentWorkspace,
+                // Keep the preview backed by the project-local workspace even
+                // while SwiftUI is settling the editor state assignment.
+                attachmentWorkspace: editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root),
                 draftID: editorDraftID,
                 onDirtyChange: { editorIsDirty = $0 },
                 onCancel: { closeEditor() },
@@ -284,33 +304,42 @@ public struct ContentView: View {
         Group {
             switch selectedTab {
             case .today:
-                TodayView(
-                    snapshot: snapshot,
-                    actions: actions,
-                    searchQuery: searchQuery,
-                    attachmentNames: { store.attachmentNames(for: $0) },
-                    attachmentRoot: store.root,
-                    activeEventIDs: activeEventIDs,
-                    pulseVisible: attentionPulseOn
-                )
+                VStack(alignment: .leading, spacing: 10) {
+                    eventLoadBanner
+                    TodayView(
+                        snapshot: snapshot,
+                        actions: actions,
+                        searchQuery: searchQuery,
+                        attachmentNames: { store.attachmentNames(for: $0) },
+                        attachmentRoot: store.root,
+                        activeEventIDs: activeEventIDs,
+                        pulseVisible: attentionPulseOn
+                    )
+                }
             case .upcoming:
-                EventListView(
-                    title: "Upcoming",
-                    events: filtered(snapshot.upcoming),
-                    actions: actions,
-                    attachmentRoot: store.root,
-                    activeEventIDs: activeEventIDs,
-                    pulseVisible: attentionPulseOn
-                )
+                VStack(alignment: .leading, spacing: 10) {
+                    eventLoadBanner
+                    EventListView(
+                        title: "Upcoming",
+                        events: filtered(snapshot.upcoming),
+                        actions: actions,
+                        attachmentRoot: store.root,
+                        activeEventIDs: activeEventIDs,
+                        pulseVisible: attentionPulseOn
+                    )
+                }
             case .history:
-                EventListView(
-                    title: "History",
-                    events: filtered(snapshot.history),
-                    actions: actions,
-                    attachmentRoot: store.root,
-                    activeEventIDs: activeEventIDs,
-                    pulseVisible: attentionPulseOn
-                )
+                VStack(alignment: .leading, spacing: 10) {
+                    eventLoadBanner
+                    EventListView(
+                        title: "History",
+                        events: filtered(snapshot.history),
+                        actions: actions,
+                        attachmentRoot: store.root,
+                        activeEventIDs: activeEventIDs,
+                        pulseVisible: attentionPulseOn
+                    )
+                }
             case .astronomy:
                 AstronomySettingsView(config: astronomyConfig, schedule: astronomySchedule) { updatedConfig in
                     perform {
@@ -332,10 +361,31 @@ public struct ContentView: View {
                     }
                 }
             case .health:
-                SystemHealthView(root: store.root)
+                SystemHealthView(
+                    root: store.root,
+                    eventLoadState: eventLoadState,
+                    eventCount: events.count,
+                    eventSourcePath: eventSourcePath,
+                    eventLastSuccessfulLoad: eventLastSuccessfulLoad,
+                    eventLoadError: eventLoadError
+                )
             }
         }
         .padding(18)
+    }
+
+    @ViewBuilder
+    private var eventLoadBanner: some View {
+        if !hasLoadedEventSnapshot {
+            Label(
+                eventLoadState == .error ? "Couldn’t refresh events" : "Loading events…",
+                systemImage: eventLoadState == .error ? "exclamationmark.triangle" : "arrow.clockwise"
+            )
+            .foregroundStyle(eventLoadState == .error ? .red : .secondary)
+        } else if eventLoadState == .error {
+            Label("Couldn’t refresh events — showing last loaded data", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+        }
     }
 
     private var actions: EventRowActions {
@@ -434,35 +484,27 @@ public struct ContentView: View {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
-        stageFilesAndOpenEditor(event: event, urls: panel.urls)
+        perform {
+            try store.addFiles(eventID: event.id, urls: panel.urls)
+            reload()
+            showFeedback("✓ Attached \(panel.urls.count) file\(panel.urls.count == 1 ? "" : "s")")
+        }
     }
 
     private func paste(for event: BlinkEvent) {
         let urls = clipboardFileURLs()
         if !urls.isEmpty {
-            stageFilesAndOpenEditor(event: event, urls: urls)
-        } else if let imageData = clipboardJPEGData() {
-            let workspace = AttachmentWorkspace(root: store.root)
-            guard let draftID = try? workspace.createDraft() else { return }
-            do {
-                try workspace.addJPEG(imageData, to: draftID)
-                openEditor(EditableEvent(event: event), workspace: workspace, draftID: draftID)
-            } catch {
-                try? workspace.discard(draftID: draftID)
-                errorMessage = error.localizedDescription
+            perform {
+                try store.addFiles(eventID: event.id, urls: urls)
+                reload()
+                showFeedback("✓ Attached \(urls.count) file\(urls.count == 1 ? "" : "s")")
             }
-        }
-    }
-
-    private func stageFilesAndOpenEditor(event: BlinkEvent, urls: [URL]) {
-        let workspace = AttachmentWorkspace(root: store.root)
-        guard let draftID = try? workspace.createDraft() else { return }
-        do {
-            try workspace.addFiles(urls, to: draftID)
-            openEditor(EditableEvent(event: event), workspace: workspace, draftID: draftID)
-        } catch {
-            try? workspace.discard(draftID: draftID)
-            errorMessage = error.localizedDescription
+        } else if let imageData = clipboardJPEGData() {
+            perform {
+                try store.addJPEG(eventID: event.id, data: imageData)
+                reload()
+                showFeedback("✓ Attached image")
+            }
         }
     }
 
@@ -487,10 +529,18 @@ public struct ContentView: View {
     }
 
     private func reload() {
-        events = store.loadEvents()
-        snapshot = EventSnapshot(events: events, now: Date())
-        attentionManager?.setState(snapshot.attentionState)
-        onSnapshotChange?(snapshot)
+        let result = store.loadEventResult()
+        eventLoadState = result.state
+        eventSourcePath = result.sourcePath
+        eventLoadError = result.errorMessage
+        if result.state == .loaded {
+            events = result.events
+            snapshot = EventSnapshot(events: events, now: Date())
+            eventLastSuccessfulLoad = result.loadedAt
+            hasLoadedEventSnapshot = true
+            attentionManager?.setState(snapshot.attentionState)
+            onSnapshotChange?(snapshot)
+        }
         astronomyConfig = store.loadAstronomyConfig()
         astronomySchedule = store.loadAstronomySchedule()
         blinkLocation = store.loadLocation()
@@ -510,10 +560,23 @@ public struct ContentView: View {
         }
     }
 
+    private func showFeedback(_ message: String) {
+        withAnimation { feedbackMessage = message }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+            guard feedbackMessage == message else { return }
+            withAnimation { feedbackMessage = nil }
+        }
+    }
+
 }
 
 struct SystemHealthView: View {
     let root: URL
+    let eventLoadState: EventLoadState
+    let eventCount: Int
+    let eventSourcePath: String
+    let eventLastSuccessfulLoad: Date?
+    let eventLoadError: String?
     @State private var rows: [(String, String)] = []
 
     var body: some View {
@@ -537,6 +600,8 @@ struct SystemHealthView: View {
             .padding()
         }
         .onAppear(perform: refresh)
+        .onChange(of: eventLoadState) { refresh() }
+        .onChange(of: eventCount) { refresh() }
         .onReceive(Timer.publish(every: 30, on: .main, in: .common).autoconnect()) { _ in
             refresh()
         }
@@ -544,12 +609,24 @@ struct SystemHealthView: View {
 
     private func refresh() {
         rows = [
+            ("Events", eventLoadState == .loaded ? "Loaded (\(eventCount))" : "Error / stale"),
+            ("Events source", eventSourcePath.isEmpty ? root.appendingPathComponent("agenda.json").path : eventSourcePath),
+            ("Events last successful load", eventLastSuccessfulLoad.map(eventHealthDateLabel) ?? "None"),
+            ("Events last error", eventLoadError ?? "None"),
             ("Watcher", status(from: "watcher_runtime.json", key: "last_heartbeat_at")),
             ("Weather", status(from: "weather/weather_state.json", key: "status")),
             ("Astronomy", status(from: "astronomy/astronomy_schedule.json", key: "generation_status")),
             ("Remote queue", status(from: "n" + "tfy_schedule_state.json", key: "status")),
             ("Location", status(from: "location.json", key: "display_name"))
         ]
+    }
+
+    private func eventHealthDateLabel(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
     }
 
     private func status(from path: String, key: String) -> String {
@@ -833,6 +910,30 @@ private struct AttachmentPreviewList: View {
     let onChange: () -> Void
     @State private var items: [AttachmentPreviewItem] = []
 
+    init(
+        workspace: AttachmentWorkspace?,
+        draftID: String?,
+        ownerID: String,
+        refreshToken: Int,
+        hiddenSavedNames: Set<String>,
+        onRemoveSaved: @escaping (String) -> Void,
+        onChange: @escaping () -> Void
+    ) {
+        self.workspace = workspace
+        self.draftID = draftID
+        self.ownerID = ownerID
+        self.refreshToken = refreshToken
+        self.hiddenSavedNames = hiddenSavedNames
+        self.onRemoveSaved = onRemoveSaved
+        self.onChange = onChange
+        self._items = State(initialValue: Self.loadItems(
+            workspace: workspace,
+            draftID: draftID,
+            ownerID: ownerID,
+            hiddenSavedNames: hiddenSavedNames
+        ))
+    }
+
     var body: some View {
         Group {
             if items.isEmpty {
@@ -846,6 +947,10 @@ private struct AttachmentPreviewList: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.url.lastPathComponent)
                                         .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    Text(fileTypeLabel(item.url))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                     Text(fileSizeLabel(item.url))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
@@ -866,7 +971,10 @@ private struct AttachmentPreviewList: View {
                         }
                     }
                 }
-                .frame(maxHeight: 180)
+                // A ScrollView with only a max height may collapse to zero in
+                // a VStack. Give a non-empty attachment list a real minimum
+                // height so names/types remain visible in the editor.
+                .frame(minHeight: 56, maxHeight: 180)
             }
         }
         .onAppear(perform: reload)
@@ -883,10 +991,21 @@ private struct AttachmentPreviewList: View {
     }
 
     private func reload() {
-        guard let workspace else {
-            items = []
-            return
-        }
+        items = Self.loadItems(
+            workspace: workspace,
+            draftID: draftID,
+            ownerID: ownerID,
+            hiddenSavedNames: hiddenSavedNames
+        )
+    }
+
+    private static func loadItems(
+        workspace: AttachmentWorkspace?,
+        draftID: String?,
+        ownerID: String,
+        hiddenSavedNames: Set<String>
+    ) -> [AttachmentPreviewItem] {
+        guard let workspace else { return [] }
         var loaded = ((try? workspace.files(ownerID: ownerID)) ?? []).map {
             AttachmentPreviewItem(url: $0, isDraft: false)
         }.filter { !hiddenSavedNames.contains($0.url.lastPathComponent) }
@@ -895,7 +1014,7 @@ private struct AttachmentPreviewList: View {
                 AttachmentPreviewItem(url: $0, isDraft: true)
             })
         }
-        items = loaded
+        return loaded
     }
 }
 
@@ -2186,6 +2305,11 @@ private func fileSizeLabel(_ url: URL) -> String {
     let formatter = ByteCountFormatter()
     formatter.countStyle = .file
     return formatter.string(fromByteCount: Int64(bytes))
+}
+
+private func fileTypeLabel(_ url: URL) -> String {
+    let ext = url.pathExtension.trimmingCharacters(in: .whitespacesAndNewlines)
+    return ext.isEmpty ? "File" : "\(ext.uppercased()) file"
 }
 
 private func attachmentSymbol(for url: URL) -> String {

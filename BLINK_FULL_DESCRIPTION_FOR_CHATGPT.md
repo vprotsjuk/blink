@@ -135,7 +135,7 @@ Description is optional and may be written in any language. Title and Descriptio
 
 ### Event attachments
 
-Blink keeps attachment bytes in `event_data/attachments/` under the project root. Every event occurrence owns a folder named by its event ID; `series_id` is recurrence metadata only. A recurring successor receives a new ID and starts with no inherited files. A saved event shows a paperclip/count and can open its folder from the Mac; files are never sent through ntfy or committed to the public repository. A Finder multi-select, unified clipboard Paste, and editor-only drag/drop all use one draft staging pipeline. Cancel/Escape discards the current draft folder; a failed Save retains it for recovery. Deleting an event with attachments confirms and moves the Blink-owned folder to Trash.
+Blink keeps attachment bytes in `event_data/attachments/` under the project root. Every event occurrence owns a folder named by its event ID; `series_id` is recurrence metadata only. A recurring successor receives a new ID and starts with no inherited files. A saved event shows a paperclip/count and can open its folder from the Mac; files are never sent through ntfy or committed to the public repository. Editor Finder selection, editor clipboard Paste, and editor-only drag/drop use a draft staging pipeline: Cancel/Escape discards the current draft folder, while Save finalizes it and a failed Save retains it for recovery. Today/Upcoming row Add Files and Paste use a separate short-lived transaction and commit immediately without opening the editor or requiring Save. A batch failure rolls back every file created by that operation and leaves existing files untouched. Deleting an event with attachments confirms and moves the Blink-owned folder to Trash.
 
 ## 5A. Complete attachment interaction specification
 
@@ -187,8 +187,8 @@ Blink examines the current pasteboard only when building the editor controls or 
 
 | Clipboard contents | Available action | Result |
 |---|---|---|
-| One or more regular file URLs copied in Finder, including PDF, Excel, image, DWG, or another file | `Paste` | Copies all regular files into the event/draft folder using unique names. |
-| Image data (TIFF/PNG/JPEG/HEIC) with no file URLs, including a screenshot or copied photo | `Paste` | Converts the first image to a timestamped JPEG and stages/copies it. |
+| One or more regular file URLs copied in Finder, including PDF, Excel, image, DWG, or another file | `Paste` | Row action copies all regular files into the persisted owner folder immediately; editor action stages them in the draft using unique names. |
+| Image data (TIFF/PNG/JPEG/HEIC) with no file URLs, including a screenshot or copied photo | `Paste` | Row action converts the first image to a timestamped JPEG and finalizes it immediately; editor action stages it until Save. |
 | File URLs and image representations at the same time | `Paste` | File URLs take precedence; image conversion is not offered. |
 | Plain text, emoji, or a text-only selection | No attachment action | In a focused `Title`/`Description` editor, normal macOS `⌘V` inserts the text. It does not create a file. |
 | PDF/Excel text or page content copied from Preview/Office rather than the file itself | Usually no file action | Use `+ Add Files`, or copy the actual file from Finder. If the source provides image data, the unified `Paste` action may be available. |
@@ -209,6 +209,14 @@ Blink's GUI performs its normal event reload on appearance and approximately eve
 - filename/extension search sees the file after the same reload;
 - no watcher restart or SQL synchronization is required.
 
+Event reloads use one shared in-memory snapshot for Today, Upcoming, History,
+and Search. A valid empty agenda is shown as `No events`; a malformed or
+unreadable agenda is shown as `Couldn't refresh events` and never replaces the
+last-good snapshot with an empty list. Health reports the event status, source
+path, count, last successful load, and last error. The installed app resolves
+the project root explicitly to `/Users/vitaliiprotsiuk/Desktop/Blink` (or the
+`BLINK_DIR` override), not to a transient build directory.
+
 The current Upcoming records use event-ID owner folders. Future editable events receive an empty folder on demand through the same action.
 
 ### Drag-and-drop policy
@@ -222,8 +230,8 @@ The context menu is dynamic and never offers an action that cannot work with the
 **Today and Upcoming (writable rows):**
 
 - `Edit` — opens the multiline event editor; clicking the row content does the same.
-- `Add Files` — Finder multi-select; copies selected regular files.
-- `Paste` — shown only when the clipboard has regular file URLs or image data; file URLs take precedence.
+- `Add Files` — Finder multi-select; validates and copies all selected regular files immediately, without opening Editor or requiring Save. A failed batch rolls back all files from that operation.
+- `Paste` — shown only when the clipboard has regular file URLs or image data; file URLs take precedence. It attaches immediately to the persisted row, without opening Editor or requiring Save, and updates the paperclip/count only after finalization.
 - `Open Attachments Folder` — always available, including for an empty folder.
 - `Duplicate as new event` — creates a new ID/folder.
 - `Done` (Today where applicable).
@@ -523,7 +531,7 @@ Opens the event editor with an independent `Start blinking` picker defaulted to 
 
 Today and Upcoming rows support hover, double-click editing, and a context menu with Edit, Add Files, one unified Paste (whichever the current pasteboard supports), Open Attachments Folder, Duplicate as new event, Duplicate with Attachments when files exist, On/Off, Done, and Delete as applicable. `Open Attachments Folder` is always available for these editable rows and creates an empty owner folder on demand. The folder button is placed before On/Off in the row. History rows are frozen and omit Edit/On/Off; they offer Duplicate as new event, Duplicate with Attachments when files exist, reveal an existing attachment folder, and Delete.
 
-`Paste` accepts regular file URLs or, when no file URLs exist, image data currently available on the macOS pasteboard (including a copied photo), converts image data to a timestamped JPEG, and stages it in the event draft. Directories and folder contents are not imported. The editor immediately lists staged and saved attachments: images use thumbnails, while PDF/Excel/other files use type icons with filename and size; staged files can be removed before Save and saved-file removal is pending until Save. Files may also be dropped in this panel only.
+`Paste` accepts regular file URLs or, when no file URLs exist, image data currently available on the macOS pasteboard (including a copied photo), converts image data to a timestamped JPEG, and uses the current lifecycle: from a Today/Upcoming row it finalizes immediately, while from the editor it stages until Save. Directories and folder contents are not imported. The editor immediately lists staged and saved attachments: images use thumbnails, while PDF/Excel/other files use type icons with filename and size; staged files can be removed before Save and saved-file removal is pending until Save. Files may also be dropped in this panel only.
 
 Rows show only a compact paperclip/count; clicking it opens a popover with filename/type previews and an `Open Attachments Folder` action. The editor uses the same attachment list model and keeps a folder button beside the count. These controls expose the same local filesystem state and do not introduce a second attachment store.
 

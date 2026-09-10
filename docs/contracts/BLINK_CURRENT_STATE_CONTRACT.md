@@ -65,6 +65,17 @@ Upcoming -> Active -> Done -> History
   Legacy shared-series folders are copied by an idempotent migration helper only
   when encountered; the legacy source is preserved.
 - New-event drafts own `event_data/drafts/<draft-id>` while the editor is open. Files and pasted screenshots are staged before Save; Cancel/Escape removes only the Blink-created draft. Failed Save keeps the draft recoverable.
+- Row attachment actions have a separate short-lived lifecycle: Today/Upcoming
+  `Paste` and `Add Files` validate all inputs, stage and verify them, finalize
+  them into the persisted event-ID folder, update `agenda.json`, and finish
+  without opening the editor or requiring Save. A batch failure rolls back all
+  files created by that operation and leaves existing attachments/metadata
+  unchanged.
+- Event loading is explicit: a valid empty `agenda.json` is `Loaded (0)`, while
+  unreadable or malformed JSON is `Error/Stale`. A reload failure never replaces
+  the last-good in-memory event snapshot with `[]`; Today, Upcoming, History,
+  and Search continue to use that shared last-good snapshot and Health reports
+  the source, count, last successful load, and error.
 - Snooze, Quiet Hours, and Templates are retired and must not be reintroduced.
 - Reminder offsets are centrally defined and unavailable offsets are removed when they no longer fit before the event.
 - New events default the independent Blinker picker to `At event`
@@ -75,6 +86,12 @@ Upcoming -> Active -> Done -> History
 ## 4. Push Contract
 
 ntfy metadata belongs in headers: `Title`, `Priority`, and `Tags`. The visible body must never be raw JSON and must not contain braces, JSON keys, internal tags, or scheduling objects.
+
+The watcher remote-queue reconciliation signature includes the visible
+attachment-presence bit (`has_files`). A transition `false → true` or
+`true → false` rebuilds the queued payload so the paperclip cannot become
+stale; a count-only change such as `📎 2 → 📎 3` does not create a duplicate
+remote delivery because the visible payload is unchanged.
 
 Personal pushes retain a useful title and description, with date/time and reminder context in the body. Personal titles begin with the event attention icon `🟢`, `🟡`, or `🔴`; if local attachments exist, exactly one `📎` marker is added. ntfy urgency remains independently controlled by its `Priority` header. The full multiline title/description remains local; the push uses a compact single-line title and a UTF-8 byte-safe body projection bounded by the current ntfy limits. Local paths, filenames, and file bytes are never sent. Weather identifies its block as `WEATHER` in the ntfy title/header, then shows location/date and selected weather blocks. If Astronomy is included with Weather, the body contains a plain `ASTRONOMY` section. If `Use Weather briefing time` is off, Astronomy is sent as its own briefing with the native ntfy title/header `ASTRONOMY` and a body beginning with the date; no Markdown markers are sent because the phone app displays them literally. Standalone notification titles use the same ntfy title/header styling. Astronomy rise/set labels use thin arrows after their matching icon: `☀️ ↑ Sunrise`, `☀️ ↓ Sunset`, `🌙 ↑ Moonrise`, and `🌙 ↓ Moonset`; Solar Noon remains `☀️` without a direction arrow, and `🌅` is not emitted. Group Astronomy briefings show the lunar phase with exactly one large direction arrow (`⬆️` waxing or `⬇️` waning), followed by one `<N> days until Full Moon.` or `<N> days until New Moon.` line derived from the generated Skyfield schedule; exact Full/New Moon events omit the arrow. Standalone Moonrise/Moonset titles use the thin rise/set arrow, while standalone phase-event titles use the phase icon and omit the arrow at the exact boundary. The watcher owns this presentation and must not introduce a second approximate lunar calculation. The body must not repeat an event title: Sunset starts with its next useful fact, and standalone Moonrise/Moonset/New Moon/Full Moon bodies contain the countdown only. User-entered personal title/description may be in any language; application labels are English.
 
@@ -128,10 +145,13 @@ Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is
 - Event-row context menus expose only currently applicable actions: Edit
   (Today/Upcoming only), Duplicate as new event, Duplicate with Attachments when
   files exist, Add Files, one unified Paste action when the clipboard supports
-  it, Open Attachments Folder, On/Off, Done, and Delete. Paste and Add Files use
-  the same draft staging pipeline. Drag-and-drop is accepted only inside the
-  editor attachment panel; rows never accept drops. Attachments are never sent
-  to ntfy or committed to GitHub.
+  it, Open Attachments Folder, On/Off, Done, and Delete. On Today/Upcoming,
+  Paste and Add Files are immediate persisted-event actions: they do not open
+  the editor and do not require Save. They use a short-lived transactional
+  staging/verify/finalize operation with all-or-nothing rollback. The editor's
+  Add Files/Paste/drop controls remain draft-based until Save. Drag-and-drop is
+  accepted only inside the editor attachment panel; rows never accept drops.
+  Attachments are never sent to ntfy or committed to GitHub.
 - The editor attachment panel shows staged and saved filenames, sizes, image
   thumbnails/file-type icons, `+ Add Files`, one `Paste`, `Open Folder`, and an
   editor-only drop zone. Removing a staged file is immediate for the draft;

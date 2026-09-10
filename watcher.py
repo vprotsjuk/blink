@@ -1206,6 +1206,13 @@ def remote_reconcile_due(events: list[dict[str, Any]], now: datetime, interval_m
             "description": event.get("description"),
             "attention_level": event.get("attention_level"),
             "reminders": event.get("reminders_minutes_before"),
+            # The visible personal push contains a paperclip marker when this
+            # presence bit changes. Attachment count is intentionally omitted:
+            # 📎 2 and 📎 3 have the same remote-visible payload.
+            "has_files": bool(
+                isinstance(event.get("attachments"), dict)
+                and event["attachments"].get("has_files") is True
+            ),
         }
         for event in events
     ]

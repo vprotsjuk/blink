@@ -11,6 +11,29 @@ from app import notification_format, weather_store
 
 
 class WatcherCoreTests(unittest.TestCase):
+    def test_remote_reconcile_signature_changes_when_attachment_presence_changes(self):
+        event = {
+            "id": "attachment-signature",
+            "start": "2026-09-12T11:00:00-07:00",
+            "enabled": True,
+            "done": False,
+            "title": "Attachment",
+            "description": "",
+            "attention_level": "green",
+            "reminders_minutes_before": [0],
+            "attachments": {"owner_id": "attachment-signature", "count": 1, "has_files": False},
+        }
+        now = datetime.fromisoformat("2026-09-10T10:00:00-07:00")
+        with patch.object(watcher, "_last_remote_reconcile_at", None), patch.object(
+            watcher, "_last_remote_reconcile_signature", None
+        ):
+            self.assertTrue(watcher.remote_reconcile_due([event], now))
+            self.assertFalse(watcher.remote_reconcile_due([event], now))
+            event["attachments"]["count"] = 2
+            self.assertFalse(watcher.remote_reconcile_due([event], now))
+            event["attachments"]["has_files"] = True
+            self.assertTrue(watcher.remote_reconcile_due([event], now))
+
     def test_legacy_briefing_config_change_uses_contract_file_time(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
