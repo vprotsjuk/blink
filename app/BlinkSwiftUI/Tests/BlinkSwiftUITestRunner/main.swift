@@ -737,6 +737,19 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains("RoundedRectangle(cornerRadius: 12, style: .continuous)"), "Text field cards should have continuous rounded corners")
 }
 
+func testSaveButtonsRequireActualChanges() throws {
+    let contentView = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: contentView, encoding: .utf8)
+    try expect(source.contains(".disabled(!canSave || !hasUnsavedChanges)"), "Event and location Save buttons should be disabled when unchanged")
+    try expect(source.contains("private var hasUnsavedChanges: Bool"), "Editors should expose an explicit dirty-state predicate")
+    try expect(source.contains("struct EditableLocation: Identifiable, Equatable"), "Location editor should compare its draft with the saved location")
+    try expect(source.contains("!pendingRemovedAttachmentNames.isEmpty"), "Replacing an attachment should count as an unsaved change even when the count is unchanged")
+}
+
 func testEventEditorFitsWindowAndScrolls() throws {
     let contentView = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -1196,6 +1209,7 @@ let tests: [(String, () throws -> Void)] = [
     ("editable event writes recurrence contracts", testEditableEventWritesRecurrenceContracts),
     ("editor backdrop and time field UI contracts", testEditorBackdropAndTimeFieldUiContracts),
     ("event editor layout contracts", testEventEditorLayoutContracts),
+    ("save buttons require actual changes", testSaveButtonsRequireActualChanges),
     ("event editor fits window and scrolls", testEventEditorFitsWindowAndScrolls),
     ("new event action stays inside window content", testNewEventActionStaysInsideWindowContent),
     ("new event plus button and tab hover contracts", testNewEventPlusButtonAndTabHoverContracts),

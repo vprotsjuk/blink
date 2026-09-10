@@ -1230,10 +1230,10 @@ struct EventEditorView: View {
             applyTimeText()
         }
         .onChange(of: draft) {
-            onDirtyChange(draft != original || stagedAttachmentCount != (original.attachments?.count ?? 0))
+            onDirtyChange(hasUnsavedChanges)
         }
         .onChange(of: stagedAttachmentCount) {
-            onDirtyChange(draft != original || stagedAttachmentCount != (original.attachments?.count ?? 0))
+            onDirtyChange(hasUnsavedChanges)
         }
         .onAppear {
             stagedAttachmentCount = stagedCount()
@@ -1354,11 +1354,18 @@ struct EventEditorView: View {
     }
 
     private var canSave: Bool {
-        !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        hasUnsavedChanges
+        && !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && !availableReminderOffsets(draft.reminderOffsets, eventStart: draft.startDate()).isEmpty
         && parseClockTime(timeText) != nil
         && (draft.blinkerMinutesBefore == nil || isReminderAvailable(draft.blinkerMinutesBefore ?? 0))
         && (draft.recurrence?.mode != "after_done_days" || (draft.recurrence?.days ?? 0) > 0)
+    }
+
+    private var hasUnsavedChanges: Bool {
+        draft != original
+        || stagedAttachmentCount != (original.attachments?.count ?? 0)
+        || !pendingRemovedAttachmentNames.isEmpty
     }
 
     private var blinkerSelectionBinding: Binding<Int> {
@@ -1992,7 +1999,7 @@ struct LocationView: View {
     }
 }
 
-struct EditableLocation: Identifiable {
+struct EditableLocation: Identifiable, Equatable {
     let id = UUID()
     var displayName: String
     var latitude: String
@@ -2021,6 +2028,7 @@ struct EditableLocation: Identifiable {
 
 struct LocationEditorView: View {
     @State private var draft: EditableLocation
+    private let original: EditableLocation
     @State private var usesCustomTimezone = false
     @State private var usesCustomCoordinates = false
     @State private var cityQuery = ""
@@ -2032,6 +2040,7 @@ struct LocationEditorView: View {
 
     init(location: EditableLocation, resolverRoot: URL, onSave: @escaping (EditableLocation) -> Void) {
         self._draft = State(initialValue: location)
+        self.original = location
         self._usesCustomTimezone = State(initialValue: !commonTimezones.contains(location.timezone))
         self._usesCustomCoordinates = State(initialValue: location.coordinateSource == "custom")
         self._cityQuery = State(initialValue: location.displayName)
@@ -2142,7 +2151,7 @@ struct LocationEditorView: View {
                 onSave(draft)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!canSave)
+            .disabled(!canSave || !hasUnsavedChanges)
         }
         .padding()
         .task(id: cityQuery) {
@@ -2187,6 +2196,13 @@ struct LocationEditorView: View {
         && Double(draft.longitude) != nil
         && !draft.timezone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && (usesCustomCoordinates || cityQuery.trimmingCharacters(in: .whitespacesAndNewlines) == draft.displayName)
+    }
+
+    private var hasUnsavedChanges: Bool {
+        draft != original
+        || cityQuery != original.displayName
+        || usesCustomCoordinates != (original.coordinateSource == "custom")
+        || usesCustomTimezone != !commonTimezones.contains(original.timezone)
     }
 
     private func select(_ location: BlinkLocation) {
