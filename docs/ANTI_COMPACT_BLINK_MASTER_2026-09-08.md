@@ -1,4 +1,7 @@
-# Blink Anti-Compact Master Handoff
+# HISTORICAL / SUPERSEDED — Blink Anti-Compact Master Handoff (2026-09-08)
+
+> Retained for history. It is not authoritative; the current contract and
+> full description take precedence.
 
 ## Goal (current)
 

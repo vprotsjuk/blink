@@ -66,6 +66,46 @@ public final class AttachmentWorkspace {
         attachmentsRoot.appendingPathComponent(safeComponent(ownerID))
     }
 
+    /// Copies legacy shared-series files into each occurrence folder. The
+    /// legacy folder is intentionally preserved and retries are idempotent for
+    /// identical files. This path is migration-only; production ownership is
+    /// always the event ID.
+    @discardableResult
+    public func migrateLegacySeriesFolders(events: [[String: Any]]) -> [String: Int] {
+        var copiedByEvent: [String: Int] = [:]
+        var groups: [String: [String]] = [:]
+        for event in events {
+            guard let series = (event["series_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let id = (event["id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !series.isEmpty, !id.isEmpty, series != id else { continue }
+            groups[series, default: []].append(id)
+        }
+        for (series, eventIDs) in groups {
+            let source = attachmentURL(ownerID: series)
+            let sourceFiles = (try? files(in: source)) ?? []
+            guard !sourceFiles.isEmpty else { continue }
+            for eventID in Set(eventIDs) {
+                let target = attachmentURL(ownerID: eventID)
+                try? fileManager.createDirectory(at: target, withIntermediateDirectories: true)
+                var copied = 0
+                for sourceFile in sourceFiles {
+                    let sameName = target.appendingPathComponent(sourceFile.lastPathComponent)
+                    if fileManager.fileExists(atPath: sameName.path), sameFile(sourceFile, sameName) { continue }
+                    if let existingFiles = try? files(in: target), existingFiles.contains(where: { sameFile(sourceFile, $0) }) { continue }
+                    let destination = uniqueDestination(for: sourceFile.lastPathComponent, in: target)
+                    do {
+                        try fileManager.copyItem(at: sourceFile, to: destination)
+                        copied += 1
+                    } catch {
+                        // Keep the migration best-effort and preserve the source.
+                    }
+                }
+                if copied > 0 { copiedByEvent[eventID] = copied }
+            }
+        }
+        return copiedByEvent
+    }
+
     /// Creates the owner folder when an editable event asks to reveal it.
     /// This intentionally does not create a manifest entry by itself; the
     /// normal event reload reconciles the folder contents with agenda.json.
@@ -110,7 +150,8 @@ public final class AttachmentWorkspace {
     public func addFiles(_ urls: [URL], to draftID: String) throws {
         let draft = try validatedDraftURL(draftID)
         for source in urls {
-            guard source.isFileURL else { continue }
+            guard source.isFileURL,
+                  (try? source.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
             let destination = uniqueDestination(for: source.lastPathComponent, in: draft)
             try fileManager.copyItem(at: source, to: destination)
         }
@@ -141,10 +182,11 @@ public final class AttachmentWorkspace {
             (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
         }
         for source in stagedFiles {
-            let destination = target.appendingPathComponent(source.lastPathComponent)
-            if !fileManager.fileExists(atPath: destination.path) {
-                try fileManager.copyItem(at: source, to: destination)
-            }
+            let sameName = target.appendingPathComponent(source.lastPathComponent)
+            if fileManager.fileExists(atPath: sameName.path), sameFile(source, sameName) { continue }
+            if let existingFiles = try? files(in: target), existingFiles.contains(where: { sameFile(source, $0) }) { continue }
+            let destination = uniqueDestination(for: source.lastPathComponent, in: target)
+            try fileManager.copyItem(at: source, to: destination)
         }
         // Keep the draft until the agenda JSON is saved. This makes a failed
         // save recoverable and lets the editor retry without losing files.
@@ -186,6 +228,16 @@ public final class AttachmentWorkspace {
         try fileManager.trashItem(at: target, resultingItemURL: nil)
     }
 
+    public func moveFileToTrash(_ url: URL, ownerID: String) throws {
+        let owner = attachmentURL(ownerID: ownerID).standardizedFileURL
+        let target = url.standardizedFileURL
+        guard target.path.hasPrefix(owner.path + "/"),
+              (try? target.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
+            throw NSError(domain: "BlinkAttachments", code: 4, userInfo: [NSLocalizedDescriptionKey: "Attachment is outside the event folder."])
+        }
+        try fileManager.trashItem(at: target, resultingItemURL: nil)
+    }
+
     private var eventDataRoot: URL { root.appendingPathComponent("event_data") }
     private var attachmentsRoot: URL { eventDataRoot.appendingPathComponent("attachments") }
     private var draftRoot: URL { eventDataRoot.appendingPathComponent("drafts") }
@@ -210,6 +262,11 @@ public final class AttachmentWorkspace {
             index += 1
         }
         return candidate
+    }
+
+    private func sameFile(_ left: URL, _ right: URL) -> Bool {
+        guard let leftData = try? Data(contentsOf: left), let rightData = try? Data(contentsOf: right) else { return false }
+        return leftData == rightData
     }
 
     private func safeComponent(_ value: String) -> String {

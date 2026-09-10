@@ -1,5 +1,9 @@
 # Event Attachments and History Freeze Implementation Plan
 
+> **HISTORICAL / SUPERSEDED PLAN** — retained for implementation history.
+> The running code and `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md` are
+> authoritative; this plan is not a current instruction set.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add Blink-local event attachments, multiline event text, safe screenshot paste, immutable History, and click/context-menu event interaction while preserving the existing SwiftUI -> JSON -> watcher -> ntfy architecture.
@@ -14,7 +18,9 @@
 - Do not add SQLite, cloud storage, a second scheduler, a second sender, or a new service.
 - Do not put attachment bytes, absolute paths, private runtime state, or the app bundle in public GitHub.
 - History records are immutable; only `Duplicate as new event` or Delete is allowed.
-- Existing recurring occurrence IDs remain unique; `series_id` owns shared recurring attachments.
+- Existing recurring occurrence IDs remain unique; each occurrence owns
+  `event_data/attachments/<event-id>/`. A recurring successor starts with no
+  inherited attachments. Legacy shared-series folders are migration-only.
 - Preserve multiline local text; truncate only the ntfy projection using UTF-8 byte accounting.
 - Use atomic JSON writes and recoverable filesystem moves.
 - Do not change Weather or Astronomy behavior.
@@ -22,7 +28,7 @@
 ## File map
 
 - Create: `app/attachment_store.py` — pure Python manifest/path rules, safe owner IDs, migration helpers, and testable draft/final directory operations used by Python-side validation.
-- Modify: `app/agenda_store.py` — event attachment metadata normalization, History immutability helpers, duplicate-event construction, and recurring-series owner resolution.
+- Modify: `app/agenda_store.py` — event attachment metadata normalization, History immutability helpers, duplicate-event construction, and occurrence-owner migration.
 - Modify: `watcher.py` — preserve/validate attachment manifest and expose only `has_attachments` to notification formatting.
 - Modify: `app/notification_format.py` — add one paperclip marker to personal push projections and byte-safe multiline projections.
 - Modify: `test_agenda_store.py`, `test_watcher.py`, `test_notification_format.py` — Python contract coverage.
@@ -46,7 +52,7 @@
 
 - [x] Step 1: Record the approved design and the `event_data/attachments` + `event_data/drafts` layout.
 - [x] Step 2: Add `event_data/` to the public-repository ignore list without changing existing user runtime files.
-- [x] Step 3: Document frozen History, Duplicate semantics, recurring `series_id`, multiline text, local-only attachments, and paperclip-only pushes.
+- [x] Step 3: Document frozen History, Duplicate semantics, per-occurrence attachment ownership, multiline text, local-only attachments, and paperclip-only pushes.
 - [x] Step 4: Review the docs for contradictions with the current event lifecycle and recurrence rules.
 - [x] Step 5: Commit only these documentation/ignore changes with `docs: specify event attachments and frozen history`.
 
@@ -115,7 +121,7 @@
 - [x] Step 1: Add failing Swift checks for multiline title/description round-trip, click-to-edit in Today/Upcoming, frozen History rows, hover treatment, and context-action availability.
 - [x] Step 2: Replace single-line Title/Description fields with multiline editors while preserving required-title validation and stable modal scrolling.
 - [x] Step 3: Add the attachment button/Finder multi-select and show the staged file count in the editor.
-- [x] Step 4: Add saved-row paperclip indicator, `Open Attachments Folder`, `Add Files`, and `Paste Screenshot` actions.
+- [x] Step 4: Add saved-row paperclip/count indicator, `Open Attachments Folder`, unified `Paste`, and editor attachment previews.
 - [x] Step 5: Make the row content a click target that opens Edit only for Today/Upcoming; keep buttons and context menus independent.
 - [x] Step 6: Add context menu actions with tab-specific gating: History has Duplicate/Delete/attachment actions, never Edit or On/Off.
 - [x] Step 7: Run the Swift smoke runner and release build; manually inspect all three tabs at normal and compact window sizes.
@@ -140,7 +146,7 @@
 
 - [x] Historical event cannot be edited from click, button, or context menu.
 - [x] Duplicate creates a new ID and folder; source history remains unchanged.
-- [x] Recurring occurrences retain safe unique IDs while sharing `series_id` attachment ownership.
+- [x] Recurring occurrences retain safe unique IDs and own independent event-ID attachment folders.
 - [x] Cancel/Escape does not leave a draft folder; a failed Save does not lose staged files.
 - [x] Multiline local text round-trips; push text is compact and byte-safe.
 - [x] Only a paperclip marker enters personal pushes; no local path or file bytes are sent.

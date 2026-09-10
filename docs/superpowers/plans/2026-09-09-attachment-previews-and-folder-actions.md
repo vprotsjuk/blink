@@ -1,5 +1,8 @@
 # Attachment Previews and Folder Actions Implementation Plan
 
+> **HISTORICAL / SUPERSEDED PLAN** — retained for implementation history.
+> Current behavior is defined by the running code and the current contract.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make event attachment actions reflect what is currently possible, always expose an empty attachment folder for editable events, and show clear previews of staged and saved files without changing Blink’s scheduler/watcher architecture.

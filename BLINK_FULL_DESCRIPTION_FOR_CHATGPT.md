@@ -135,7 +135,7 @@ Description is optional and may be written in any language. Title and Descriptio
 
 ### Event attachments
 
-Blink keeps attachment bytes in `event_data/attachments/` under the project root. Non-recurring events use their event ID as the folder owner. Recurring occurrences retain unique internal IDs for scheduling safety and share one attachment folder through their stable `series_id`. A saved event shows a paperclip and can open its folder from the Mac; files are never sent through ntfy or committed to the public repository. A Finder multi-select adds files to the draft. When the macOS pasteboard contains file URLs (for example, a copied PDF or Excel file), the context menu and editor show `Paste Attachment` and copy those regular files into Blink; when file URLs are present, `Paste Screenshot` is hidden. If the pasteboard contains image data without file URLs, `Paste Screenshot` converts the first image to a unique JPEG. Cancel/Escape discards the current draft folder; a failed Save retains it for recovery. Deleting an event with attachments confirms and moves the Blink-owned folder to Trash.
+Blink keeps attachment bytes in `event_data/attachments/` under the project root. Every event occurrence owns a folder named by its event ID; `series_id` is recurrence metadata only. A recurring successor receives a new ID and starts with no inherited files. A saved event shows a paperclip/count and can open its folder from the Mac; files are never sent through ntfy or committed to the public repository. A Finder multi-select, unified clipboard Paste, and editor-only drag/drop all use one draft staging pipeline. Cancel/Escape discards the current draft folder; a failed Save retains it for recovery. Deleting an event with attachments confirms and moves the Blink-owned folder to Trash.
 
 ## 5A. Complete attachment interaction specification
 
@@ -148,7 +148,7 @@ All runtime data stays inside the Blink project root:
 ```text
 /Users/vitaliiprotsiuk/Desktop/Blink/
   event_data/
-    attachments/<owner-id>/   saved files for an event or recurring series
+    attachments/<event-id>/   saved files for one event occurrence
     drafts/<draft-id>/        temporary files while an editor is open
 ```
 
@@ -156,9 +156,12 @@ The event record stores only attachment metadata (`owner_id`, `count`, `has_file
 
 Owner rules:
 
-- A normal event owns a folder named by its event ID.
-- A recurring event occurrence keeps its own internal event ID for scheduling safety, but occurrences in one series share the stable `series_id` folder.
-- `Duplicate as new event` always creates a new event ID and a new attachment owner. The source History record is not changed and files are not silently shared.
+- Every event occurrence owns a folder named by its event ID.
+- `series_id` remains only for recurrence bookkeeping. Recurring successors get a
+  new ID and an empty attachment folder; they never inherit source files.
+- `Duplicate as new event` always creates a new event ID and an empty attachment
+  owner. `Duplicate with Attachments` creates a new ID and physical independent
+  copies. The source record and files are never silently shared.
 - Active and Upcoming events can always create/open an empty owner folder. History can reveal a folder only when it already exists; opening History never creates a new folder.
 
 ### New event and edit draft lifecycle
@@ -167,9 +170,9 @@ Opening the New Event editor or editing an existing writable event creates a Bli
 
 While the editor is open:
 
-1. `Attach Files` opens an `NSOpenPanel` with multiple file selection enabled and directories disabled.
-2. `Paste Attachment` copies regular file URLs from the macOS pasteboard into the draft.
-3. `Paste Screenshot` converts the first decodable clipboard image to a unique timestamped JPEG in the draft.
+1. `+ Add Files` opens an `NSOpenPanel` with multiple file selection enabled and directories disabled.
+2. One `Paste` action imports file URLs, or converts the first image-only clipboard representation to a unique timestamped JPEG.
+3. Files dropped in the editor attachment panel join the same staging path; directories and row drops are rejected.
 4. The attachment list shows both already-saved files and staged draft files. Images use thumbnails; PDF, Excel, and other files use a generic document icon plus filename and size.
 5. A staged file has a `Remove` action. Removing it affects only the draft.
 6. `Save` finalizes staged files into the permanent owner folder, writes the manifest into `agenda.json`, and removes the draft folder after the metadata save succeeds.
@@ -184,16 +187,16 @@ Blink examines the current pasteboard only when building the editor controls or 
 
 | Clipboard contents | Available action | Result |
 |---|---|---|
-| One or more regular file URLs copied in Finder, including PDF, Excel, image, DWG, or another file | `Paste Attachment` | Copies all regular files into the event/draft folder using unique names. |
-| Image data (TIFF/PNG/JPEG/HEIC) with no file URLs, including a screenshot or copied photo | `Paste Screenshot` | Converts the first image to a timestamped JPEG and stages/copies it. |
-| File URLs and image representations at the same time | `Paste Attachment` only | File URLs take precedence; `Paste Screenshot` is hidden. |
+| One or more regular file URLs copied in Finder, including PDF, Excel, image, DWG, or another file | `Paste` | Copies all regular files into the event/draft folder using unique names. |
+| Image data (TIFF/PNG/JPEG/HEIC) with no file URLs, including a screenshot or copied photo | `Paste` | Converts the first image to a timestamped JPEG and stages/copies it. |
+| File URLs and image representations at the same time | `Paste` | File URLs take precedence; image conversion is not offered. |
 | Plain text, emoji, or a text-only selection | No attachment action | In a focused `Title`/`Description` editor, normal macOS `⌘V` inserts the text. It does not create a file. |
-| PDF/Excel text or page content copied from Preview/Office rather than the file itself | Usually no file action | Use `Attach Files`, or copy the actual file from Finder. If the source provides image data, only the screenshot action may be available. |
-| AutoCAD object/geometry | No special import | Blink does not parse AutoCAD clipboard objects. Save/export the object as a file or image, then use `Attach Files` or `Paste Attachment`. |
-| A directory or copied folder contents | No `Paste Attachment` | Directories are rejected; use `Attach Files` to choose individual files. Blink never recursively imports a folder tree or hidden/service files. |
+| PDF/Excel text or page content copied from Preview/Office rather than the file itself | Usually no file action | Use `+ Add Files`, or copy the actual file from Finder. If the source provides image data, the unified `Paste` action may be available. |
+| AutoCAD object/geometry | No attachment action | Blink does not parse AutoCAD clipboard objects. Save/export the object as a file or image, then use `+ Add Files` or `Paste`. |
+| A directory or copied folder contents | No attachment action | Directories are rejected; use `+ Add Files` to choose individual files. Blink never recursively imports a folder tree or hidden/service files. |
 | Unsupported/empty clipboard | No paste action | The context menu exposes only actions that are currently possible. |
 
-`⌘V` itself is not a global “attach” command. It is native text insertion when a text editor has focus. In an event row or its context menu, `⌘V` has no custom effect; use the visible `Paste Attachment` or `Paste Screenshot` action.
+`⌘V` itself is not a global “attach” command. It is native text insertion when a text editor has focus. Use the visible unified `Paste` action for attachments; plain text, emoji, unsupported graphics, and AutoCAD clipboard objects never become files.
 
 ### Finder workflow and direct folder changes
 
@@ -206,11 +209,11 @@ Blink's GUI performs its normal event reload on appearance and approximately eve
 - filename/extension search sees the file after the same reload;
 - no watcher restart or SQL synchronization is required.
 
-The current Upcoming records have their owner folders provisioned. Future editable events receive an empty folder on demand through the same action.
+The current Upcoming records use event-ID owner folders. Future editable events receive an empty folder on demand through the same action.
 
 ### Drag-and-drop policy
 
-Dragging a file or a group of files onto an event row currently does nothing. It is intentionally not a second attachment pipeline. The supported, predictable paths are `Attach Files`, `Paste Attachment`, `Paste Screenshot`, and direct Finder placement into `Open Attachments Folder`. Any future drag-and-drop feature must reuse the existing draft/storage path, accept regular files only, reject directories, and remain disabled for frozen History.
+Dragging a file or group of files onto an event row does nothing. Drag-and-drop is supported only inside the open editor's attachment panel, where regular files join the same draft pipeline; directories are rejected and History is immutable. Direct Finder placement into `Open Attachments Folder` remains supported.
 
 ### Context menus by tab
 
@@ -220,8 +223,7 @@ The context menu is dynamic and never offers an action that cannot work with the
 
 - `Edit` — opens the multiline event editor; clicking the row content does the same.
 - `Add Files` — Finder multi-select; copies selected regular files.
-- `Paste Attachment` — shown for regular file URLs in the clipboard.
-- `Paste Screenshot` — shown for image-only clipboard data when no file URLs are present.
+- `Paste` — shown only when the clipboard has regular file URLs or image data; file URLs take precedence.
 - `Open Attachments Folder` — always available, including for an empty folder.
 - `Duplicate as new event` — creates a new ID/folder.
 - `Done` (Today where applicable).
@@ -242,7 +244,7 @@ History has no `Edit`, `Add Files`, paste actions, `Done`, or On/Off. The source
 - PDF, Excel, DWG, text, and other non-image files show a generic type icon, filename, and byte size.
 - Hidden files and nested directories are omitted from the preview list and manifest count.
 - The push contains only one `📎` marker when an event has local attachments. It never contains local paths, filenames, or file bytes.
-- Deleting an event with attachments asks for confirmation and moves the Blink-owned folder to macOS Trash. A shared recurring-series folder is moved only when no remaining event uses it.
+- Deleting an event with attachments asks for confirmation and moves that event's Blink-owned folder to macOS Trash. No current event shares an attachment owner.
 
 ### Search behavior
 
@@ -278,11 +280,12 @@ The same event object can be viewed in different tabs based on its state. Tabs a
 - `Done`: marks the event completed, stops its blinker, removes it from active attention, and preserves it in History.
 - `On` / `Off`: controls whether future reminders are active. `Off` is not a replacement for `Done`. Disabling a due or completed-looking item must not delete it or remove its history record.
 - `Edit`: edits the same non-History event record. Saving a changed date/time recalculates its view classification and future reminder schedule.
-- `Duplicate as new event`: creates a fresh unfinished event with a new ID and new attachment owner from a History record without modifying the source.
+- `Duplicate as new event`: creates a fresh unfinished event with a new ID and empty attachment owner from a History record without modifying the source.
+- `Duplicate with Attachments`: same as above, but physically copies each source file into the new event-ID folder; the two folders then evolve independently.
 - `Delete`: removes the event record intentionally. This is the destructive action and is separate from Off.
-- `Snooze`: moves the active event's effective due time forward while preserving the original scheduled time and the snooze history. The event remains active, continues blinking, and retains Done.
+- There is no Snooze feature in the current product. Legacy snooze fields are only stripped during JSON migration.
 
-Today shows `Done`, a folder button, `On/Off`, `Edit`, attachment actions, and `Delete`. Upcoming shows a folder button, `On/Off`, `Edit`, attachment actions, and `Delete`. History shows `Duplicate as new event`, a folder button only when attachments exist, and `Delete`; it never shows Edit or edit-on-click. In Today/Upcoming, the row content opens the editor by double-click, not single-click. The UI must not hide Done merely because an event has become overdue or has been snoozed.
+Today shows `Done`, a folder button, `On/Off`, `Edit`, attachment actions, and `Delete`. Upcoming shows a folder button, `On/Off`, `Edit`, attachment actions, and `Delete`. History shows `Duplicate as new event`, a folder button only when attachments exist, and `Delete`; it never shows Edit or edit-on-click. In Today/Upcoming, the row content opens the editor by double-click, not single-click. The UI must not hide Done merely because an event has become overdue.
 
 ## 7. Attention, Colors, and Blinker
 
@@ -296,14 +299,14 @@ The priority dot remains saturated even when an event is Off. The rest of an Off
 
 ### Blinker rules
 
-- An event can have one blinker start offset at most.
-- The blinker checkbox is attached to each reminder row.
-- Selecting a different blinker row clears the previous selection.
-- New events default the blinker to the final reminder row, normally `At time`.
+- An event has one independent Blinker start offset at most.
+- The editor renders a separate `Start blinking` picker; it is not a checkbox on reminder rows.
+- Reminders remain a multi-select and changing reminders never changes Blinker.
+- Changing Blinker never changes reminders.
+- New events default Blinker to `At event` (`blinker_minutes_before: 0`).
 - If a blinker offset is selected, the lamp starts at that offset and continues until Done.
 - If no blinker offset is explicitly selected, the lamp starts when the event becomes due.
-- Snooze does not stop the blinker. Only Done stops the active attention state.
-- Reminder offsets that no longer fit before the effective event time are not active/schedulable. For example, after a one-hour snooze, a two-hour reminder is discarded for the current occurrence while 30-minute, 10-minute, and 5-minute reminders can remain.
+- Only Done stops the active attention state. Reminder eligibility is validated independently of Blinker.
 
 ### In-app attention
 
@@ -480,11 +483,11 @@ The editor has two mutually exclusive modes:
 
 ### Today
 
-Shows active events for today, including overdue unfinished items. The header places one compact round blue `+` button immediately to the left of `Today` for creating a new event. Each row displays date/time, saturated priority dot, title, description, `📎` when attachments exist, a compact scrollable attachment filename/type column when files exist, a folder button, `Done`, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on double-click and reacts to hover. Overdue rows and the Today tab may pulse according to attention rules.
+Shows active events for today, including overdue unfinished items. The header places one compact round blue `+` button immediately to the left of `Today` for creating a new event. Each row displays date/time, saturated priority dot, title, description, `📎` plus count when attachments exist, a folder button, `Done`, `On/Off`, `Edit`, and `Delete`. Rows do not contain filename mini-lists or nested scroll areas. The content area opens Edit on double-click and reacts to hover. Overdue rows and the Today tab may pulse according to attention rules.
 
 ### Upcoming
 
-Shows future enabled events sorted by effective time. Each row displays full date including year, time, priority dot, title, description, `📎` when attachments exist, a compact scrollable attachment filename/type column when files exist, a folder button, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on double-click.
+Shows future enabled events sorted by effective time. Each row displays full date including year, time, priority dot, title, description, `📎` plus count when attachments exist, a folder button, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on double-click.
 
 ### History
 
@@ -514,15 +517,15 @@ All navigation tabs use Blink-owned buttons with a subtle pointer-hover backgrou
 
 ### New Event
 
-Opens the event editor with the default final-row blinker selection. The modal supports date picking, direct 24-hour time entry, stepper arrows, importance, enabled state, recurrence, reminders, multiline Title/Description, Finder multi-file selection, file-URL paste, screenshot paste, and a folder button beside the attachment count. It creates a temporary draft ID/folder before Save. Clicking outside a clean modal closes it. A dirty form requires the user to choose whether to discard, so accidental outside clicks do not erase edits.
+Opens the event editor with an independent `Start blinking` picker defaulted to `At event`. The modal supports date picking, direct 24-hour time entry, stepper arrows, importance, enabled state, recurrence, reminders, multiline Title/Description, Finder multi-file selection, one unified clipboard Paste, editor-only file drop, previews, and a folder button beside the attachment count. It creates a temporary draft ID/folder before Save. Clicking outside a clean modal closes it. A dirty form requires the user to choose whether to discard, so accidental outside clicks do not erase edits.
 
 ### Event context menu
 
-Today and Upcoming rows support hover, double-click editing, and a context menu with Edit, Add Files, Paste Attachment or Paste Screenshot (whichever the current pasteboard supports), Open Attachments Folder, Duplicate as new event, On/Off, Done, and Delete as applicable. `Open Attachments Folder` is always available for these editable rows and creates an empty owner folder on demand. The folder button is placed before On/Off in the row. `Paste Attachment` appears for regular file URLs; it takes precedence over `Paste Screenshot`, which appears only for image data without file URLs. History rows are frozen and omit Edit/On/Off; they offer Duplicate as new event, reveal an existing attachment folder, and Delete.
+Today and Upcoming rows support hover, double-click editing, and a context menu with Edit, Add Files, one unified Paste (whichever the current pasteboard supports), Open Attachments Folder, Duplicate as new event, Duplicate with Attachments when files exist, On/Off, Done, and Delete as applicable. `Open Attachments Folder` is always available for these editable rows and creates an empty owner folder on demand. The folder button is placed before On/Off in the row. History rows are frozen and omit Edit/On/Off; they offer Duplicate as new event, Duplicate with Attachments when files exist, reveal an existing attachment folder, and Delete.
 
-`Paste Screenshot` accepts image data currently available on the macOS pasteboard (including a copied photo), converts it to a timestamped JPEG, and stages it in the event draft. `Paste Attachment` accepts regular file URLs currently available on the pasteboard, including PDF/Excel/image files, and stages/copies them using the same attachment path as `Attach Files`; directories and folder contents are not imported. The editor immediately lists staged and saved attachments: images use thumbnails, while PDF/Excel/other files use type icons with filename and size; staged files can be removed before Save. Dragging files onto a row is intentionally not a second attachment path yet.
+`Paste` accepts regular file URLs or, when no file URLs exist, image data currently available on the macOS pasteboard (including a copied photo), converts image data to a timestamped JPEG, and stages it in the event draft. Directories and folder contents are not imported. The editor immediately lists staged and saved attachments: images use thumbnails, while PDF/Excel/other files use type icons with filename and size; staged files can be removed before Save and saved-file removal is pending until Save. Files may also be dropped in this panel only.
 
-Rows render the attachment list in a compact right-side column: each filename is one line with middle truncation, a type-specific icon/extension remains visible, and the column scrolls vertically when many files are present. The editor shows the same staged/saved list and keeps a folder button beside the attachment count; for a new event it opens the temporary draft folder, while an existing event opens its permanent owner folder. These controls expose the same local filesystem state and do not introduce a second attachment store.
+Rows show only a compact paperclip/count; clicking it opens a popover with filename/type previews and an `Open Attachments Folder` action. The editor uses the same attachment list model and keeps a folder button beside the count. These controls expose the same local filesystem state and do not introduce a second attachment store.
 
 ### Save buttons
 

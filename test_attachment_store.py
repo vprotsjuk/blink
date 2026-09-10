@@ -11,9 +11,10 @@ class AttachmentStoreTests(unittest.TestCase):
         event = {"id": "event-123", "title": "Call"}
         self.assertEqual(attachment_store.owner_id_for_event(event), "event-123")
 
-    def test_owner_id_uses_series_id_for_recurring_event(self):
+    def test_owner_id_uses_occurrence_id_for_recurring_event(self):
         event = {"id": "series-1-g4", "series_id": "series-1", "title": "Standup"}
-        self.assertEqual(attachment_store.owner_id_for_event(event), "series-1")
+        self.assertEqual(attachment_store.owner_id_for_event(event), "series-1-g4")
+        self.assertEqual(attachment_store.legacy_owner_id_for_event(event), "series-1")
 
     def test_manifest_normalizes_missing_and_valid_metadata(self):
         event = {"id": "event-123", "title": "Call"}
@@ -67,6 +68,24 @@ class AttachmentStoreTests(unittest.TestCase):
             self.assertEqual(
                 attachment_store.draft_root(root), root / "event_data" / "drafts"
             )
+
+    def test_legacy_series_migration_is_idempotent_and_preserves_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = attachment_store.attachments_root(root) / "series-1"
+            source.mkdir(parents=True)
+            (source / "report.pdf").write_bytes(b"pdf")
+            events = [
+                {"id": "series-1-g1", "series_id": "series-1"},
+                {"id": "series-1-g2", "series_id": "series-1"},
+            ]
+            first = attachment_store.migrate_legacy_series_attachments(root, events)
+            second = attachment_store.migrate_legacy_series_attachments(root, events)
+            self.assertEqual(first, {"series-1-g1": 1, "series-1-g2": 1})
+            self.assertEqual(second, {})
+            self.assertTrue((source / "report.pdf").exists())
+            self.assertTrue((attachment_store.attachments_root(root) / "series-1-g1" / "report.pdf").exists())
+            self.assertTrue((attachment_store.attachments_root(root) / "series-1-g2" / "report.pdf").exists())
 
 
 if __name__ == "__main__":

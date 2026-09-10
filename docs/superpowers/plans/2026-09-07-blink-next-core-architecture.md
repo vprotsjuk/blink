@@ -1,5 +1,12 @@
 # Blink Next Core Architecture Implementation Plan
 
+> **HISTORICAL / SUPERSEDED PLAN**
+>
+> Do not use this document as the current product contract. It is retained for
+> historical context only. Running code and the current contract/specification
+> take precedence; Snooze, templates, quiet hours, and the other proposals in
+> this plan are not current Blink features.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add Snooze, recurring events, templates, menu bar status, quiet hours, search, better time input, and early blinker start without tangling Blink's event, notification, and UI layers.

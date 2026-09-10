@@ -1,5 +1,9 @@
 # Event Attachments and History Freeze Design
 
+> **HISTORICAL / SUPERSEDED DESIGN** — retained for implementation history.
+> Current behavior is defined by the running code and
+> `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`.
+
 **Date:** 2026-09-09  
 **Status:** Approved direction; implementation not started
 

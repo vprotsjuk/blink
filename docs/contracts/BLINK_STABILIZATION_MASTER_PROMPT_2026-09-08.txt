@@ -1,3 +1,9 @@
+HISTORICAL / SUPERSEDED — Blink Stabilization Master Prompt (2026-09-08)
+
+> This prompt is retained as an audit record only. It is not a current product
+> specification. For current behavior, use `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`
+> and `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`.
+
 Работаем с текущим проектом:
 
 /Users/vitaliiprotsiuk/Desktop/Blink

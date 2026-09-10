@@ -252,6 +252,23 @@ func testNewEditableEventWritesDoneSchemaAndAttentionLevel() throws {
     try expect(object["blinker_minutes_before"] as? Int == 0, "New GUI event should default blinker to the last reminder row")
 }
 
+func testBlinkerIsIndependentFromReminderSelection() throws {
+    let event = EditableEvent(
+        id: "independent",
+        title: "Independent",
+        date: DateComponents(calendar: Calendar(identifier: .gregorian), year: 2099, month: 9, day: 12).date!,
+        hour: 12,
+        minute: 0,
+        description: "",
+        reminderOffsets: [30, 0],
+        enabled: true,
+        blinkerMinutesBefore: 60
+    )
+    let dictionary = event.toDictionary()
+    try expect((dictionary["reminders_minutes_before"] as? [Int]) == [30, 0], "Reminder selection should remain independent")
+    try expect(dictionary["blinker_minutes_before"] as? Int == 60, "Blinker should keep its independent offset")
+}
+
 func testDoneAndAttentionWritesPreserveUnknownFields() throws {
     let root = try temporaryRoot()
     let agenda = root.appendingPathComponent("agenda.json")
@@ -712,8 +729,8 @@ func testEventEditorLayoutContracts() throws {
         .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
     let source = try String(contentsOf: contentView, encoding: .utf8)
     try expect(source.contains("TextEditor(text: $draft.title)"), "Title editor should support multiline text")
-    try expect(source.contains("HStack(spacing: 18)"), "Reminder controls should use aligned columns")
-    try expect(source.contains(".frame(width: 230, alignment: .leading)"), "Reminder columns should have a stable width")
+    try expect(source.contains("Picker(\"Start blinking\", selection: blinkerSelectionBinding)"), "Blinker should be an independent picker")
+    try expect(!source.contains("Turn on blinker"), "Blinker should not be attached to reminder rows")
     try expect(source.contains(".frame(maxWidth: 620, alignment: .leading)"), "Editor form should use a centered readable content width")
     try expect(source.contains("eventEditorFieldCard()"), "Title and Description should use the softened field-card style")
     try expect(source.contains("scrollContentBackground(.hidden)"), "Text editors should use the card background instead of native edge-to-edge fill")
@@ -891,6 +908,21 @@ func testExternalAttachmentFolderReconcilesManifest() throws {
     try expect(event.hasAttachments && event.attachments?.count == 1, "External folder files should reconcile into the event manifest")
 }
 
+func testAttachmentFinalizeNeverOverwritesExistingFile() throws {
+    let root = try temporaryRoot()
+    let workspace = AttachmentWorkspace(root: root)
+    let owner = try workspace.ensureAttachmentFolder(ownerID: "event-1")
+    try Data("existing".utf8).write(to: owner.appendingPathComponent("report.pdf"))
+    let source = root.appendingPathComponent("report.pdf")
+    try Data("new".utf8).write(to: source)
+    let draft = try workspace.createDraft()
+    try workspace.addFiles([source], to: draft)
+    _ = try workspace.finalize(draftID: draft, ownerID: "event-1")
+    let existingData = try Data(contentsOf: owner.appendingPathComponent("report.pdf"))
+    try expect(String(data: existingData, encoding: .utf8) == "existing", "Existing attachment was overwritten")
+    try expect(FileManager.default.fileExists(atPath: owner.appendingPathComponent("report-2.pdf").path), "Collision should receive deterministic suffix")
+}
+
 func testAttachmentDraftCancelAndMultilineEventContract() throws {
     let root = try temporaryRoot()
     let workspace = AttachmentWorkspace(root: root)
@@ -963,8 +995,9 @@ func testEventRowsExposeAttachmentAndHistoryContracts() throws {
     let source = try String(contentsOf: sourceURL, encoding: .utf8)
     try expect(source.contains("TextEditor(text: $draft.title)"), "Title should use a multiline editor")
     try expect(source.contains("TextEditor(text: $draft.description)"), "Description should use a multiline editor")
-    try expect(source.contains("Paste Screenshot"), "Context menu should expose screenshot paste")
-    try expect(source.contains("Paste Attachment"), "Context menu should expose file attachment paste")
+    try expect(source.contains("Button(\"Paste\")"), "Context menu should expose unified paste")
+    try expect(!source.contains("Paste Attachment"), "Old split paste action should be removed")
+    try expect(!source.contains("Paste Screenshot"), "Old split screenshot action should be removed")
     try expect(source.contains("clipboardFileURLs"), "File attachment paste should inspect file URLs on the pasteboard")
     try expect(source.contains("Duplicate as new event"), "Context menu should expose History duplication")
     try expect(source.contains("contextMenu"), "Event rows should expose a context menu")
@@ -979,8 +1012,7 @@ func testAttachmentFolderMenuAndPreviewContracts() throws {
         .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
     let source = try String(contentsOf: sourceURL, encoding: .utf8)
     try expect(source.contains("if !showsHistory || event.hasAttachments"), "Active events should always expose their attachment folder")
-    try expect(source.contains("if clipboardImageAvailable()"), "Paste Screenshot should appear only for image clipboard data")
-    try expect(source.contains("if !clipboardFileURLs().isEmpty"), "Paste Screenshot should be replaced by Paste Attachment when files are on the pasteboard")
+    try expect(source.contains("clipboardAttachmentAvailable"), "Unified Paste should inspect the current pasteboard")
     try expect(source.contains("AttachmentPreviewList"), "The editor should show attachment previews")
     try expect(source.contains("Remove"), "Draft attachments should have a remove action")
 }
@@ -992,9 +1024,8 @@ func testEventRowAttachmentListAndFolderButtonContracts() throws {
         .deletingLastPathComponent()
         .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
     let source = try String(contentsOf: sourceURL, encoding: .utf8)
-    try expect(source.contains("AttachmentFileList"), "Event rows should show an attachment filename list")
-    try expect(source.contains("lineLimit(1)"), "Attachment filenames should be shortened to one line")
-    try expect(source.contains("ScrollView(.vertical"), "Many attachment filenames should scroll vertically")
+    try expect(!source.contains("AttachmentFileList"), "Event rows should not show a filename mini-list")
+    try expect(source.contains("📎 "), "Rows should show a compact paperclip count")
     try expect(source.contains("systemName: \"folder\""), "Rows and editor should expose a folder button")
     try expect(source.contains("simultaneousGesture(TapGesture(count: 2)"), "The whole event row should open on double click")
     try expect(source.contains("onChange(of: ownerID)"), "Editor previews should reload when the event owner changes")
@@ -1040,7 +1071,7 @@ func testHistorySaveIsRejectedAndAttachmentMetadataPersists() throws {
     try expect(rejected, "History event edit should be rejected")
 }
 
-func testRecurringDeleteKeepsSharedAttachmentOwner() throws {
+func testRecurringDeleteUsesIndependentAttachmentOwners() throws {
     let root = try temporaryRoot()
     let agenda = root.appendingPathComponent("agenda.json")
     try """
@@ -1050,11 +1081,15 @@ func testRecurringDeleteKeepsSharedAttachmentOwner() throws {
     ]}
     """.write(to: agenda, atomically: true, encoding: .utf8)
     let workspace = AttachmentWorkspace(root: root)
-    let owner = workspace.attachmentURL(ownerID: "series")
-    try FileManager.default.createDirectory(at: owner, withIntermediateDirectories: true)
-    try Data("shared".utf8).write(to: owner.appendingPathComponent("shared.txt"))
+    let firstOwner = workspace.attachmentURL(ownerID: "series-g1")
+    let secondOwner = workspace.attachmentURL(ownerID: "series-g2")
+    try FileManager.default.createDirectory(at: firstOwner, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: secondOwner, withIntermediateDirectories: true)
+    try Data("first".utf8).write(to: firstOwner.appendingPathComponent("first.txt"))
+    try Data("second".utf8).write(to: secondOwner.appendingPathComponent("second.txt"))
     try BlinkStore(root: root).delete(eventID: "series-g1")
-    try expect(FileManager.default.fileExists(atPath: owner.appendingPathComponent("shared.txt").path), "Shared recurring attachments should remain while the series has another occurrence")
+    try expect(!FileManager.default.fileExists(atPath: firstOwner.appendingPathComponent("first.txt").path), "Deleted occurrence folder should move to Trash")
+    try expect(FileManager.default.fileExists(atPath: secondOwner.appendingPathComponent("second.txt").path), "Deleting one occurrence must not affect another")
 }
 
 let tests: [(String, () throws -> Void)] = [
@@ -1068,6 +1103,7 @@ let tests: [(String, () throws -> Void)] = [
     ("blinker offset starts attention before event start", testBlinkerOffsetStartsAttentionBeforeEventStart),
     ("event search matches title description date and status", testEventSearchMatchesTitleDescriptionDateAndStatus),
     ("new editable event writes done schema and attention level", testNewEditableEventWritesDoneSchemaAndAttentionLevel),
+    ("blinker is independent from reminders", testBlinkerIsIndependentFromReminderSelection),
     ("done and attention writes preserve unknown fields", testDoneAndAttentionWritesPreserveUnknownFields),
     ("complete after done days recurring appends next event", testCompleteAfterDoneDaysRecurringAppendsNextEvent),
     ("complete weekly fixed recurring appends next weekday", testCompleteWeeklyFixedRecurringAppendsNextWeekday),
@@ -1100,6 +1136,7 @@ let tests: [(String, () throws -> Void)] = [
     ("Astronomy uses directional phase labels", testAstronomyUsesDirectionalPhaseLabels),
     ("attachment workspace round trip", testAttachmentWorkspaceRoundTrip),
     ("external attachment folder reconciles manifest", testExternalAttachmentFolderReconcilesManifest),
+    ("attachment finalize preserves collisions", testAttachmentFinalizeNeverOverwritesExistingFile),
     ("attachment draft cancel and multiline event contract", testAttachmentDraftCancelAndMultilineEventContract),
     ("saving event commits attachments", testSavingEventCommitsAttachmentsAndPreservesDraftOnFailure),
     ("event rows expose attachment and history contracts", testEventRowsExposeAttachmentAndHistoryContracts),
@@ -1107,7 +1144,7 @@ let tests: [(String, () throws -> Void)] = [
     ("event row attachment list and folder button contracts", testEventRowAttachmentListAndFolderButtonContracts),
     ("attachment workspace folder contracts", testAttachmentWorkspaceFolderContracts),
     ("history save is rejected", testHistorySaveIsRejectedAndAttachmentMetadataPersists),
-    ("recurring delete keeps shared attachments", testRecurringDeleteKeepsSharedAttachmentOwner)
+    ("recurring delete uses independent attachment owners", testRecurringDeleteUsesIndependentAttachmentOwners)
 ]
 
 do {

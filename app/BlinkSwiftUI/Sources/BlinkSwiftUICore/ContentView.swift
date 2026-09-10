@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 public enum BlinkDesign {
     public static let pagePadding: CGFloat = 18
@@ -246,18 +247,20 @@ public struct ContentView: View {
                 onCancel: { closeEditor() },
                 onOpenAttachments: {
                     let workspace = editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root)
-                    if event.attachments != nil || event.seriesID != nil {
-                        let series = event.seriesID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                        let manifestOwner = event.attachments?.ownerID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                        let ownerID = series.isEmpty ? (manifestOwner.isEmpty ? event.id : manifestOwner) : series
-                        _ = try? workspace.ensureAttachmentFolder(ownerID: ownerID)
-                        NSWorkspace.shared.open(workspace.attachmentURL(ownerID: ownerID))
-                    } else if let draftID = editorDraftID {
+                    if let draftID = editorDraftID, !events.contains(where: { $0.id == event.id }) {
                         NSWorkspace.shared.open(workspace.draftURL(draftID))
+                    } else {
+                        _ = try? workspace.ensureAttachmentFolder(ownerID: event.id)
+                        NSWorkspace.shared.open(workspace.attachmentURL(ownerID: event.id))
                     }
                 }
-            ) { savedEvent in
+            ) { savedEvent, pendingRemovedNames in
                 perform {
+                    let workspace = editorAttachmentWorkspace
+                    for name in pendingRemovedNames {
+                        let fileURL = workspace?.attachmentURL(ownerID: savedEvent.id).appendingPathComponent(name)
+                        if let fileURL { try? workspace?.moveFileToTrash(fileURL, ownerID: savedEvent.id) }
+                    }
                     try store.save(
                         savedEvent,
                         attachmentWorkspace: editorAttachmentWorkspace,
@@ -343,14 +346,14 @@ public struct ContentView: View {
             duplicate: { event in
                 openEditor(duplicateEditableEvent(from: event))
             },
+            duplicateWithAttachments: { event in
+                duplicateWithAttachments(from: event)
+            },
             addFiles: { event in
                 chooseFiles(for: event)
             },
-            pasteAttachment: { event in
-                pasteAttachment(for: event)
-            },
-            pasteScreenshot: { event in
-                pasteScreenshot(for: event)
+            paste: { event in
+                paste(for: event)
             },
             openAttachments: { event in
                 openAttachmentsFolder(for: event)
@@ -409,47 +412,64 @@ public struct ContentView: View {
         return duplicate
     }
 
+    private func duplicateWithAttachments(from event: BlinkEvent) {
+        let duplicate = duplicateEditableEvent(from: event)
+        let workspace = AttachmentWorkspace(root: store.root)
+        guard let draftID = try? workspace.createDraft() else { return }
+        let sourceFiles = (try? workspace.files(ownerID: event.id)) ?? []
+        do {
+            try workspace.addFiles(sourceFiles, to: draftID)
+            openEditor(duplicate, workspace: workspace, draftID: draftID)
+        } catch {
+            try? workspace.discard(draftID: draftID)
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func chooseFiles(for event: BlinkEvent) {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
-        perform {
-            try store.addFiles(eventID: event.id, urls: panel.urls)
-            reload()
-        }
+        stageFilesAndOpenEditor(event: event, urls: panel.urls)
     }
 
-    private func pasteAttachment(for event: BlinkEvent) {
+    private func paste(for event: BlinkEvent) {
         let urls = clipboardFileURLs()
-        guard !urls.isEmpty else {
-            errorMessage = "No file was found in the clipboard."
-            return
-        }
-        perform {
-            try store.addFiles(eventID: event.id, urls: urls)
-            reload()
+        if !urls.isEmpty {
+            stageFilesAndOpenEditor(event: event, urls: urls)
+        } else if let imageData = clipboardJPEGData() {
+            let workspace = AttachmentWorkspace(root: store.root)
+            guard let draftID = try? workspace.createDraft() else { return }
+            do {
+                try workspace.addJPEG(imageData, to: draftID)
+                openEditor(EditableEvent(event: event), workspace: workspace, draftID: draftID)
+            } catch {
+                try? workspace.discard(draftID: draftID)
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
-    private func pasteScreenshot(for event: BlinkEvent) {
-        guard let imageData = clipboardJPEGData() else {
-            errorMessage = "No image was found in the clipboard."
-            return
-        }
-        perform {
-            try store.addJPEG(eventID: event.id, data: imageData)
-            reload()
+    private func stageFilesAndOpenEditor(event: BlinkEvent, urls: [URL]) {
+        let workspace = AttachmentWorkspace(root: store.root)
+        guard let draftID = try? workspace.createDraft() else { return }
+        do {
+            try workspace.addFiles(urls, to: draftID)
+            openEditor(EditableEvent(event: event), workspace: workspace, draftID: draftID)
+        } catch {
+            try? workspace.discard(draftID: draftID)
+            errorMessage = error.localizedDescription
         }
     }
 
     private func openAttachmentsFolder(for event: BlinkEvent) {
         let workspace = AttachmentWorkspace(root: store.root)
         if !eventIsHistoryFrozen(event) {
-            _ = try? workspace.ensureAttachmentFolder(ownerID: event.attachmentOwnerID)
+            _ = try? workspace.ensureAttachmentFolder(ownerID: event.id)
         }
-        NSWorkspace.shared.open(workspace.attachmentURL(ownerID: event.attachmentOwnerID))
+        NSWorkspace.shared.open(workspace.attachmentURL(ownerID: event.id))
     }
 
     private func filtered(_ source: [BlinkEvent]) -> [BlinkEvent] {
@@ -670,6 +690,7 @@ private struct EventRowView: View {
     let showsHistory: Bool
     let rowContentOpacity: (BlinkEvent) -> Double
     @State private var isHovered = false
+    @State private var showAttachmentPopover = false
 
     var body: some View {
         HStack {
@@ -709,13 +730,14 @@ private struct EventRowView: View {
             if !showsHistory {
                 Button("Edit") { actions.edit(event) }
                 Button("Add Files") { actions.addFiles(event) }
-                if !clipboardFileURLs().isEmpty {
-                    Button("Paste Attachment") { actions.pasteAttachment(event) }
-                } else if clipboardImageAvailable() {
-                    Button("Paste Screenshot") { actions.pasteScreenshot(event) }
+                if clipboardAttachmentAvailable() {
+                    Button("Paste") { actions.paste(event) }
                 }
             }
             Button("Duplicate as new event") { actions.duplicate(event) }
+            if event.hasAttachments {
+                Button("Duplicate with Attachments") { actions.duplicateWithAttachments(event) }
+            }
             if !showsHistory || event.hasAttachments {
                 Button("Open Attachments Folder") { actions.openAttachments(event) }
             }
@@ -740,61 +762,27 @@ private struct EventRowView: View {
             VStack(alignment: .leading) {
                 HStack(spacing: 6) {
                     Text(event.title)
-                    if event.hasAttachments { Text("📎") }
+                    if event.hasAttachments {
+                        Button {
+                            showAttachmentPopover.toggle()
+                        } label: {
+                            Text("📎 \(event.attachments?.count ?? 0)")
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showAttachmentPopover) {
+                            AttachmentPopover(root: attachmentRoot, ownerID: event.id) {
+                                actions.openAttachments(event)
+                            }
+                        }
+                    }
                 }
                 if let description = event.description, !description.isEmpty {
                     Text(description).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
-            AttachmentFileList(
-                root: attachmentRoot,
-                ownerID: event.attachmentOwnerID,
-                refreshToken: event.attachments?.count ?? 0
-            )
         }
         .opacity(rowContentOpacity(event))
         .animation(.easeInOut(duration: 0.3), value: pulseVisible)
-    }
-}
-
-private struct AttachmentFileList: View {
-    let root: URL
-    let ownerID: String
-    let refreshToken: Int
-    @State private var files: [URL] = []
-
-    var body: some View {
-        Group {
-            if files.isEmpty {
-                EmptyView()
-            } else {
-                ScrollView(.vertical, showsIndicators: true) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(files, id: \.self) { file in
-                            HStack(spacing: 5) {
-                                Image(systemName: attachmentSymbol(for: file))
-                                    .foregroundStyle(.secondary)
-                                Text(file.lastPathComponent)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                    .help(file.lastPathComponent)
-                            }
-                            .font(.caption)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(width: 220, alignment: .leading)
-                .frame(maxHeight: 54, alignment: .leading)
-            }
-        }
-        .onAppear(perform: reload)
-        .onChange(of: refreshToken) { reload() }
-        .onChange(of: ownerID) { reload() }
-    }
-
-    private func reload() {
-        files = (try? AttachmentWorkspace(root: root).files(ownerID: ownerID)) ?? []
     }
 }
 
@@ -805,11 +793,41 @@ private struct AttachmentPreviewItem: Identifiable {
     var id: String { "\(isDraft ? "draft" : "saved"):\(url.path)" }
 }
 
+private struct AttachmentPopover: View {
+    let root: URL
+    let ownerID: String
+    let openFolder: () -> Void
+    @State private var files: [URL] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Attachments").font(.headline)
+            if files.isEmpty {
+                Text("No attachments").foregroundStyle(.secondary)
+            } else {
+                ForEach(files, id: \.self) { file in
+                    HStack(spacing: 8) {
+                        Image(systemName: attachmentSymbol(for: file)).foregroundStyle(.secondary)
+                        Text(file.lastPathComponent).lineLimit(1).truncationMode(.middle)
+                        Spacer(minLength: 4)
+                    }
+                }
+            }
+            Button("Open Attachments Folder", action: openFolder)
+        }
+        .padding(14)
+        .frame(minWidth: 260, maxWidth: 360)
+        .onAppear { files = (try? AttachmentWorkspace(root: root).files(ownerID: ownerID)) ?? [] }
+    }
+}
+
 private struct AttachmentPreviewList: View {
     let workspace: AttachmentWorkspace?
     let draftID: String?
     let ownerID: String
     let refreshToken: Int
+    let hiddenSavedNames: Set<String>
+    let onRemoveSaved: (String) -> Void
     let onChange: () -> Void
     @State private var items: [AttachmentPreviewItem] = []
 
@@ -831,14 +849,16 @@ private struct AttachmentPreviewList: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 4)
-                                if item.isDraft {
-                                    Button("Remove") {
+                                Button("Remove") {
+                                    if item.isDraft {
                                         guard let workspace, let draftID else { return }
                                         try? workspace.removeDraftFile(item.url, draftID: draftID)
-                                        onChange()
+                                    } else {
+                                        onRemoveSaved(item.url.lastPathComponent)
                                     }
-                                    .buttonStyle(.bordered)
+                                    onChange()
                                 }
+                                .buttonStyle(.bordered)
                             }
                             .padding(.vertical, 2)
                         }
@@ -851,6 +871,7 @@ private struct AttachmentPreviewList: View {
         .onChange(of: refreshToken) { reload() }
         .onChange(of: ownerID) { reload() }
         .onChange(of: draftID) { reload() }
+        .onChange(of: hiddenSavedNames) { reload() }
         .task(id: previewReloadIdentity) { reload() }
     }
 
@@ -866,7 +887,7 @@ private struct AttachmentPreviewList: View {
         }
         var loaded = ((try? workspace.files(ownerID: ownerID)) ?? []).map {
             AttachmentPreviewItem(url: $0, isDraft: false)
-        }
+        }.filter { !hiddenSavedNames.contains($0.url.lastPathComponent) }
         if let draftID {
             loaded.append(contentsOf: ((try? workspace.draftFiles(draftID: draftID)) ?? []).map {
                 AttachmentPreviewItem(url: $0, isDraft: true)
@@ -901,6 +922,7 @@ struct EventEditorView: View {
     @State private var draft: EditableEvent
     @State private var timeText: String
     @State private var stagedAttachmentCount: Int
+    @State private var pendingRemovedAttachmentNames: Set<String> = []
     private let original: EditableEvent
     let reminderConfig: ReminderConfig
     let attachmentWorkspace: AttachmentWorkspace?
@@ -908,7 +930,7 @@ struct EventEditorView: View {
     let onDirtyChange: (Bool) -> Void
     let onCancel: () -> Void
     let onOpenAttachments: () -> Void
-    let onSave: (EditableEvent) -> Void
+    let onSave: (EditableEvent, Set<String>) -> Void
 
     init(
         event: EditableEvent,
@@ -918,7 +940,7 @@ struct EventEditorView: View {
         onDirtyChange: @escaping (Bool) -> Void,
         onCancel: @escaping () -> Void,
         onOpenAttachments: @escaping () -> Void,
-        onSave: @escaping (EditableEvent) -> Void
+        onSave: @escaping (EditableEvent, Set<String>) -> Void
     ) {
         self._draft = State(initialValue: event)
         self._timeText = State(initialValue: clockTimeText(hour: event.hour, minute: event.minute))
@@ -960,35 +982,43 @@ struct EventEditorView: View {
                     .frame(minHeight: 72, maxHeight: 180)
                     .eventEditorFieldCard()
             }
-            Section {
-                HStack(spacing: 12) {
-                    Button("📎 Attach Files") { chooseFiles() }
-                    if !clipboardFileURLs().isEmpty {
-                        Button("Paste Attachment") { pasteAttachments() }
-                    } else if clipboardImageAvailable() {
-                        Button("Paste Screenshot") { pasteScreenshot() }
-                    }
-                    if stagedAttachmentCount > 0 {
-                        Text("\(stagedAttachmentCount) attached")
-                            .foregroundStyle(.secondary)
-                    }
-                    Button(action: onOpenAttachments) {
-                        Image(systemName: "folder")
-                    }
-                    .buttonStyle(.bordered)
-                    .help("Open Attachments Folder")
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Attachments").font(.headline)
+                    Spacer()
+                    Text("\(stagedAttachmentCount)").foregroundStyle(.secondary)
                 }
-            } header: {
-                Text("Attachments")
+                AttachmentPreviewList(
+                    workspace: attachmentWorkspace,
+                    draftID: draftID,
+                    ownerID: attachmentOwnerID,
+                    refreshToken: stagedAttachmentCount,
+                    hiddenSavedNames: pendingRemovedAttachmentNames,
+                    onRemoveSaved: { name in
+                        pendingRemovedAttachmentNames.insert(name)
+                        stagedAttachmentCount = stagedCount()
+                    },
+                    onChange: { stagedAttachmentCount = stagedCount() }
+                )
+                .id(attachmentPreviewIdentity)
+                HStack(spacing: 10) {
+                    Button("+ Add Files") { chooseFiles() }
+                    if clipboardAttachmentAvailable() {
+                        Button("Paste") { paste() }
+                    }
+                    Button(action: onOpenAttachments) { Image(systemName: "folder") }
+                        .buttonStyle(.bordered)
+                        .help("Open Attachments Folder")
+                }
+                Text("Drop files here • folders are not imported")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            AttachmentPreviewList(
-                workspace: attachmentWorkspace,
-                draftID: draftID,
-                ownerID: attachmentOwnerID,
-                refreshToken: stagedAttachmentCount,
-                onChange: { stagedAttachmentCount = stagedCount() }
-            )
-            .id(attachmentPreviewIdentity)
+            .padding(12)
+            .background(.quaternary.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+            .onDrop(of: [UTType.fileURL.identifier], isTargeted: nil) { providers in
+                handleDrop(providers)
+            }
             DatePicker(selection: $draft.date, displayedComponents: .date) {
                 RequiredLabel("Date")
             }
@@ -1034,29 +1064,27 @@ struct EventEditorView: View {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(reminderConfig.presets) { preset in
-                        HStack(spacing: 18) {
-                            Toggle(preset.label, isOn: reminderBinding(preset.minutes_before))
-                                .frame(width: 230, alignment: .leading)
-                                .disabled(!isReminderAvailable(preset.minutes_before))
-                                .foregroundStyle(isReminderAvailable(preset.minutes_before) ? .primary : .secondary)
-                            Toggle("Turn on blinker", isOn: blinkerBinding(preset.minutes_before))
-                                .toggleStyle(.checkbox)
-                                .frame(width: 230, alignment: .leading)
-                                .disabled(!isReminderAvailable(preset.minutes_before))
-                                .foregroundStyle(isReminderAvailable(preset.minutes_before) ? .primary : .secondary)
-                        }
+                        Toggle(preset.label, isOn: reminderBinding(preset.minutes_before))
+                            .disabled(!isReminderAvailable(preset.minutes_before))
+                            .foregroundStyle(isReminderAvailable(preset.minutes_before) ? .primary : .secondary)
                     }
                 }
             } header: {
                 RequiredLabel("Reminders")
             }
+            Picker("Start blinking", selection: blinkerSelectionBinding) {
+                ForEach(reminderConfig.presets) { preset in
+                    Text(preset.label).tag(preset.minutes_before)
+                }
+            }
+            .disabled(!isReminderAvailable(draft.blinkerMinutesBefore ?? 0))
             HStack {
                 Button("Cancel") {
                     onCancel()
                 }
                 Button("Save") {
                     pruneUnavailableReminders()
-                    onSave(draft)
+                    onSave(draft, pendingRemovedAttachmentNames)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!canSave)
@@ -1083,6 +1111,9 @@ struct EventEditorView: View {
         .onChange(of: stagedAttachmentCount) {
             onDirtyChange(draft != original || stagedAttachmentCount != (original.attachments?.count ?? 0))
         }
+        .onAppear {
+            stagedAttachmentCount = stagedCount()
+        }
     }
 
     private func chooseFiles() {
@@ -1102,15 +1133,20 @@ struct EventEditorView: View {
     }
 
     private var attachmentOwnerID: String {
-        let series = draft.seriesID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !series.isEmpty { return series }
-        let manifestOwner = draft.attachments?.ownerID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return manifestOwner.isEmpty ? draft.id : manifestOwner
+        draft.id
     }
 
     private var attachmentPreviewIdentity: String {
         [attachmentWorkspace?.root.path ?? "none", draftID ?? "none", attachmentOwnerID]
             .joined(separator: "|")
+    }
+
+    private func paste() {
+        if !clipboardFileURLs().isEmpty {
+            pasteAttachments()
+        } else {
+            pasteScreenshot()
+        }
     }
 
     private func pasteScreenshot() {
@@ -1136,6 +1172,34 @@ struct EventEditorView: View {
         }
     }
 
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        guard let attachmentWorkspace, let draftID else { return false }
+        let group = DispatchGroup()
+        let collector = DropURLCollector()
+        for provider in providers {
+            guard provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) else { continue }
+            group.enter()
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                defer { group.leave() }
+                if let data = item as? Data,
+                   let url = URL(dataRepresentation: data, relativeTo: nil),
+                   (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
+                    collector.append(url)
+                } else if let url = item as? URL,
+                          (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
+                    collector.append(url)
+                }
+            }
+        }
+        group.notify(queue: .main) {
+            let urls = collector.values
+            guard !urls.isEmpty else { return }
+            try? attachmentWorkspace.addFiles(urls, to: draftID)
+            stagedAttachmentCount = stagedCount()
+        }
+        return !providers.isEmpty
+    }
+
     private func stagedCount() -> Int {
         guard let attachmentWorkspace, let draftID,
               let values = try? FileManager.default.contentsOfDirectory(
@@ -1143,8 +1207,9 @@ struct EventEditorView: View {
                 includingPropertiesForKeys: [.isRegularFileKey],
                 options: [.skipsHiddenFiles]
               ) else { return stagedAttachmentCount }
-        return values.filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }.count
-            + (original.attachments?.count ?? 0)
+        let staged = values.filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }.count
+        let saved = max((original.attachments?.count ?? 0) - pendingRemovedAttachmentNames.count, 0)
+        return staged + saved
     }
 
     private func reminderBinding(_ offset: Int) -> Binding<Bool> {
@@ -1172,6 +1237,13 @@ struct EventEditorView: View {
         && (draft.recurrence?.mode != "after_done_days" || (draft.recurrence?.days ?? 0) > 0)
     }
 
+    private var blinkerSelectionBinding: Binding<Int> {
+        Binding(
+            get: { draft.blinkerMinutesBefore ?? 0 },
+            set: { draft.blinkerMinutesBefore = max($0, 0) }
+        )
+    }
+
     private var timeMinutesBinding: Binding<Int> {
         Binding(
             get: { draft.hour * 60 + draft.minute },
@@ -1190,22 +1262,6 @@ struct EventEditorView: View {
 
     private func pruneUnavailableReminders() {
         draft.reminderOffsets = availableReminderOffsets(draft.reminderOffsets, eventStart: draft.startDate())
-        if let blinker = draft.blinkerMinutesBefore, !isReminderAvailable(blinker) {
-            draft.blinkerMinutesBefore = nil
-        }
-    }
-
-    private func blinkerBinding(_ offset: Int) -> Binding<Bool> {
-        Binding(
-            get: { draft.blinkerMinutesBefore == offset && isReminderAvailable(offset) },
-            set: { selected in
-                if selected {
-                    draft.blinkerMinutesBefore = offset
-                } else if draft.blinkerMinutesBefore == offset {
-                    draft.blinkerMinutesBefore = nil
-                }
-            }
-        )
     }
 
     private func applyTimeText() {
@@ -1248,6 +1304,23 @@ struct EventEditorView: View {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "EEEE"
         return formatter.string(from: date)
+    }
+}
+
+private final class DropURLCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [URL] = []
+
+    func append(_ url: URL) {
+        lock.lock()
+        stored.append(url)
+        lock.unlock()
+    }
+
+    var values: [URL] {
+        lock.lock()
+        defer { lock.unlock() }
+        return stored
     }
 }
 
@@ -2044,9 +2117,9 @@ struct EventRowActions {
     var newEvent: () -> Void
     var edit: (BlinkEvent) -> Void
     var duplicate: (BlinkEvent) -> Void
+    var duplicateWithAttachments: (BlinkEvent) -> Void
     var addFiles: (BlinkEvent) -> Void
-    var pasteAttachment: (BlinkEvent) -> Void
-    var pasteScreenshot: (BlinkEvent) -> Void
+    var paste: (BlinkEvent) -> Void
     var openAttachments: (BlinkEvent) -> Void
     var done: (BlinkEvent) -> Void
     var toggle: (BlinkEvent) -> Void
@@ -2055,6 +2128,10 @@ struct EventRowActions {
 
 private func clipboardImageAvailable() -> Bool {
     clipboardImageData() != nil
+}
+
+private func clipboardAttachmentAvailable() -> Bool {
+    !clipboardFileURLs().isEmpty || clipboardImageAvailable()
 }
 
 private func clipboardFileURLs() -> [URL] {

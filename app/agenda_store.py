@@ -26,6 +26,13 @@ def load_agenda_document(path: Path) -> dict[str, Any]:
         raw["events"] = []
     migrated = migrate_obsolete_fields(raw)
     migrated = repair_completed_future_events(migrated)
+    attachment_store.migrate_legacy_series_attachments(path.parent, migrated.get("events", []))
+    for event in migrated.get("events", []):
+        if isinstance(event, dict):
+            try:
+                event["attachments"] = attachment_store.manifest_for_event(path.parent, event)
+            except ValueError:
+                continue
     if migrated != raw:
         save_agenda_document_atomic(path, migrated)
     return migrated
@@ -364,6 +371,7 @@ def build_next_recurring_event(event: dict[str, Any], completed_at: datetime) ->
     next_event["done"] = False
     next_event["done_at"] = None
     next_event["enabled"] = True
+    next_event["attachments"] = attachment_store.attachment_manifest(None, next_event)
     next_event.pop("snoozed_until", None)
     next_event.pop("snoozed_for_minutes", None)
     next_event.pop("template_id", None)

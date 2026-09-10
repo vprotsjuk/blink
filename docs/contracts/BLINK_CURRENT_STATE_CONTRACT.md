@@ -1,5 +1,9 @@
 # Blink Current State Contract
 
+> **CURRENT CANONICAL CONTRACT** — running code and this document outrank
+> `docs/HANDOFF.md` and all historical plans. Historical plans never override a
+> newer owner decision recorded here.
+
 **Snapshot:** 2026-09-09  
 **Project root:** `/Users/vitaliiprotsiuk/Desktop/Blink`
 
@@ -55,11 +59,17 @@ Upcoming -> Active -> Done -> History
 - History is frozen. A historical event cannot be edited in place; it can only be duplicated as a new event with a new ID and new attachment owner, or deleted. The source history record remains unchanged when duplicated.
 - On load, a legacy/stale personal record with `done=true` and a future `start` is repaired to unfinished (`done=false`, `done_at=null`) and immediately classified into `Today`/`Upcoming`.
 - Recurrence supports fixed weekly events and `days after Done`; completion creates at most one successor.
-- Non-recurring events own `event_data/attachments/<event-id>`. Recurring occurrences retain unique internal IDs for queue safety and resolve attachments through one stable `series_id` folder.
+- Every event occurrence owns `event_data/attachments/<event-id>`. `series_id`
+  is recurrence metadata only and is never a production attachment owner.
+  Recurring successors receive a new event ID and start with zero attachments.
+  Legacy shared-series folders are copied by an idempotent migration helper only
+  when encountered; the legacy source is preserved.
 - New-event drafts own `event_data/drafts/<draft-id>` while the editor is open. Files and pasted screenshots are staged before Save; Cancel/Escape removes only the Blink-created draft. Failed Save keeps the draft recoverable.
 - Snooze, Quiet Hours, and Templates are retired and must not be reintroduced.
 - Reminder offsets are centrally defined and unavailable offsets are removed when they no longer fit before the event.
-- New events default the blinker to the last reminder row, `At time` (`blinker_minutes_before: 0`); existing events are not silently rewritten.
+- New events default the independent Blinker picker to `At event`
+  (`blinker_minutes_before: 0`). Reminders are a separate multi-select; changing
+  either control never changes the other.
 - Blinker starts at `event start - blinker_minutes_before` and continues until `Done`.
 
 ## 4. Push Contract
@@ -96,17 +106,39 @@ Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is
 - Navigation: Today, Upcoming, History, Astronomy, Weather, Location, Health, and Search. The Today header owns one compact round blue `+` action for creating a new event; there is no wide duplicate `New Event` button in the content area.
 - All navigation tabs use the Blink-owned tab buttons and provide a subtle hover background before selection, so pointer users can see the interactive target.
 - Today must not contain duplicate giant branding or duplicate New Event controls.
-- Today and Upcoming show clear dates including year, color/Attention, title/description, an attachment paperclip when applicable, a compact filename/type list when attachments exist, a folder button, and actions. The content area reacts to hover and a double-click opens the editor.
+- Today and Upcoming show clear dates including year, color/Attention,
+  title/description, a compact paperclip plus attachment count when applicable,
+  a folder button, and actions. They do not render filename mini-lists or nested
+  attachment scroll areas. The content area reacts to hover and a double-click
+  opens the editor.
 - History does not show meaningless On/Off for completed entries and is frozen: there is no Edit button or edit-on-click. History offers Duplicate as new event, attachment actions, and Delete.
 - Active and Upcoming context menus always offer `Open Attachments Folder`; Blink creates the owner folder on demand even when it is empty. Frozen History offers that action only when an existing attachment folder is present.
-- `Paste Attachment` is offered when the macOS pasteboard contains regular file URLs (PDF, Excel, images, and other files); it takes precedence over `Paste Screenshot`. `Paste Screenshot` is offered only for decodable image data when no file URLs are present. The editor shows thumbnails for images and type icons for other files, without parsing Excel/PDF contents.
+- One `Paste` action is offered when the macOS pasteboard contains regular file
+  URLs or decodable image data. File URLs take precedence and are copied as
+  regular files; otherwise the first image is converted to a timestamped JPEG.
+  Plain text, emoji, AutoCAD geometry, directories, and unsupported clipboard
+  types do not expose an attachment paste action. The editor shows thumbnails
+  for images and type icons for other files, without parsing file contents.
 - Search also matches visible attachment filenames and extensions by reading the local owner folder; it does not inspect file contents. JSON metadata and folders remain canonical, leaving room for a rebuildable SQLite index only if scale later requires it.
 - Event rows show a green `On` button for enabled events and a red `Off` button for disabled events. The status remains a toggle, not completion.
 - Disabled rows dim their date/title/description to show that they are inactive, but their priority circle stays fully saturated. Active-row pulsing also leaves the priority circle solid and readable.
 - Forms use English labels, red asterisks for required fields, stable `HH:mm` widths, consistent Cancel/Save placement, and shared save feedback: after successful save the button reads `Saved`, dims, and reactivates only after a new edit.
 - Clean modal forms close on Cancel, Escape, or backdrop click. Dirty forms require an explicit choice.
 - Event forms use multiline Title/Description editors, Finder multi-file selection, and screenshot paste. New-event drafts live under Blink-local `event_data/drafts/` until Save; saved files live under `event_data/attachments/`.
-- Event-row context menus expose applicable actions: Edit (Today/Upcoming only), Duplicate as new event, Add Files, Paste Attachment or Paste Screenshot according to the pasteboard, Open Attachments Folder, On/Off, Done, and Delete. A pasted screenshot becomes a unique JPEG; pasted file URLs are copied as regular files. Attachments are never sent to ntfy or committed to GitHub.
+- Event-row context menus expose only currently applicable actions: Edit
+  (Today/Upcoming only), Duplicate as new event, Duplicate with Attachments when
+  files exist, Add Files, one unified Paste action when the clipboard supports
+  it, Open Attachments Folder, On/Off, Done, and Delete. Paste and Add Files use
+  the same draft staging pipeline. Drag-and-drop is accepted only inside the
+  editor attachment panel; rows never accept drops. Attachments are never sent
+  to ntfy or committed to GitHub.
+- The editor attachment panel shows staged and saved filenames, sizes, image
+  thumbnails/file-type icons, `+ Add Files`, one `Paste`, `Open Folder`, and an
+  editor-only drop zone. Removing a staged file is immediate for the draft;
+  removing a saved file is pending until Save, while Cancel restores it. Save
+  moves accepted removals to macOS Trash and refreshes the manifest.
+- Clicking a row paperclip/count opens a compact filename/type popover. Rows do
+  not contain a filename mini-list or nested attachment scroll area.
 - Astronomy, Weather, and long event lists scroll inside the available window. Astronomy uses one shared two-column layout: the lower Sun/Moon summary is directly beneath its corresponding upper settings column, with matching left edges and icon alignment. It uses the generated schedule rather than a second calculation path. Thin `↑`/`↓` arrows indicate Sunrise/Sunset and Moonrise/Moonset; large `⬆️`/`⬇️` arrows appear only beside the current lunar phase to indicate waxing/waning.
 - If a control is disabled because another option owns the value, the owning option must be visible beside it.
 

@@ -376,6 +376,10 @@ class AgendaStoreTests(unittest.TestCase):
         self.assertEqual(next_event["title"], "Change water filter")
         self.assertEqual(next_event["start"], "2026-12-06T08:00:00-08:00")
         self.assertEqual(next_event["recurrence"], {"mode": "after_done_days", "days": 90})
+        self.assertEqual(
+            next_event["attachments"],
+            {"owner_id": next_event["id"], "count": 0, "has_files": False},
+        )
 
     def test_weekly_fixed_recurrence_creates_next_weekday_time(self):
         document = {

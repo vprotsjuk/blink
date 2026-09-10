@@ -72,8 +72,7 @@ public struct BlinkEvent: Codable, Identifiable {
     }
 
     public var attachmentOwnerID: String {
-        let candidate = series_id?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return candidate.isEmpty ? id : candidate
+        id
     }
 }
 
@@ -480,8 +479,7 @@ public struct EditableEvent: Identifiable, Equatable {
             "attention_level": attentionLevel.rawValue,
             "blinker_minutes_before": blinkerMinutesBefore ?? NSNull()
         ]
-        let ownerID = seriesID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? seriesID! : id
-        let manifest = attachments ?? AttachmentManifest(ownerID: ownerID, count: 0, hasFiles: false)
+        let manifest = attachments ?? AttachmentManifest(ownerID: id, count: 0, hasFiles: false)
         output["attachments"] = manifest.toDictionary()
         if let seriesID, !seriesID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             output["series_id"] = seriesID
@@ -724,6 +722,7 @@ public struct BlinkStore {
         }
         var repaired = false
         let attachmentWorkspace = AttachmentWorkspace(root: root)
+        _ = attachmentWorkspace.migrateLegacySeriesFolders(events: rawEvents)
         for index in rawEvents.indices {
             let ownerID = attachmentOwnerID(for: rawEvents[index])
             if let manifest = try? attachmentWorkspace.manifest(ownerID: ownerID) {
@@ -924,9 +923,7 @@ public struct BlinkStore {
             }
         }
         if let attachmentWorkspace, let draftID {
-            let ownerID = event.seriesID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-                ? event.seriesID!
-                : (event.attachments?.ownerID.isEmpty == false ? event.attachments!.ownerID : event.id)
+            let ownerID = event.id
             let manifest = try attachmentWorkspace.finalize(draftID: draftID, ownerID: ownerID)
             newValues["attachments"] = manifest.toDictionary()
         }
@@ -999,19 +996,11 @@ public struct BlinkStore {
     public func delete(eventID: String) throws {
         var document = try loadAgendaObject()
         let events = document["events"] as? [[String: Any]] ?? []
-        let ownerID = events.first(where: { ($0["id"] as? String) == eventID }).flatMap { event in
-            let seriesID = (event["series_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            return seriesID.isEmpty ? (event["id"] as? String) : seriesID
-        }
+        let ownerID = eventID
         let remainingEvents = events.filter { ($0["id"] as? String) != eventID }
-        let shouldTrashAttachments = ownerID.map { owner in
-            !remainingEvents.contains { attachmentOwnerID(for: $0) == owner }
-        } ?? false
         document["events"] = remainingEvents
         try saveAgendaObject(document)
-        if shouldTrashAttachments, let ownerID {
-            try? AttachmentWorkspace(root: root).moveOwnerToTrash(ownerID: ownerID)
-        }
+        try? AttachmentWorkspace(root: root).moveOwnerToTrash(ownerID: ownerID)
     }
 
     public func addFiles(eventID: String, urls: [URL]) throws {
@@ -1058,8 +1047,6 @@ public struct BlinkStore {
     }
 
     private func attachmentOwnerID(for event: [String: Any]) -> String {
-        let seriesID = (event["series_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !seriesID.isEmpty { return seriesID }
         return (event["id"] as? String) ?? "event"
     }
 
@@ -1247,6 +1234,7 @@ public struct BlinkStore {
         next["done"] = false
         next["done_at"] = NSNull()
         next["enabled"] = true
+        next["attachments"] = AttachmentManifest(ownerID: next["id"] as? String ?? "event", count: 0, hasFiles: false).toDictionary()
         next.removeValue(forKey: "snoozed_until")
         next.removeValue(forKey: "snoozed_for_minutes")
         next.removeValue(forKey: "template_id")
