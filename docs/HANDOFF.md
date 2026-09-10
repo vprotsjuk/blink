@@ -45,6 +45,9 @@ The approved Blink-local event attachments feature is implemented. It adds multi
 ## Open questions / risks
 - Manual visual walkthrough covered the installed Today/New Event surface after release deployment; the editor shows multiline fields, attachment controls, colored importance, reminders, and visible Cancel/Save actions without clipping. History action gating is covered by Swift UI-contract tests.
 - Clipboard and drag/drop policy is recorded below and should remain intentionally small: image clipboard data is accepted by `Paste Screenshot`; file URLs and folders should use `Attach Files`; drag/drop is a future optional shortcut, not a second attachment pipeline.
+- Active/Upcoming events can always open or create an empty attachment folder; History can only reveal an existing folder. The editor previews image thumbnails and file-type icons, while `Paste Screenshot` is omitted when the pasteboard has no usable image.
+- Search should include attachment filenames/extensions by scanning the local owner folder, while keeping JSON and folders canonical; do not add SQLite unless a later scale test demonstrates a need for a rebuildable index.
+- The active-folder/preview/search implementation plan is `docs/superpowers/plans/2026-09-09-attachment-previews-and-folder-actions.md`; it must be reconciled line by line after release verification.
 
 ## Open questions to preserve across compaction: clipboard and drag/drop
 

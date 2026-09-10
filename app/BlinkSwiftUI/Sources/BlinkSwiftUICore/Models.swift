@@ -723,7 +723,19 @@ public struct BlinkStore {
             return []
         }
         var repaired = false
+        let attachmentWorkspace = AttachmentWorkspace(root: root)
         for index in rawEvents.indices {
+            let ownerID = attachmentOwnerID(for: rawEvents[index])
+            if let manifest = try? attachmentWorkspace.manifest(ownerID: ownerID) {
+                let current = rawEvents[index]["attachments"] as? [String: Any]
+                let currentOwner = current?["owner_id"] as? String
+                let currentCount = current?["count"] as? Int
+                let currentHasFiles = current?["has_files"] as? Bool
+                if currentOwner != manifest.ownerID || currentCount != manifest.count || currentHasFiles != manifest.hasFiles {
+                    rawEvents[index]["attachments"] = manifest.toDictionary()
+                    repaired = true
+                }
+            }
             guard (rawEvents[index]["source"] as? String ?? "personal") == "personal",
                   rawEvents[index]["requires_done"] as? Bool == true,
                   rawEvents[index]["done"] as? Bool == true,
@@ -746,6 +758,10 @@ public struct BlinkStore {
 
     public func loadSnapshot(now: Date = Date()) -> EventSnapshot {
         EventSnapshot(events: loadEvents(now: now), now: now)
+    }
+
+    public func attachmentNames(for event: BlinkEvent) -> [String] {
+        (try? AttachmentWorkspace(root: root).files(ownerID: event.attachmentOwnerID).map(\.lastPathComponent)) ?? []
     }
 
     public func loadAstronomyConfig() -> AstronomyConfig? {
@@ -1292,7 +1308,7 @@ public func attentionStartDate(event: BlinkEvent, start: Date) -> Date {
     ) ?? start
 }
 
-public func matchesEventSearch(_ event: BlinkEvent, query: String) -> Bool {
+public func matchesEventSearch(_ event: BlinkEvent, query: String, attachmentNames: [String] = []) -> Bool {
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.isEmpty {
         return true
@@ -1311,7 +1327,8 @@ public func matchesEventSearch(_ event: BlinkEvent, query: String) -> Bool {
         eventDateTimeLabel(event.start),
         dateLabel(parseISODate(event.start) ?? Date()),
         status,
-        event.attention_level ?? ""
+        event.attention_level ?? "",
+        attachmentNames.joined(separator: " ")
     ].joined(separator: " ").lowercased()
     return haystack.contains(trimmed.lowercased())
 }

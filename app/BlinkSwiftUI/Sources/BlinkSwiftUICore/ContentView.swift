@@ -257,6 +257,7 @@ public struct ContentView: View {
                     snapshot: snapshot,
                     actions: actions,
                     searchQuery: searchQuery,
+                    attachmentNames: { store.attachmentNames(for: $0) },
                     activeEventIDs: activeEventIDs,
                     pulseVisible: attentionPulseOn
                 )
@@ -401,11 +402,14 @@ public struct ContentView: View {
 
     private func openAttachmentsFolder(for event: BlinkEvent) {
         let workspace = AttachmentWorkspace(root: store.root)
+        if !eventIsHistoryFrozen(event) {
+            _ = try? workspace.ensureAttachmentFolder(ownerID: event.attachmentOwnerID)
+        }
         NSWorkspace.shared.open(workspace.attachmentURL(ownerID: event.attachmentOwnerID))
     }
 
     private func filtered(_ source: [BlinkEvent]) -> [BlinkEvent] {
-        source.filter { matchesEventSearch($0, query: searchQuery) }
+        source.filter { matchesEventSearch($0, query: searchQuery, attachmentNames: store.attachmentNames(for: $0)) }
     }
 
     private var activeEventIDs: Set<String> {
@@ -497,6 +501,7 @@ struct TodayView: View {
     let snapshot: EventSnapshot
     let actions: EventRowActions
     let searchQuery: String
+    let attachmentNames: (BlinkEvent) -> [String]
     let activeEventIDs: Set<String>
     let pulseVisible: Bool
 
@@ -537,7 +542,7 @@ struct TodayView: View {
     }
 
     private func filtered(_ source: [BlinkEvent]) -> [BlinkEvent] {
-        source.filter { matchesEventSearch($0, query: searchQuery) }
+        source.filter { matchesEventSearch($0, query: searchQuery, attachmentNames: attachmentNames($0)) }
     }
 }
 
@@ -645,10 +650,12 @@ private struct EventRowView: View {
             if !showsHistory {
                 Button("Edit") { actions.edit(event) }
                 Button("Add Files") { actions.addFiles(event) }
-                Button("Paste Screenshot") { actions.pasteScreenshot(event) }
+                if clipboardImageAvailable() {
+                    Button("Paste Screenshot") { actions.pasteScreenshot(event) }
+                }
             }
             Button("Duplicate as new event") { actions.duplicate(event) }
-            if event.hasAttachments {
+            if !showsHistory || event.hasAttachments {
                 Button("Open Attachments Folder") { actions.openAttachments(event) }
             }
             if showsDone {
@@ -681,6 +688,97 @@ private struct EventRowView: View {
         }
         .opacity(rowContentOpacity(event))
         .animation(.easeInOut(duration: 0.3), value: pulseVisible)
+    }
+}
+
+private struct AttachmentPreviewItem: Identifiable {
+    let url: URL
+    let isDraft: Bool
+
+    var id: String { "\(isDraft ? "draft" : "saved"):\(url.path)" }
+}
+
+private struct AttachmentPreviewList: View {
+    let workspace: AttachmentWorkspace?
+    let draftID: String?
+    let ownerID: String
+    let refreshToken: Int
+    let onChange: () -> Void
+    @State private var items: [AttachmentPreviewItem] = []
+
+    var body: some View {
+        Group {
+            if items.isEmpty {
+                EmptyView()
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(items) { item in
+                            HStack(spacing: 8) {
+                                AttachmentThumbnail(url: item.url)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.url.lastPathComponent)
+                                        .lineLimit(1)
+                                    Text(fileSizeLabel(item.url))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 4)
+                                if item.isDraft {
+                                    Button("Remove") {
+                                        guard let workspace, let draftID else { return }
+                                        try? workspace.removeDraftFile(item.url, draftID: draftID)
+                                        onChange()
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+                .frame(maxHeight: 180)
+            }
+        }
+        .onAppear(perform: reload)
+        .onChange(of: refreshToken) { reload() }
+    }
+
+    private func reload() {
+        guard let workspace else {
+            items = []
+            return
+        }
+        var loaded = ((try? workspace.files(ownerID: ownerID)) ?? []).map {
+            AttachmentPreviewItem(url: $0, isDraft: false)
+        }
+        if let draftID {
+            loaded.append(contentsOf: ((try? workspace.draftFiles(draftID: draftID)) ?? []).map {
+                AttachmentPreviewItem(url: $0, isDraft: true)
+            })
+        }
+        items = loaded
+    }
+}
+
+private struct AttachmentThumbnail: View {
+    let url: URL
+
+    var body: some View {
+        Group {
+            if let image = NSImage(contentsOf: url) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "doc")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 42, height: 42)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
@@ -741,7 +839,9 @@ struct EventEditorView: View {
             Section {
                 HStack(spacing: 12) {
                     Button("📎 Attach Files") { chooseFiles() }
-                    Button("Paste Screenshot") { pasteScreenshot() }
+                    if clipboardImageAvailable() {
+                        Button("Paste Screenshot") { pasteScreenshot() }
+                    }
                     if stagedAttachmentCount > 0 {
                         Text("\(stagedAttachmentCount) attached")
                             .foregroundStyle(.secondary)
@@ -750,6 +850,13 @@ struct EventEditorView: View {
             } header: {
                 Text("Attachments")
             }
+            AttachmentPreviewList(
+                workspace: attachmentWorkspace,
+                draftID: draftID,
+                ownerID: attachmentOwnerID,
+                refreshToken: stagedAttachmentCount,
+                onChange: { stagedAttachmentCount = stagedCount() }
+            )
             DatePicker(selection: $draft.date, displayedComponents: .date) {
                 RequiredLabel("Date")
             }
@@ -860,6 +967,13 @@ struct EventEditorView: View {
             // The parent owns the error surface; a failed staging operation
             // simply leaves the editor draft untouched.
         }
+    }
+
+    private var attachmentOwnerID: String {
+        let series = draft.seriesID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !series.isEmpty { return series }
+        let manifestOwner = draft.attachments?.ownerID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return manifestOwner.isEmpty ? draft.id : manifestOwner
     }
 
     private func pasteScreenshot() {
@@ -1789,14 +1903,39 @@ struct EventRowActions {
     var delete: (BlinkEvent) -> Void
 }
 
-private func clipboardJPEGData() -> Data? {
+private func clipboardImageAvailable() -> Bool {
+    clipboardImageData() != nil
+}
+
+private func clipboardImageData() -> Data? {
     let pasteboard = NSPasteboard.general
-    let sourceData = pasteboard.data(forType: .tiff) ?? pasteboard.data(forType: .png)
-    guard let sourceData,
+    let imageTypes: [NSPasteboard.PasteboardType] = [
+        .tiff,
+        .png,
+        NSPasteboard.PasteboardType(rawValue: "public.jpeg"),
+        NSPasteboard.PasteboardType(rawValue: "public.heic")
+    ]
+    for type in imageTypes {
+        guard let sourceData = pasteboard.data(forType: type),
+              NSImage(data: sourceData) != nil else { continue }
+        return sourceData
+    }
+    return nil
+}
+
+private func clipboardJPEGData() -> Data? {
+    guard let sourceData = clipboardImageData(),
           let image = NSImage(data: sourceData),
           let tiff = image.tiffRepresentation,
           let bitmap = NSBitmapImageRep(data: tiff) else { return nil }
     return bitmap.representation(using: .jpeg, properties: [:])
+}
+
+private func fileSizeLabel(_ url: URL) -> String {
+    let bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+    let formatter = ByteCountFormatter()
+    formatter.countStyle = .file
+    return formatter.string(fromByteCount: Int64(bytes))
 }
 
 private func reminderLabel(_ minutes: Int) -> String {

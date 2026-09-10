@@ -238,6 +238,7 @@ func testEventSearchMatchesTitleDescriptionDateAndStatus() throws {
     try expect(matchesEventSearch(done, query: "filters"), "Search should match title")
     try expect(matchesEventSearch(active, query: "Sep 7, 2026"), "Search should match visible date")
     try expect(matchesEventSearch(done, query: "done"), "Search should match status")
+    try expect(matchesEventSearch(active, query: "receipt.pdf", attachmentNames: ["receipt.pdf"]), "Search should match attachment filename")
     try expect(!matchesEventSearch(active, query: "garage"), "Search should not match unrelated event")
 }
 
@@ -841,6 +842,10 @@ func testAstronomyUsesDirectionalPhaseLabels() throws {
 func testAttachmentWorkspaceRoundTrip() throws {
     let root = try temporaryRoot()
     let workspace = AttachmentWorkspace(root: root)
+    let emptyFolder = try workspace.ensureAttachmentFolder(ownerID: "empty")
+    try expect(FileManager.default.fileExists(atPath: emptyFolder.path), "Empty attachment folder should be created on demand")
+    let emptyFiles = try workspace.files(ownerID: "empty")
+    try expect(emptyFiles.isEmpty, "Empty attachment folder should enumerate no files")
     let draftID = try workspace.createDraft()
     let secondDraftID = try workspace.createDraft()
     try expect(draftID != secondDraftID && draftID.hasPrefix("draft-"), "Draft IDs should be unique UUIDs")
@@ -848,14 +853,39 @@ func testAttachmentWorkspaceRoundTrip() throws {
     let source = root.appendingPathComponent("source.txt")
     try "attachment".write(to: source, atomically: true, encoding: .utf8)
     try workspace.addFiles([source], to: draftID)
+    let removable = root.appendingPathComponent("removable.txt")
+    try "remove me".write(to: removable, atomically: true, encoding: .utf8)
+    try workspace.addFiles([removable], to: draftID)
+    let draftFiles = try workspace.draftFiles(draftID: draftID)
+    guard let removableCopy = draftFiles.first(where: { $0.lastPathComponent == "removable.txt" }) else {
+        throw TestFailure(description: "Draft attachment to remove was not staged")
+    }
+    try workspace.removeDraftFile(removableCopy, draftID: draftID)
     try workspace.addJPEG(Data([0xFF, 0xD8, 0xFF, 0xD9]), to: draftID, date: Date(timeIntervalSince1970: 0))
     let manifest = try workspace.finalize(draftID: draftID, ownerID: "event-1")
     try expect(manifest.ownerID == "event-1", "Attachment owner ID is wrong")
     try expect(manifest.count == 2 && manifest.hasFiles, "Attachment manifest did not count the files")
     let target = workspace.attachmentURL(ownerID: "event-1")
     try expect(FileManager.default.fileExists(atPath: target.appendingPathComponent("source.txt").path), "Final attachment was not materialized")
+    try Data("hidden".utf8).write(to: target.appendingPathComponent(".hidden.txt"))
+    try FileManager.default.createDirectory(at: target.appendingPathComponent("nested"), withIntermediateDirectories: true)
+    let ownerFiles = try workspace.files(ownerID: "event-1")
+    try expect(ownerFiles.count == 2, "Owner folder should enumerate regular attachments")
     let names = try FileManager.default.contentsOfDirectory(at: target, includingPropertiesForKeys: nil).map(\.lastPathComponent)
     try expect(names.contains(where: { $0.hasPrefix("screenshot-") && $0.hasSuffix(".jpg") && !$0.contains("(formatter") }), "Screenshot should use a timestamped JPEG name")
+}
+
+func testExternalAttachmentFolderReconcilesManifest() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try "{\"version\":1,\"events\":[{\"id\":\"event-1\",\"title\":\"Folder\",\"start\":\"2099-09-12T12:30:00-07:00\",\"reminders_minutes_before\":[0],\"enabled\":true,\"requires_done\":true,\"done\":false}]}".write(to: agenda, atomically: true, encoding: .utf8)
+    let workspace = AttachmentWorkspace(root: root)
+    let owner = try workspace.ensureAttachmentFolder(ownerID: "event-1")
+    try Data("external".utf8).write(to: owner.appendingPathComponent("from-finder.txt"))
+    guard let event = BlinkStore(root: root).loadEvents(now: Date(timeIntervalSince1970: 0)).first else {
+        throw TestFailure(description: "External folder event did not load")
+    }
+    try expect(event.hasAttachments && event.attachments?.count == 1, "External folder files should reconcile into the event manifest")
 }
 
 func testAttachmentDraftCancelAndMultilineEventContract() throws {
@@ -934,6 +964,30 @@ func testEventRowsExposeAttachmentAndHistoryContracts() throws {
     try expect(source.contains("Duplicate as new event"), "Context menu should expose History duplication")
     try expect(source.contains("contextMenu"), "Event rows should expose a context menu")
     try expect(source.contains("showsHistory"), "Event rows should know when History is frozen")
+}
+
+func testAttachmentFolderMenuAndPreviewContracts() throws {
+    let sourceURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: sourceURL, encoding: .utf8)
+    try expect(source.contains("if !showsHistory || event.hasAttachments"), "Active events should always expose their attachment folder")
+    try expect(source.contains("if clipboardImageAvailable()"), "Paste Screenshot should appear only for image clipboard data")
+    try expect(source.contains("AttachmentPreviewList"), "The editor should show attachment previews")
+    try expect(source.contains("Remove"), "Draft attachments should have a remove action")
+}
+
+func testAttachmentWorkspaceFolderContracts() throws {
+    let sourceURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/AttachmentStore.swift")
+    let source = try String(contentsOf: sourceURL, encoding: .utf8)
+    try expect(source.contains("ensureAttachmentFolder"), "Attachment workspace should create an empty owner folder on demand")
+    try expect(source.contains("public func files(ownerID: String)"), "Attachment workspace should enumerate files for previews")
 }
 
 func testHistorySaveIsRejectedAndAttachmentMetadataPersists() throws {
@@ -1021,9 +1075,12 @@ let tests: [(String, () throws -> Void)] = [
     ("Astronomy uses shared aligned columns", testAstronomyUsesSharedAlignedColumns),
     ("Astronomy uses directional phase labels", testAstronomyUsesDirectionalPhaseLabels),
     ("attachment workspace round trip", testAttachmentWorkspaceRoundTrip),
+    ("external attachment folder reconciles manifest", testExternalAttachmentFolderReconcilesManifest),
     ("attachment draft cancel and multiline event contract", testAttachmentDraftCancelAndMultilineEventContract),
     ("saving event commits attachments", testSavingEventCommitsAttachmentsAndPreservesDraftOnFailure),
     ("event rows expose attachment and history contracts", testEventRowsExposeAttachmentAndHistoryContracts),
+    ("attachment folder menu and preview contracts", testAttachmentFolderMenuAndPreviewContracts),
+    ("attachment workspace folder contracts", testAttachmentWorkspaceFolderContracts),
     ("history save is rejected", testHistorySaveIsRejectedAndAttachmentMetadataPersists),
     ("recurring delete keeps shared attachments", testRecurringDeleteKeepsSharedAttachmentOwner)
 ]

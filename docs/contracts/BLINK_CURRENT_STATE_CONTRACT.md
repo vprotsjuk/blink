@@ -98,6 +98,9 @@ Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is
 - Today must not contain duplicate giant branding or duplicate New Event controls.
 - Today and Upcoming show clear dates including year, color/Attention, title/description, an attachment paperclip when applicable, and actions. The content area reacts to hover and a single click opens the editor.
 - History does not show meaningless On/Off for completed entries and is frozen: there is no Edit button or edit-on-click. History offers Duplicate as new event, attachment actions, and Delete.
+- Active and Upcoming context menus always offer `Open Attachments Folder`; Blink creates the owner folder on demand even when it is empty. Frozen History offers that action only when an existing attachment folder is present.
+- `Paste Screenshot` is offered only when the macOS pasteboard currently contains decodable image data. The editor shows thumbnails for images and type icons for other files, without parsing Excel/PDF contents.
+- Search also matches visible attachment filenames and extensions by reading the local owner folder; it does not inspect file contents. JSON metadata and folders remain canonical, leaving room for a rebuildable SQLite index only if scale later requires it.
 - Event rows show a green `On` button for enabled events and a red `Off` button for disabled events. The status remains a toggle, not completion.
 - Disabled rows dim their date/title/description to show that they are inactive, but their priority circle stays fully saturated. Active-row pulsing also leaves the priority circle solid and readable.
 - Forms use English labels, red asterisks for required fields, stable `HH:mm` widths, consistent Cancel/Save placement, and shared save feedback: after successful save the button reads `Saved`, dims, and reactivates only after a new edit.

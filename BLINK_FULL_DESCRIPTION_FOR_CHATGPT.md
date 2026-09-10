@@ -397,7 +397,7 @@ Health is a diagnostics surface. It should report watcher heartbeat, launch/runt
 
 ### Search
 
-The toolbar search field searches user-visible event title and description across Active/Today, Upcoming, and History. Results remain visible in the content viewport; search must not scroll the first match underneath the toolbar or into an invisible top region. Clearing the query restores the current tab view.
+The toolbar search field searches user-visible event title, description, and local attachment filenames/extensions across Active/Today, Upcoming, and History. It does not inspect file contents. Results remain visible in the content viewport; search must not scroll the first match underneath the toolbar or into an invisible top region. Clearing the query restores the current tab view.
 
 All navigation tabs use Blink-owned buttons with a subtle pointer-hover background before selection. This keeps hover feedback consistent across Today, Upcoming, History, Astronomy, Weather, Location, and Health without changing navigation state or data ownership.
 
@@ -407,9 +407,9 @@ Opens the event editor with the default final-row blinker selection. The modal s
 
 ### Event context menu
 
-Today and Upcoming rows support hover, content-click editing, and a context menu with Edit, Add Files, Paste Screenshot, Open Attachments Folder, Duplicate as new event, On/Off, Done, and Delete as applicable. History rows are frozen and omit Edit/On/Off; they offer Duplicate as new event, attachment actions, and Delete.
+Today and Upcoming rows support hover, content-click editing, and a context menu with Edit, Add Files, Paste Screenshot, Open Attachments Folder, Duplicate as new event, On/Off, Done, and Delete as applicable. `Open Attachments Folder` is always available for these editable rows and creates an empty owner folder on demand. `Paste Screenshot` appears only when the current pasteboard contains decodable image data. History rows are frozen and omit Edit/On/Off; they offer Duplicate as new event, reveal an existing attachment folder, and Delete.
 
-`Paste Screenshot` accepts image data currently available on the macOS pasteboard (including a copied photo), converts it to a timestamped JPEG, and stages it in the event draft. It does not import Excel/PDF file URLs or folder contents; those use `Attach Files`. Dragging files onto a row is intentionally not a second attachment path yet. If enabled later, it should accept regular file URLs only, reuse the same draft staging code, reject directories, and remain disabled for frozen History rows.
+`Paste Screenshot` accepts image data currently available on the macOS pasteboard (including a copied photo), converts it to a timestamped JPEG, and stages it in the event draft. The editor immediately lists staged and saved attachments: images use thumbnails, while PDF/Excel/other files use type icons with filename and size; staged files can be removed before Save. It does not import Excel/PDF file URLs or folder contents; those use `Attach Files`. Dragging files onto a row is intentionally not a second attachment path yet. If enabled later, it should accept regular file URLs only, reuse the same draft staging code, reject directories, and remain disabled for frozen History rows.
 
 ### Save buttons
 

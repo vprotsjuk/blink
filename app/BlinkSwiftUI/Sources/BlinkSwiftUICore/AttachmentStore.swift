@@ -66,6 +66,47 @@ public final class AttachmentWorkspace {
         attachmentsRoot.appendingPathComponent(safeComponent(ownerID))
     }
 
+    /// Creates the owner folder when an editable event asks to reveal it.
+    /// This intentionally does not create a manifest entry by itself; the
+    /// normal event reload reconciles the folder contents with agenda.json.
+    @discardableResult
+    public func ensureAttachmentFolder(ownerID: String) throws -> URL {
+        let target = attachmentURL(ownerID: ownerID)
+        try fileManager.createDirectory(at: target, withIntermediateDirectories: true)
+        return target
+    }
+
+    /// Returns visible regular files in an owner folder, ignoring hidden
+    /// metadata and nested directories so previews stay predictable.
+    public func files(ownerID: String) throws -> [URL] {
+        try files(in: attachmentURL(ownerID: ownerID))
+    }
+
+    public func draftFiles(draftID: String) throws -> [URL] {
+        try files(in: try validatedDraftURL(draftID))
+    }
+
+    public func removeDraftFile(_ url: URL, draftID: String) throws {
+        let draft = try validatedDraftURL(draftID).standardizedFileURL
+        let target = url.standardizedFileURL
+        guard target.path.hasPrefix(draft.path + "/"),
+              (try? target.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
+            throw NSError(domain: "BlinkAttachments", code: 3, userInfo: [NSLocalizedDescriptionKey: "Attachment is outside the current draft."])
+        }
+        try fileManager.removeItem(at: target)
+    }
+
+    private func files(in target: URL) throws -> [URL] {
+        guard fileManager.fileExists(atPath: target.path) else { return [] }
+        return try fileManager.contentsOfDirectory(
+            at: target,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ).filter { url in
+            (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+        }.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+    }
+
     public func addFiles(_ urls: [URL], to draftID: String) throws {
         let draft = try validatedDraftURL(draftID)
         for source in urls {
@@ -111,17 +152,7 @@ public final class AttachmentWorkspace {
     }
 
     public func manifest(ownerID: String) throws -> AttachmentManifest {
-        let target = attachmentURL(ownerID: ownerID)
-        guard fileManager.fileExists(atPath: target.path) else {
-            return AttachmentManifest(ownerID: ownerID, count: 0, hasFiles: false)
-        }
-        let files = try fileManager.contentsOfDirectory(
-            at: target,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        ).filter { url in
-            (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
-        }
+        let files = try files(ownerID: ownerID)
         return AttachmentManifest(ownerID: ownerID, count: files.count, hasFiles: !files.isEmpty)
     }
 
