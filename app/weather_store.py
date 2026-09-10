@@ -167,8 +167,11 @@ def build_morning_briefing_message(forecast: dict[str, Any]) -> str:
     lines = [
         f"🌤️ {location}",
         f"{_MONTHS[forecast_date.month - 1]} {forecast_date.day}, {forecast_date.year}",
-        "",
     ]
+    updated_label = _updated_label(forecast)
+    if updated_label:
+        lines.append(updated_label)
+    lines.append("")
     if show_temperature:
         lines.extend([
             "🌡️ Temperature:",
@@ -365,6 +368,21 @@ def _humidity_summary(
         result["today_min_percent"] = min(today_values)
         result["today_max_percent"] = max(today_values)
     return result
+
+
+def _updated_label(forecast: dict[str, Any]) -> str | None:
+    """Format the local fetch time for the user-facing weather push."""
+    fetched_at = forecast.get("fetched_at")
+    timezone_name = (forecast.get("location") or {}).get("timezone")
+    if not isinstance(fetched_at, str) or not isinstance(timezone_name, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(fetched_at)
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            return None
+        return f"Updated {parsed.astimezone(ZoneInfo(timezone_name)).strftime('%H:%M')}"
+    except (TypeError, ValueError):
+        return None
 
 
 def save_json_atomic(path: Path, payload: dict[str, Any]) -> None:

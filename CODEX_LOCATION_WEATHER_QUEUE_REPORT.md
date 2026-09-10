@@ -60,8 +60,9 @@ Watcher integration:
 
 - Fetch forecast.
 - Save normalized cache.
-- Before the configured morning time, schedule the briefing remotely through ntfy.
-- After the configured morning time, send immediately.
+- Weather is never added to the remote ntfy schedule.
+- At or after the configured local time, fetch a fresh forecast and send directly. If the Mac was asleep, the first watcher cycle after wake performs the same fresh fetch and direct send, provided today's briefing has not already been delivered.
+- There is no late-delivery cutoff; only one automatic Weather briefing is delivered per local date.
 - Fetch failure records `unavailable` and does not mark the date delivered.
 
 ## Remote ntfy 24-Hour Queue

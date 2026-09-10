@@ -378,6 +378,7 @@ The ntfy title/header identifies the block as `WEATHER`. The body begins with th
 ```text
 🌤️ Sunnyvale
 September 8, 2026
+Updated 06:30
 
 🌡️ Temperature:
 ☀️ 90°F   🌙 66°F
@@ -390,7 +391,7 @@ Now: 30%
 💨 Wind: 7 mph, gusts up to 14 mph
 ```
 
-The visible app weather summary uses the same icons and metric order. Before each weather push, the watcher attempts a fresh Open-Meteo forecast fetch, normalizes the result, and then sends. A failed refresh does not silently pretend that the old data is current; the watcher records the failure and retries according to its bounded retry behavior. Saving a briefing time after today's local target records the change and defers the newly configured briefing until the next local day, preventing the Save action from causing an immediate late push. A save before today's target still delivers at the configured target, while an ordinary missed target remains eligible for late catch-up.
+The visible app weather summary uses the same icons and metric order. Weather is never placed in the remote ntfy schedule. At the configured local time, the watcher fetches a fresh Open-Meteo forecast, normalizes it, and sends immediately. If the Mac was asleep, the first watcher cycle after wake checks whether today's Weather briefing was already delivered; if not, it fetches Open-Meteo at that moment and sends directly. There is no late-delivery cutoff, and only one automatic Weather briefing is delivered per local date. A failed refresh does not silently pretend that the old data is current; the watcher records the failure and retries according to its bounded retry behavior. Saving a briefing time after today's local target still records the change and defers that newly configured target until the next local day, preventing the Save action from acting as an accidental immediate delivery.
 
 ### Astronomy briefing push
 
@@ -582,7 +583,7 @@ At startup and in its loop, the watcher:
 8. Updates the physical blinker state until the relevant event is Done.
 9. Records failures for Health/status inspection and retries within bounded rules.
 
-The remote queue is limited to the supported rolling horizon and is an aid for future personal/astronomy delivery. Weather is fetched close to send time because its value must be current. Briefing configuration changes are carried through the local JSON contracts: SwiftUI writes the change instant, and `watcher.py` applies the next-local-day deferral for an already-past target.
+The remote queue is limited to the supported rolling horizon and is used only for Personal and Astronomy delivery. Weather is never remotely scheduled; its value is fetched immediately before direct delivery at/after the configured local time, including wake catch-up with no late cutoff. Briefing configuration changes are carried through the local JSON contracts: SwiftUI writes the change instant, and `watcher.py` applies the next-local-day deferral for an already-past newly saved target.
 
 ## 16. Verification Snapshot
 

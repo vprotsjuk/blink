@@ -111,6 +111,7 @@ class WeatherStoreTests(unittest.TestCase):
         self.assertIn("💧 Humidity:", message)
         self.assertIn("Today: 45–82%", message)
         self.assertIn("Now: 52%", message)
+        self.assertIn("Updated 06:02", message)
         self.assertNotIn("Max: 82%", message)
         self.assertNotIn("Min: 45%", message)
         self.assertIn("🌧️ Rain: probability 70%", message)

@@ -930,6 +930,51 @@ class WatcherCoreTests(unittest.TestCase):
         self.assertEqual(immediate[0]["sequence_id"], "blink-weather-morning-2026-09-07")
         self.assertIn("Sunnyvale", immediate[0]["payload"]["body"])
 
+    def test_weather_after_long_sleep_fetches_now_without_late_cutoff(self):
+        sent = []
+        fetches = []
+
+        def fetch(_location):
+            fetches.append(True)
+            return {
+                "daily": {
+                    "time": ["2026-09-07"],
+                    "temperature_2m_max": [68],
+                    "temperature_2m_min": [48],
+                    "precipitation_probability_max": [0],
+                    "rain_sum": [0],
+                    "snowfall_sum": [0],
+                    "wind_speed_10m_max": [5],
+                    "wind_gusts_10m_max": [8],
+                },
+                "hourly": {
+                    "time": ["2026-09-07T10:00"],
+                    "relative_humidity_2m": [52],
+                    "precipitation_probability": [0],
+                    "rain": [0],
+                    "snowfall": [0],
+                },
+            }
+
+        with tempfile.TemporaryDirectory(dir=watcher.PROJECT_DIR) as tmp:
+            weather_dir = Path(tmp) / "weather"
+            weather_dir.mkdir()
+            result = watcher.update_weather_briefing(
+                config=self._notification_config(),
+                location=self._location(),
+                weather_config=weather_store.default_config(),
+                now=datetime.fromisoformat("2026-09-07T10:00:00-07:00"),
+                weather_state_path=weather_dir / "weather_state.json",
+                weather_cache_path=weather_dir / "weather_cache.json",
+                fetch_func=fetch,
+                send_now_func=lambda _config, item: sent.append(item) or True,
+            )
+
+        self.assertEqual(len(fetches), 1)
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(result["last_weather_briefing_status"], "direct_sent")
+        self.assertIn("Updated 10:00", sent[0]["payload"]["body"])
+
     def test_weather_before_briefing_time_does_not_fetch_or_schedule(self):
         sent = []
 
@@ -1097,6 +1142,7 @@ class WatcherCoreTests(unittest.TestCase):
 
         self.assertNotIn("Markdown", captured["request"].headers)
         self.assertNotIn("**", captured["request"].data.decode("utf-8"))
+        self.assertNotIn("Delay", captured["request"].headers)
 
     def test_separate_astronomy_briefing_sends_after_its_time_once(self):
         schedule = {
