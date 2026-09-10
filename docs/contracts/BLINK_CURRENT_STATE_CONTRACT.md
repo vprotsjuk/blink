@@ -34,11 +34,11 @@ SwiftUI GUI -> local JSON files -> watcher.py -> ntfy -> iPhone
 | GUI | `app/BlinkSwiftUI/` | reads/writes local contracts; no sender symbols |
 | Health | SwiftUI diagnostics + runtime files | status only; never exposes private ntfy topic |
 
-Important runtime files include `agenda.json`, `location.json`, `config.json`, `watcher_state.json`, `watcher_runtime.json`, `ntfy_schedule_state.json`, `weather/weather_config.json`, `weather/weather_cache.json`, `weather/weather_state.json`, `astronomy/astronomy_config.json`, and `astronomy/astronomy_schedule.json`.
+Important runtime files include `agenda.json`, `location.json`, `config.json`, `watcher_state.json`, `watcher_runtime.json`, `ntfy_schedule_state.json`, `event_data/attachments/`, `event_data/drafts/`, `weather/weather_config.json`, `weather/weather_cache.json`, `weather/weather_state.json`, `astronomy/astronomy_config.json`, and `astronomy/astronomy_schedule.json`. All Blink-owned runtime data stays below the Blink project root; `event_data/` is private and ignored by Git.
 
 ## 3. Personal Event Contract
 
-Required fields: `id`, `title`, `start`, `reminders_minutes_before`, `enabled`. `start` must contain an explicit UTC offset.
+Required fields: `id`, `title`, `start`, `reminders_minutes_before`, `enabled`. `start` must contain an explicit UTC offset. Optional `description` preserves newlines and paragraphs. Optional attachment metadata records only an owner ID and count/boolean; it never stores file bytes or absolute paths.
 
 Lifecycle:
 
@@ -51,9 +51,12 @@ Upcoming -> Active -> Done -> History
 - A past unfinished event remains visible in History even when disabled; disabling stops attention and delivery but never erases the event.
 - A past enabled unfinished personal event remains Active until `Done`. Its text/date content pulses in the GUI, and the `Today` tab label alternates between its normal text color and the highest current active priority color (red, yellow, or green) from any tab. Blink owns this tab bar because macOS `TabView.tabItem` does not reliably render a dynamic label color. This is presentation-only; lifecycle classification and outputs remain owned by `EventSnapshot` and `AttentionManager`.
 - `Delete` removes the event and its queued reminders; deleted events do not enter History.
-- `Edit` preserves unrelated fields and existing done state, except moving a completed event to a future date/time reopens it (`done=false`, clears `done_at`) so it returns to `Today`/`Upcoming` and can be scheduled again.
+- `Edit` is available only for non-History events and preserves unrelated fields and existing lifecycle state while recalculating the view classification and future reminder schedule.
+- History is frozen. A historical event cannot be edited in place; it can only be duplicated as a new event with a new ID and new attachment owner, or deleted. The source history record remains unchanged when duplicated.
 - On load, a legacy/stale personal record with `done=true` and a future `start` is repaired to unfinished (`done=false`, `done_at=null`) and immediately classified into `Today`/`Upcoming`.
 - Recurrence supports fixed weekly events and `days after Done`; completion creates at most one successor.
+- Non-recurring events own `event_data/attachments/<event-id>`. Recurring occurrences retain unique internal IDs for queue safety and resolve attachments through one stable `series_id` folder.
+- New-event drafts own `event_data/drafts/<draft-id>` while the editor is open. Files and pasted screenshots are staged before Save; Cancel/Escape removes only the Blink-created draft. Failed Save keeps the draft recoverable.
 - Snooze, Quiet Hours, and Templates are retired and must not be reintroduced.
 - Reminder offsets are centrally defined and unavailable offsets are removed when they no longer fit before the event.
 - New events default the blinker to the last reminder row, `At time` (`blinker_minutes_before: 0`); existing events are not silently rewritten.
@@ -63,9 +66,9 @@ Upcoming -> Active -> Done -> History
 
 ntfy metadata belongs in headers: `Title`, `Priority`, and `Tags`. The visible body must never be raw JSON and must not contain braces, JSON keys, internal tags, or scheduling objects.
 
-Personal pushes retain a useful title and description, with date/time and reminder context in the body. Personal titles begin with the event attention icon `🟢`, `🟡`, or `🔴`; ntfy urgency remains independently controlled by its `Priority` header. Weather identifies its block as `WEATHER` in the ntfy title/header, then shows location/date and selected weather blocks. If Astronomy is included with Weather, the body contains a plain `ASTRONOMY` section. If `Use Weather briefing time` is off, Astronomy is sent as its own briefing with the native ntfy title/header `ASTRONOMY` and a body beginning with the date; no Markdown markers are sent because the phone app displays them literally. Standalone notification titles use the same ntfy title/header styling. Sunrise, Solar Noon, and Sunset use `☀️`; `🌅` is not emitted. Every Astronomy message that concerns the Moon shows its phase and exactly one large direction arrow (`⬆️` waxing or `⬇️` waning), then one `<N> days until Full Moon.` or `<N> days until New Moon.` line derived from the generated Skyfield schedule; exact Full/New Moon events omit the arrow. The watcher owns this presentation and must not introduce a second approximate lunar calculation. The body must not repeat an event title: Sunset starts with its next useful fact, and standalone Moonrise/Moonset/New Moon/Full Moon bodies contain the countdown only. User-entered personal title/description may be in any language; application labels are English.
+Personal pushes retain a useful title and description, with date/time and reminder context in the body. Personal titles begin with the event attention icon `🟢`, `🟡`, or `🔴`; if local attachments exist, exactly one `📎` marker is added. ntfy urgency remains independently controlled by its `Priority` header. The full multiline title/description remains local; the push uses a compact single-line title and a UTF-8 byte-safe body projection bounded by the current ntfy limits. Local paths, filenames, and file bytes are never sent. Weather identifies its block as `WEATHER` in the ntfy title/header, then shows location/date and selected weather blocks. If Astronomy is included with Weather, the body contains a plain `ASTRONOMY` section. If `Use Weather briefing time` is off, Astronomy is sent as its own briefing with the native ntfy title/header `ASTRONOMY` and a body beginning with the date; no Markdown markers are sent because the phone app displays them literally. Standalone notification titles use the same ntfy title/header styling. Astronomy rise/set labels use thin arrows after their matching icon: `☀️ ↑ Sunrise`, `☀️ ↓ Sunset`, `🌙 ↑ Moonrise`, and `🌙 ↓ Moonset`; Solar Noon remains `☀️` without a direction arrow, and `🌅` is not emitted. Group Astronomy briefings show the lunar phase with exactly one large direction arrow (`⬆️` waxing or `⬇️` waning), followed by one `<N> days until Full Moon.` or `<N> days until New Moon.` line derived from the generated Skyfield schedule; exact Full/New Moon events omit the arrow. Standalone Moonrise/Moonset titles use the thin rise/set arrow, while standalone phase-event titles use the phase icon and omit the arrow at the exact boundary. The watcher owns this presentation and must not introduce a second approximate lunar calculation. The body must not repeat an event title: Sunset starts with its next useful fact, and standalone Moonrise/Moonset/New Moon/Full Moon bodies contain the countdown only. User-entered personal title/description may be in any language; application labels are English.
 
-Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is checked at its configured local time and sent directly after a fresh fetch.
+Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is checked at its configured local time and sent directly after a fresh fetch. When a Weather or Astronomy briefing time is saved after today's local target has already passed, the watcher records the configuration-change instant and defers that newly configured briefing to the next local day; it does not send a late catch-up immediately from the Save action. Saving before today's target still permits delivery at that target, and an ordinary missed target without a configuration change remains eligible for the existing late catch-up behavior.
 
 ## 5. Astronomy Contract
 
@@ -86,18 +89,20 @@ Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is
 - Custom Coordinates allows independent coordinate entry plus timezone selection. Invalid or inconsistent values must be rejected, not silently guessed.
 - Saving a changed location invalidates Weather cache and marks Astronomy for regeneration.
 - All application times use 24-hour `HH:mm`; persisted event timestamps remain timezone-aware ISO timestamps.
-- Weather settings include enable/disable, briefing time, and independent content selection for temperature, humidity, wind, rain, and snow. A fresh forecast is fetched before each due weather push.
+- Weather settings include enable/disable, briefing time, and independent content selection for temperature, humidity, wind, rain, and snow. A fresh forecast is fetched before each due weather push. The weather state keeps `briefing_config_changed_at` so a saved time that is already past today is scheduled for the next local day.
 
 ## 7. GUI and UX Contract
 
 - Navigation: Today, Upcoming, History, Astronomy, Weather, Location, Health, Search, New Event.
 - Today must not contain duplicate giant branding or duplicate New Event controls.
-- Today and Upcoming show clear dates including year, color/Attention, title/description, and actions.
-- History does not show meaningless On/Off for completed entries.
+- Today and Upcoming show clear dates including year, color/Attention, title/description, an attachment paperclip when applicable, and actions. The content area reacts to hover and a single click opens the editor.
+- History does not show meaningless On/Off for completed entries and is frozen: there is no Edit button or edit-on-click. History offers Duplicate as new event, attachment actions, and Delete.
 - Event rows show a green `On` button for enabled events and a red `Off` button for disabled events. The status remains a toggle, not completion.
 - Disabled rows dim their date/title/description to show that they are inactive, but their priority circle stays fully saturated. Active-row pulsing also leaves the priority circle solid and readable.
 - Forms use English labels, red asterisks for required fields, stable `HH:mm` widths, consistent Cancel/Save placement, and shared save feedback: after successful save the button reads `Saved`, dims, and reactivates only after a new edit.
 - Clean modal forms close on Cancel, Escape, or backdrop click. Dirty forms require an explicit choice.
+- Event forms use multiline Title/Description editors, Finder multi-file selection, and screenshot paste. New-event drafts live under Blink-local `event_data/drafts/` until Save; saved files live under `event_data/attachments/`.
+- Event-row context menus expose applicable actions: Edit (Today/Upcoming only), Duplicate as new event, Add Files, Paste Screenshot, Open Attachments Folder, On/Off, Done, and Delete. A pasted screenshot becomes a unique JPEG. Attachments are never sent to ntfy or committed to GitHub.
 - Astronomy, Weather, and long event lists scroll inside the available window. Astronomy uses one shared two-column layout: the lower Sun/Moon summary is directly beneath its corresponding upper settings column, with matching left edges and icon alignment. It uses the generated schedule rather than a second calculation path. Thin `↑`/`↓` arrows indicate Sunrise/Sunset and Moonrise/Moonset; large `⬆️`/`⬇️` arrows appear only beside the current lunar phase to indicate waxing/waning.
 - If a control is disabled because another option owns the value, the owning option must be visible beside it.
 
@@ -127,7 +132,7 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 
 ## 10. Current Verification Snapshot
 
-- Python: 112 tests passing, 1 skipped.
+- Python: 120 tests passing.
 - Swift UI/store contract runner: passing.
 - Swift release build: passing.
 - JSON and plist validation: passing.

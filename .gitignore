@@ -24,6 +24,9 @@ astronomy/astronomy_config.json
 astronomy/astronomy_schedule.json
 astronomy/ephemeris/
 
+# Blink-local event attachments and unsaved drafts
+event_data/
+
 # Local applications, virtual environments, backups, and experiments
 Blink.app/
 .venv/

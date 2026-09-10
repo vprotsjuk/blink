@@ -54,6 +54,9 @@ Important files and directories:
   requirements.txt                   Skyfield, NumPy, timezonefinder
   location.json                      active location and timezone
   agenda.json                         personal events
+  event_data/
+    attachments/                      Blink-local saved event files
+    drafts/                            unsaved event attachment staging
   weather/
     weather_config.json              weather settings
     weather_cache.json               normalized latest forecast cache
@@ -119,7 +122,7 @@ In city mode, selecting an Open-Meteo suggestion fills the display name, coordin
 
 ### Personal events
 
-Personal events contain an id, title, optional description, local start datetime with explicit timezone offset, enabled state, importance, reminder offsets, optional blinker offset, tags, and repeat information.
+Personal events contain an id, title, optional multiline description, local start datetime with explicit timezone offset, enabled state, importance, reminder offsets, optional blinker offset, tags, repeat information, and optional local-attachment metadata. Attachment metadata contains no absolute paths or file bytes. The full title and description are stored locally, including paragraph breaks.
 
 The user-facing editor requires:
 
@@ -128,7 +131,11 @@ The user-facing editor requires:
 - Time in 24-hour `HH:mm` form.
 - Reminders, with at least one applicable reminder.
 
-Description is optional and may be written in any language. System labels and all non-user-entered UI are English.
+Description is optional and may be written in any language. Title and Description use multiline editors. System labels and all non-user-entered UI are English. New events stage selected files and pasted screenshots in a temporary Blink-local draft folder before Save.
+
+### Event attachments
+
+Blink keeps attachment bytes in `event_data/attachments/` under the project root. Non-recurring events use their event ID as the folder owner. Recurring occurrences retain unique internal IDs for scheduling safety and share one attachment folder through their stable `series_id`. A saved event shows a paperclip and can open its folder from the Mac; files are never sent through ntfy or committed to the public repository. A Finder multi-select adds files to the draft. A context-menu `Paste Screenshot` converts the first image on the macOS pasteboard to a unique JPEG. Cancel/Escape discards the current draft folder; a failed Save retains it for recovery. Deleting an event with attachments confirms and moves the Blink-owned folder to Trash.
 
 ### Weather
 
@@ -153,17 +160,18 @@ The same event object can be viewed in different tabs based on its state. Tabs a
 - **Today:** enabled unfinished events relevant to the current local date, including overdue events that remain unfinished.
 - **Upcoming:** enabled unfinished events after the current day/time horizon.
 - **History:** completed events and intentionally disabled/retired event records that must remain inspectable.
-- A historical event edited to a future date must be reclassified as an active/upcoming event after save. It must not remain physically in History merely because it originated there.
+- A historical event is frozen and cannot be edited. `Duplicate as new event` creates a new ID and new folder; the source remains in History unchanged.
 
 ### Event actions
 
 - `Done`: marks the event completed, stops its blinker, removes it from active attention, and preserves it in History.
 - `On` / `Off`: controls whether future reminders are active. `Off` is not a replacement for `Done`. Disabling a due or completed-looking item must not delete it or remove its history record.
-- `Edit`: edits the same event record. Saving a changed date/time recalculates its view classification and future reminder schedule.
+- `Edit`: edits the same non-History event record. Saving a changed date/time recalculates its view classification and future reminder schedule.
+- `Duplicate as new event`: creates a fresh unfinished event with a new ID and new attachment owner from a History record without modifying the source.
 - `Delete`: removes the event record intentionally. This is the destructive action and is separate from Off.
 - `Snooze`: moves the active event's effective due time forward while preserving the original scheduled time and the snooze history. The event remains active, continues blinking, and retains Done.
 
-Today shows `Done`, `On/Off`, `Edit`, and `Delete`. Upcoming shows `On/Off`, `Edit`, and `Delete`. History shows `Edit` and `Delete`, allowing an old event to be reactivated/reused. The UI must not hide Done merely because an event has become overdue or has been snoozed.
+Today shows `Done`, `On/Off`, `Edit`, attachment actions, and `Delete`. Upcoming shows `On/Off`, `Edit`, attachment actions, and `Delete`. History shows `Duplicate as new event`, attachment actions, and `Delete`; it never shows Edit or edit-on-click. The UI must not hide Done merely because an event has become overdue or has been snoozed.
 
 ## 7. Attention, Colors, and Blinker
 
@@ -229,7 +237,7 @@ The title starts with the priority icon and user title:
 🔴 Client visit
 ```
 
-The body contains clean English system lines while preserving the user-entered title/description language:
+The body contains clean English system lines while preserving the user-entered title/description language. Multiline local text is projected into the ntfy title/body within the service's current UTF-8 limits; truncation affects only the push, not the saved event:
 
 ```text
 September 14, 2026 at 15:00
@@ -238,6 +246,8 @@ Do not forget the tape measure
 ```
 
 The calendar icon and internal tags are not put into the body. The title/description content is not converted or translated.
+
+If the event has local attachments, one `📎` marker is added to the personal push. The push never includes local paths, filenames, or file bytes.
 
 ### Weather push
 
@@ -257,7 +267,7 @@ September 8, 2026
 💨 Wind: 7 mph, gusts up to 14 mph
 ```
 
-The visible app weather summary uses the same icons and metric order. Before each weather push, the watcher attempts a fresh Open-Meteo forecast fetch, normalizes the result, and then sends. A failed refresh does not silently pretend that the old data is current; the watcher records the failure and retries according to its bounded retry behavior.
+The visible app weather summary uses the same icons and metric order. Before each weather push, the watcher attempts a fresh Open-Meteo forecast fetch, normalizes the result, and then sends. A failed refresh does not silently pretend that the old data is current; the watcher records the failure and retries according to its bounded retry behavior. Saving a briefing time after today's local target records the change and defers the newly configured briefing until the next local day, preventing the Save action from causing an immediate late push. A save before today's target still delivers at the configured target, while an ordinary missed target remains eligible for late catch-up.
 
 ### Astronomy briefing push
 
@@ -265,7 +275,7 @@ The body contains the selected Sun and Moon information, solar day/night duratio
 
 ### Individual astronomy push
 
-Individual Sun and Moon events are sent strictly at the calculated event time with offset zero. They are independent toggles, for example separate `Sunset`, `Sunrise`, `Moonrise`, and `Moonset` switches. Sunrise, Solar Noon, and Sunset use `☀️`; the retired `🌅` icon is never emitted. Moon-related messages use `New Moon` or `Full Moon` only on the calendar day of the corresponding exact event; otherwise they use only `Waxing Moon` or `Waning Moon`, with one large phase-direction arrow (`⬆️` waxing or `⬇️` waning) in the title or phase line, followed by one distance-to-the-next-relevant-phase line. At a true New Moon or Full Moon event the direction arrow is omitted because the event is the phase boundary:
+Individual Sun and Moon events are sent strictly at the calculated event time with offset zero. They are independent toggles, for example separate `Sunset`, `Sunrise`, `Moonrise`, and `Moonset` switches. Rise/set notifications use thin arrows after the matching icon: `☀️ ↑ Sunrise`, `☀️ ↓ Sunset`, `🌙 ↑ Moonrise`, and `🌙 ↓ Moonset`; Solar Noon remains `☀️` without a direction arrow. The retired `🌅` icon is never emitted. Group Astronomy briefings show the lunar phase with one large phase-direction arrow (`⬆️` waxing or `⬇️` waning), followed by one distance-to-the-next-relevant-phase line. Standalone Moonrise/Moonset titles prioritize the thin rise/set arrow; standalone New/Full Moon titles use the phase icon and omit the direction arrow at the exact boundary:
 
 ```text
 🌒 ⬆️ Waxing Moon — 75% illuminated
@@ -294,7 +304,7 @@ The `Weather` tab is scrollable and contains:
 - Saved feedback: after a successful save, the button changes to `Saved` and is dimmed/disabled until a setting changes again.
 - The latest cached daily summary with date, selected metrics, icons, and update time.
 
-Weather push timing is not limited to morning. The UI uses the neutral `Weather briefing time` label and accepts evening times.
+Weather push timing is not limited to morning. The UI uses the neutral `Weather briefing time` label and accepts evening times. The weather state persists `briefing_config_changed_at` to distinguish a newly saved, already-past target from a watcher that simply missed a target.
 
 ## 11. Astronomy Block
 
@@ -359,15 +369,15 @@ The editor has two mutually exclusive modes:
 
 ### Today
 
-Shows active events for today, including overdue unfinished items. Each row displays date/time, saturated priority dot, title, description, `Done`, `On/Off`, `Edit`, and `Delete`. Overdue rows and the Today tab may pulse according to attention rules.
+Shows active events for today, including overdue unfinished items. Each row displays date/time, saturated priority dot, title, description, `📎` when attachments exist, `Done`, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on click and reacts to hover. Overdue rows and the Today tab may pulse according to attention rules.
 
 ### Upcoming
 
-Shows future enabled events sorted by effective time. Each row displays full date including year, time, priority dot, title, description, `On/Off`, `Edit`, and `Delete`.
+Shows future enabled events sorted by effective time. Each row displays full date including year, time, priority dot, title, description, `📎` when attachments exist, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on click.
 
 ### History
 
-Shows completed, disabled-retained, and past event records with full dates including year. `Edit` can revive an old event by giving it a future date; after save, the same record leaves History and appears in Today/Upcoming according to its new time. `Delete` is the only removal action.
+Shows completed, disabled-retained, and past event records with full dates including year. History rows are immutable and expose `Duplicate as new event`, attachment actions, and Delete; they do not expose Edit or edit-on-click. The duplicate appears in Today/Upcoming according to its new date and time.
 
 ### Astronomy
 
@@ -391,7 +401,11 @@ The toolbar search field searches user-visible event title and description acros
 
 ### New Event
 
-Opens the event editor with the default final-row blinker selection. The modal supports date picking, direct 24-hour time entry, stepper arrows, importance, enabled state, recurrence, and reminders. Clicking outside a clean modal closes it. A dirty form requires the user to choose whether to discard, so accidental outside clicks do not erase edits.
+Opens the event editor with the default final-row blinker selection. The modal supports date picking, direct 24-hour time entry, stepper arrows, importance, enabled state, recurrence, reminders, multiline Title/Description, Finder multi-file selection, and screenshot paste. It creates a temporary draft ID/folder before Save. Clicking outside a clean modal closes it. A dirty form requires the user to choose whether to discard, so accidental outside clicks do not erase edits.
+
+### Event context menu
+
+Today and Upcoming rows support hover, content-click editing, and a context menu with Edit, Add Files, Paste Screenshot, Open Attachments Folder, Duplicate as new event, On/Off, Done, and Delete as applicable. History rows are frozen and omit Edit/On/Off; they offer Duplicate as new event, attachment actions, and Delete.
 
 ### Save buttons
 
@@ -437,13 +451,13 @@ At startup and in its loop, the watcher:
 8. Updates the physical blinker state until the relevant event is Done.
 9. Records failures for Health/status inspection and retries within bounded rules.
 
-The remote queue is limited to the supported rolling horizon and is an aid for future personal/astronomy delivery. Weather is fetched close to send time because its value must be current.
+The remote queue is limited to the supported rolling horizon and is an aid for future personal/astronomy delivery. Weather is fetched close to send time because its value must be current. Briefing configuration changes are carried through the local JSON contracts: SwiftUI writes the change instant, and `watcher.py` applies the next-local-day deferral for an already-past target.
 
 ## 16. Verification Snapshot
 
 The latest recorded verification state is:
 
-- Python test suite: 112 passing, 1 skipped.
+- Python test suite: 120 passing.
 - Swift test runner: passes.
 - Swift release build: completed.
 - Python compile checks: pass.

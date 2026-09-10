@@ -23,6 +23,7 @@ The LaunchAgents start both the watcher and `Blink.app` at login. The watcher us
 - `watcher_state.json`: direct-send deduplication.
 - `watcher_runtime.json`: heartbeat and status.
 - `ntfy_schedule_state.json`: rolling 24-hour personal/astronomy queue.
+- `event_data/`: Blink-local event attachment folders and temporary draft files (ignored by Git).
 - `weather/`: weather settings, cache, and delivery state.
 - `astronomy/`: Skyfield/JPL schedule and notification settings.
 
@@ -32,7 +33,7 @@ The LaunchAgents start both the watcher and `Blink.app` at login. The watcher us
 Upcoming -> Active -> Done -> History
 ```
 
-`start` must contain an explicit UTC offset. `On/Off` controls notification eligibility. `Done` completes a personal event and writes `done_at`; `Delete` removes it. Visual attention starts at `start - blinker_minutes_before` but never changes lifecycle state. Recurring events support weekly fixed schedules and days-after-Done schedules with idempotent successors.
+`start` must contain an explicit UTC offset. `On/Off` controls notification eligibility. `Done` completes a personal event and writes `done_at`; `Delete` removes it. Visual attention starts at `start - blinker_minutes_before` but never changes lifecycle state. Recurring events support weekly fixed schedules and days-after-Done schedules with idempotent successors. History is frozen: a past event cannot be edited; it can only be duplicated as a new event or deleted. New and duplicate events may stage local attachments in `event_data/` before Save; the phone receives only a paperclip marker.
 
 ## Weather and astronomy
 
