@@ -737,6 +737,17 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains("RoundedRectangle(cornerRadius: 12, style: .continuous)"), "Text field cards should have continuous rounded corners")
 }
 
+func testEventEditorFitsWindowAndScrolls() throws {
+    let contentView = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: contentView, encoding: .utf8)
+    try expect(source.contains("eventEditorModalHeight"), "Editor modal should use a window-safe height")
+    try expect(source.contains(".frame(maxHeight: .infinity, alignment: .top)"), "Editor content should stay top-aligned and scroll within the modal")
+}
+
 func testNewEventActionStaysInsideWindowContent() throws {
     let contentView = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -1125,6 +1136,7 @@ let tests: [(String, () throws -> Void)] = [
     ("editable event writes recurrence contracts", testEditableEventWritesRecurrenceContracts),
     ("editor backdrop and time field UI contracts", testEditorBackdropAndTimeFieldUiContracts),
     ("event editor layout contracts", testEventEditorLayoutContracts),
+    ("event editor fits window and scrolls", testEventEditorFitsWindowAndScrolls),
     ("new event action stays inside window content", testNewEventActionStaysInsideWindowContent),
     ("new event plus button and tab hover contracts", testNewEventPlusButtonAndTabHoverContracts),
     ("importance picker uses event color", testImportancePickerUsesEventColor),

@@ -9,6 +9,8 @@ public enum BlinkDesign {
     public static let fieldWidth: CGFloat = 112
 }
 
+private let eventEditorModalHeight: CGFloat = 720
+
 extension View {
     func blinkSettingsCard() -> some View {
         self
@@ -270,7 +272,7 @@ public struct ContentView: View {
                     closeEditor(discardDraft: false)
                 }
             }
-            .frame(width: 760, height: 820)
+            .frame(width: 760, height: eventEditorModalHeight)
             .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(radius: 18)
@@ -956,7 +958,8 @@ struct EventEditorView: View {
     }
 
     var body: some View {
-        Form {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 RequiredLabel("Title")
                 ZStack(alignment: .topLeading) {
@@ -1089,8 +1092,10 @@ struct EventEditorView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!canSave)
             }
+            }
         }
         .frame(maxWidth: 620, alignment: .leading)
+        .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, 30)
         .padding(.vertical, 16)
         .onChange(of: draft.date) {
