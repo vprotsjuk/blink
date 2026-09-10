@@ -1,10 +1,10 @@
-# Blink: Current Architecture, Behavior, and Contracts
+# Blink: Complete Current Specification, Architecture, Behavior, and Contracts
 
 **Snapshot:** 2026-09-09  
 **Project root:** `/Users/vitaliiprotsiuk/Desktop/Blink`  
-**Document purpose:** complete technical handoff for analysis by ChatGPT and future Codex threads.
+**Document purpose:** one standalone current specification for the owner, ChatGPT analysis, and future Codex threads. It describes what is implemented now; it is not a wish-list.
 
-This document describes the current implementation, not a future product proposal. The normative source for boundaries and invariants is [`docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`](/Users/vitaliiprotsiuk/Desktop/Blink/docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md). The short continuation prompt is [`CODEX_NEXT_THREAD_PROMPT.md`](/Users/vitaliiprotsiuk/Desktop/Blink/CODEX_NEXT_THREAD_PROMPT.md).
+This document is the canonical human/ChatGPT/Codex description of the current implementation, not a future product proposal. The linked contract and continuation files are shorter operational records; when they appear to differ, this complete specification and the running code are the reference to reconcile.
 
 ## 1. What Blink Is
 
@@ -136,6 +136,117 @@ Description is optional and may be written in any language. Title and Descriptio
 ### Event attachments
 
 Blink keeps attachment bytes in `event_data/attachments/` under the project root. Non-recurring events use their event ID as the folder owner. Recurring occurrences retain unique internal IDs for scheduling safety and share one attachment folder through their stable `series_id`. A saved event shows a paperclip and can open its folder from the Mac; files are never sent through ntfy or committed to the public repository. A Finder multi-select adds files to the draft. When the macOS pasteboard contains file URLs (for example, a copied PDF or Excel file), the context menu and editor show `Paste Attachment` and copy those regular files into Blink; when file URLs are present, `Paste Screenshot` is hidden. If the pasteboard contains image data without file URLs, `Paste Screenshot` converts the first image to a unique JPEG. Cancel/Escape discards the current draft folder; a failed Save retains it for recovery. Deleting an event with attachments confirms and moves the Blink-owned folder to Trash.
+
+## 5A. Complete attachment interaction specification
+
+This section is the definitive behavior for files, screenshots, clipboard actions, Finder folders, previews, and event context menus.
+
+### Attachment ownership and paths
+
+All runtime data stays inside the Blink project root:
+
+```text
+/Users/vitaliiprotsiuk/Desktop/Blink/
+  event_data/
+    attachments/<owner-id>/   saved files for an event or recurring series
+    drafts/<draft-id>/        temporary files while an editor is open
+```
+
+The event record stores only attachment metadata (`owner_id`, `count`, `has_files`). It never stores absolute paths or file bytes. The filesystem is canonical for the bytes; `agenda.json` is canonical for event metadata. There is currently no SQL database. Search derives attachment names from the owner folder, so adding a file in Finder does not require a second database or a second watcher.
+
+Owner rules:
+
+- A normal event owns a folder named by its event ID.
+- A recurring event occurrence keeps its own internal event ID for scheduling safety, but occurrences in one series share the stable `series_id` folder.
+- `Duplicate as new event` always creates a new event ID and a new attachment owner. The source History record is not changed and files are not silently shared.
+- Active and Upcoming events can always create/open an empty owner folder. History can reveal a folder only when it already exists; opening History never creates a new folder.
+
+### New event and edit draft lifecycle
+
+Opening the New Event editor or editing an existing writable event creates a Blink-local temporary draft ID/folder immediately. This allows the user to attach files before pressing Save.
+
+While the editor is open:
+
+1. `Attach Files` opens an `NSOpenPanel` with multiple file selection enabled and directories disabled.
+2. `Paste Attachment` copies regular file URLs from the macOS pasteboard into the draft.
+3. `Paste Screenshot` converts the first decodable clipboard image to a unique timestamped JPEG in the draft.
+4. The attachment list shows both already-saved files and staged draft files. Images use thumbnails; PDF, Excel, and other files use a generic document icon plus filename and size.
+5. A staged file has a `Remove` action. Removing it affects only the draft.
+6. `Save` finalizes staged files into the permanent owner folder, writes the manifest into `agenda.json`, and removes the draft folder after the metadata save succeeds.
+7. `Cancel` or `Escape` discards only the draft folder. Existing saved files are untouched.
+8. If finalization or metadata saving fails, the draft is retained so the operation can be retried without losing staged files.
+
+Editing an existing event preserves its event ID and owner folder. It can add or remove staged files without changing the event's identity. History records are frozen and cannot be opened in this editor.
+
+### Clipboard decision matrix
+
+Blink examines the current pasteboard only when building the editor controls or an event-row context menu. The actions are deliberately type-specific:
+
+| Clipboard contents | Available action | Result |
+|---|---|---|
+| One or more regular file URLs copied in Finder, including PDF, Excel, image, DWG, or another file | `Paste Attachment` | Copies all regular files into the event/draft folder using unique names. |
+| Image data (TIFF/PNG/JPEG/HEIC) with no file URLs, including a screenshot or copied photo | `Paste Screenshot` | Converts the first image to a timestamped JPEG and stages/copies it. |
+| File URLs and image representations at the same time | `Paste Attachment` only | File URLs take precedence; `Paste Screenshot` is hidden. |
+| Plain text, emoji, or a text-only selection | No attachment action | In a focused `Title`/`Description` editor, normal macOS `⌘V` inserts the text. It does not create a file. |
+| PDF/Excel text or page content copied from Preview/Office rather than the file itself | Usually no file action | Use `Attach Files`, or copy the actual file from Finder. If the source provides image data, only the screenshot action may be available. |
+| AutoCAD object/geometry | No special import | Blink does not parse AutoCAD clipboard objects. Save/export the object as a file or image, then use `Attach Files` or `Paste Attachment`. |
+| A directory or copied folder contents | No `Paste Attachment` | Directories are rejected; use `Attach Files` to choose individual files. Blink never recursively imports a folder tree or hidden/service files. |
+| Unsupported/empty clipboard | No paste action | The context menu exposes only actions that are currently possible. |
+
+`⌘V` itself is not a global “attach” command. It is native text insertion when a text editor has focus. In an event row or its context menu, `⌘V` has no custom effect; use the visible `Paste Attachment` or `Paste Screenshot` action.
+
+### Finder workflow and direct folder changes
+
+For a saved Active or Upcoming event, `Open Attachments Folder` always opens (and creates if necessary) the event's owner folder in Finder. The user may place files there manually. A `Save` press in Blink is not required for this direct Finder workflow.
+
+Blink's GUI performs its normal event reload on appearance and approximately every 30 seconds. During that reload it scans each owner folder and reconciles `count`/`has_files` in `agenda.json`. Consequently:
+
+- a newly added Finder file eventually makes the row show `📎`;
+- the editor's preview list is refreshed reliably when the editor is reopened (the open editor is not a live Finder watcher);
+- filename/extension search sees the file after the same reload;
+- no watcher restart or SQL synchronization is required.
+
+The current Upcoming records have their owner folders provisioned. Future editable events receive an empty folder on demand through the same action.
+
+### Drag-and-drop policy
+
+Dragging a file or a group of files onto an event row currently does nothing. It is intentionally not a second attachment pipeline. The supported, predictable paths are `Attach Files`, `Paste Attachment`, `Paste Screenshot`, and direct Finder placement into `Open Attachments Folder`. Any future drag-and-drop feature must reuse the existing draft/storage path, accept regular files only, reject directories, and remain disabled for frozen History.
+
+### Context menus by tab
+
+The context menu is dynamic and never offers an action that cannot work with the current event state or pasteboard.
+
+**Today and Upcoming (writable rows):**
+
+- `Edit` — opens the multiline event editor; clicking the row content does the same.
+- `Add Files` — Finder multi-select; copies selected regular files.
+- `Paste Attachment` — shown for regular file URLs in the clipboard.
+- `Paste Screenshot` — shown for image-only clipboard data when no file URLs are present.
+- `Open Attachments Folder` — always available, including for an empty folder.
+- `Duplicate as new event` — creates a new ID/folder.
+- `Done` (Today where applicable).
+- `Turn On`/`Turn Off`.
+- `Delete`.
+
+**History (frozen rows):**
+
+- `Duplicate as new event`.
+- `Open Attachments Folder` only when an existing folder with attachments is present.
+- `Delete`.
+
+History has no `Edit`, `Add Files`, paste actions, `Done`, or On/Off. The source event remains immutable; duplication is the only way to reuse it.
+
+### Preview and visibility rules
+
+- Image files are decoded only for a small visual thumbnail; Blink does not OCR or inspect their contents.
+- PDF, Excel, DWG, text, and other non-image files show a generic type icon, filename, and byte size.
+- Hidden files and nested directories are omitted from the preview list and manifest count.
+- The push contains only one `📎` marker when an event has local attachments. It never contains local paths, filenames, or file bytes.
+- Deleting an event with attachments asks for confirmation and moves the Blink-owned folder to macOS Trash. A shared recurring-series folder is moved only when no remaining event uses it.
+
+### Search behavior
+
+The toolbar search covers title, multiline description, date, status, and visible attachment filenames/extensions. It does not search inside PDF, Excel, image, DWG, or text-file contents. It scans local owner folders during the existing filtered-view pass. JSON plus folders remain the source of truth; a future SQLite database, if ever justified by scale, may only be a rebuildable derived index and must not become a second canonical store.
 
 ### Weather
 
@@ -403,7 +514,7 @@ All navigation tabs use Blink-owned buttons with a subtle pointer-hover backgrou
 
 ### New Event
 
-Opens the event editor with the default final-row blinker selection. The modal supports date picking, direct 24-hour time entry, stepper arrows, importance, enabled state, recurrence, reminders, multiline Title/Description, Finder multi-file selection, and screenshot paste. It creates a temporary draft ID/folder before Save. Clicking outside a clean modal closes it. A dirty form requires the user to choose whether to discard, so accidental outside clicks do not erase edits.
+Opens the event editor with the default final-row blinker selection. The modal supports date picking, direct 24-hour time entry, stepper arrows, importance, enabled state, recurrence, reminders, multiline Title/Description, Finder multi-file selection, file-URL paste, and screenshot paste. It creates a temporary draft ID/folder before Save. Clicking outside a clean modal closes it. A dirty form requires the user to choose whether to discard, so accidental outside clicks do not erase edits.
 
 ### Event context menu
 
@@ -461,7 +572,7 @@ The remote queue is limited to the supported rolling horizon and is an aid for f
 
 The latest recorded verification state is:
 
-- Python test suite: 120 passing.
+- Python test suite: 128 passing.
 - Swift test runner: passes.
 - Swift release build: completed.
 - Python compile checks: pass.
