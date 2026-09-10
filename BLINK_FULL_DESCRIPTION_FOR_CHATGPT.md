@@ -485,7 +485,7 @@ The editor has two mutually exclusive modes:
 - The custom tuple becomes the source for astronomy and weather.
 - The city-derived coordinates are inactive while custom mode is selected.
 
-`Save` is disabled until the candidate is valid. A successful location save persists the tuple, invalidates/rekeys weather cache, requests astronomy regeneration, and causes dependent views to refresh. The location editor closes by Save/Cancel or by clicking outside the modal when the form is clean; dirty changes are guarded.
+`Save` is disabled until the candidate is both valid and different from the saved location. A successful location save persists the tuple, invalidates/rekeys weather cache, requests astronomy regeneration, and causes dependent views to refresh. The location editor closes by Save/Cancel or by clicking outside the modal when the form is clean; dirty changes are guarded.
 
 ## 13. GUI Tabs and Controls
 
@@ -537,7 +537,7 @@ Rows show only a compact paperclip/count; clicking it opens a popover with filen
 
 ### Save buttons
 
-All settings Save buttons use one pattern:
+All Save buttons use one pattern:
 
 1. Enabled when the form is dirty and valid.
 2. On success, persist the change and refresh dependent state.
@@ -545,7 +545,7 @@ All settings Save buttons use one pattern:
 4. Become dimmed/disabled while no further changes exist.
 5. Become active again only after a new change.
 
-This applies to event Save, Location Save, Save Weather, and Save Astronomy.
+This applies to event Save, Location Save, Save Weather, and Save Astronomy. Event and Location Save start disabled when nothing has changed; attachment additions/removals, text, date/time, reminders, recurrence, enabled state, importance, and location fields all count as changes. If the user changes a value and then restores the original value, Save becomes disabled again.
 
 ### Modal behavior
 
