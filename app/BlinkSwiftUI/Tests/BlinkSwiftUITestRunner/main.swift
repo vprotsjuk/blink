@@ -961,6 +961,8 @@ func testEventRowsExposeAttachmentAndHistoryContracts() throws {
     try expect(source.contains("TextEditor(text: $draft.title)"), "Title should use a multiline editor")
     try expect(source.contains("TextEditor(text: $draft.description)"), "Description should use a multiline editor")
     try expect(source.contains("Paste Screenshot"), "Context menu should expose screenshot paste")
+    try expect(source.contains("Paste Attachment"), "Context menu should expose file attachment paste")
+    try expect(source.contains("clipboardFileURLs"), "File attachment paste should inspect file URLs on the pasteboard")
     try expect(source.contains("Duplicate as new event"), "Context menu should expose History duplication")
     try expect(source.contains("contextMenu"), "Event rows should expose a context menu")
     try expect(source.contains("showsHistory"), "Event rows should know when History is frozen")
@@ -975,6 +977,7 @@ func testAttachmentFolderMenuAndPreviewContracts() throws {
     let source = try String(contentsOf: sourceURL, encoding: .utf8)
     try expect(source.contains("if !showsHistory || event.hasAttachments"), "Active events should always expose their attachment folder")
     try expect(source.contains("if clipboardImageAvailable()"), "Paste Screenshot should appear only for image clipboard data")
+    try expect(source.contains("if !clipboardFileURLs().isEmpty"), "Paste Screenshot should be replaced by Paste Attachment when files are on the pasteboard")
     try expect(source.contains("AttachmentPreviewList"), "The editor should show attachment previews")
     try expect(source.contains("Remove"), "Draft attachments should have a remove action")
 }

@@ -44,15 +44,15 @@ The approved Blink-local event attachments feature is implemented. It adds multi
 
 ## Open questions / risks
 - Manual visual walkthrough covered the installed Today/New Event surface after release deployment; the editor shows multiline fields, attachment controls, colored importance, reminders, and visible Cancel/Save actions without clipping. History action gating is covered by Swift UI-contract tests.
-- Clipboard and drag/drop policy is recorded below and should remain intentionally small: image clipboard data is accepted by `Paste Screenshot`; file URLs and folders should use `Attach Files`; drag/drop is a future optional shortcut, not a second attachment pipeline.
+- Clipboard and drag/drop policy is intentionally small: file URLs use `Paste Attachment`, image-only clipboard data uses `Paste Screenshot`, and folders use `Attach Files`; drag/drop is not an attachment path.
 - Active/Upcoming events can always open or create an empty attachment folder; History can only reveal an existing folder. The editor previews image thumbnails and file-type icons, while `Paste Screenshot` is omitted when the pasteboard has no usable image.
 - Search should include attachment filenames/extensions by scanning the local owner folder, while keeping JSON and folders canonical; do not add SQLite unless a later scale test demonstrates a need for a rebuildable index.
 - The active-folder/preview/search implementation plan is `docs/superpowers/plans/2026-09-09-attachment-previews-and-folder-actions.md`; it must be reconciled line by line after release verification.
 
 ## Open questions to preserve across compaction: clipboard and drag/drop
 
-- Should `Paste Screenshot` accept any clipboard image, not only screenshots? **Recommended:** yes; accept TIFF/PNG image data and convert it to a timestamped JPEG without relying on a source filename.
-- If the clipboard contains an Excel/PDF file URL, should `Paste Screenshot` import it? **Recommended:** no; show a short guidance error and keep `Attach Files` as the one file-import path.
+- Should `Paste Screenshot` accept any clipboard image, not only screenshots? **Implemented:** yes; accept TIFF/PNG image data and convert it to a timestamped JPEG without relying on a source filename, unless file URLs are also present.
+- If the clipboard contains an Excel/PDF file URL, should `Paste Screenshot` import it? **Implemented:** no; show `Paste Attachment` instead and use the existing file-import path.
 - If the clipboard contains Finder folder contents or a directory, should Blink recursively copy them? **Recommended:** no; reject directories to avoid hidden/service files, large trees, and surprising copies.
 - Should drag-and-drop be added to event rows? **Recommended future shortcut:** accept one or more regular file URLs, stage them in the open event draft, highlight the row while hovering, and reject directories with an explanatory message. Do not add a second storage or scheduler path.
 - Should drag/drop be disabled for History? **Recommended:** yes; History is frozen and only duplication creates a writable new event.

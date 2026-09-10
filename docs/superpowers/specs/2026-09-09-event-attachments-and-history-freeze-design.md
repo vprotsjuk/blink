@@ -66,7 +66,7 @@ The editor shows an attachment control that opens an `NSOpenPanel` with multiple
 
 Every event row supports a hover treatment and a single click on its content area opens the same editor as Edit in Today, Upcoming, and History. Action buttons remain independent and must not trigger row editing.
 
-The contextual menu is supplemental to visible controls and contains the applicable actions: Edit (only for non-History events), Duplicate as new event, Add Files, Paste Screenshot, Open Attachments Folder, On/Off, Done, and Delete. History has no Edit action.
+The contextual menu is supplemental to visible controls and contains the applicable actions: Edit (only for non-History events), Duplicate as new event, Add Files, Paste Attachment or Paste Screenshot according to the current pasteboard, Open Attachments Folder, On/Off, Done, and Delete. History has no Edit action.
 
 ## ID and History semantics
 

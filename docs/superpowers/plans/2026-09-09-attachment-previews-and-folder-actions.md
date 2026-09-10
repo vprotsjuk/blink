@@ -13,7 +13,7 @@
 - Keep all Blink-owned runtime files under `/Users/vitaliiprotsiuk/Desktop/Blink`.
 - Do not add cloud storage, a second scheduler, a second sender, or a new file-watching service. Keep JSON plus the attachment folders canonical; if a future scale test proves a database useful, SQLite may be added only as a rebuildable search index.
 - Active/Upcoming events may open an empty attachment folder; frozen History may only open an existing attachment folder.
-- `Paste Screenshot` appears only when the macOS pasteboard contains usable image data.
+- `Paste Attachment` appears for regular file URLs on the macOS pasteboard and takes precedence over `Paste Screenshot`; the screenshot action remains for image-only pasteboards.
 - Images get thumbnails; non-image files get type icons. Do not parse Excel/PDF contents.
 - Search matches attachment filenames (and file extensions) in addition to title, description, date, and status.
 - Cancel/Escape removes only the current draft folder; saved event folders remain local and outside Git.
@@ -30,7 +30,7 @@
 
 - [x] **Step 1: Add a failing source contract for dynamic context actions.**
 
-  Assert that `EventRowView` gates `Paste Screenshot` on an image-availability helper, shows `Open Attachments Folder` for every non-History row, and gates it by existing attachments for History.
+  Assert that `EventRowView` gates `Paste Attachment`/`Paste Screenshot` on the current pasteboard type, shows `Open Attachments Folder` for every non-History row, and gates it by existing attachments for History.
 
 - [x] **Step 2: Add a failing source contract for editor previews.**
 
@@ -80,11 +80,11 @@
 
 - [x] **Step 1: Add a pasteboard image-availability helper.**
 
-  Use the same TIFF/PNG/JPEG/HEIC decoding path as `clipboardJPEGData()`. The helper must return false for text, file URLs, Excel/PDF URLs, and folders.
+  Use the same TIFF/PNG/JPEG/HEIC decoding path as `clipboardJPEGData()`. A separate file-URL helper accepts regular files and rejects text, directories, and folder contents.
 
 - [x] **Step 2: Gate context-menu actions.**
 
-  In Today/Upcoming, always show `Open Attachments Folder`; show `Paste Screenshot` only when the helper returns true. In History, never show add/paste actions and show folder access only when `event.hasAttachments` is true.
+  In Today/Upcoming, always show `Open Attachments Folder`; show `Paste Attachment` for file URLs, otherwise `Paste Screenshot` for image data. In History, never show add/paste actions and show folder access only when `event.hasAttachments` is true.
 
 - [x] **Step 3: Ensure the folder before opening it.**
 

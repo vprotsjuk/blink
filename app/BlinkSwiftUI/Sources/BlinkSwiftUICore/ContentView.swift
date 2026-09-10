@@ -317,6 +317,9 @@ public struct ContentView: View {
             addFiles: { event in
                 chooseFiles(for: event)
             },
+            pasteAttachment: { event in
+                pasteAttachment(for: event)
+            },
             pasteScreenshot: { event in
                 pasteScreenshot(for: event)
             },
@@ -385,6 +388,18 @@ public struct ContentView: View {
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
         perform {
             try store.addFiles(eventID: event.id, urls: panel.urls)
+            reload()
+        }
+    }
+
+    private func pasteAttachment(for event: BlinkEvent) {
+        let urls = clipboardFileURLs()
+        guard !urls.isEmpty else {
+            errorMessage = "No file was found in the clipboard."
+            return
+        }
+        perform {
+            try store.addFiles(eventID: event.id, urls: urls)
             reload()
         }
     }
@@ -650,7 +665,9 @@ private struct EventRowView: View {
             if !showsHistory {
                 Button("Edit") { actions.edit(event) }
                 Button("Add Files") { actions.addFiles(event) }
-                if clipboardImageAvailable() {
+                if !clipboardFileURLs().isEmpty {
+                    Button("Paste Attachment") { actions.pasteAttachment(event) }
+                } else if clipboardImageAvailable() {
                     Button("Paste Screenshot") { actions.pasteScreenshot(event) }
                 }
             }
@@ -839,7 +856,9 @@ struct EventEditorView: View {
             Section {
                 HStack(spacing: 12) {
                     Button("📎 Attach Files") { chooseFiles() }
-                    if clipboardImageAvailable() {
+                    if !clipboardFileURLs().isEmpty {
+                        Button("Paste Attachment") { pasteAttachments() }
+                    } else if clipboardImageAvailable() {
                         Button("Paste Screenshot") { pasteScreenshot() }
                     }
                     if stagedAttachmentCount > 0 {
@@ -981,6 +1000,18 @@ struct EventEditorView: View {
               let data = clipboardJPEGData() else { return }
         do {
             try attachmentWorkspace.addJPEG(data, to: draftID)
+            stagedAttachmentCount = stagedCount()
+        } catch {
+            // See chooseFiles().
+        }
+    }
+
+    private func pasteAttachments() {
+        guard let attachmentWorkspace, let draftID else { return }
+        let urls = clipboardFileURLs()
+        guard !urls.isEmpty else { return }
+        do {
+            try attachmentWorkspace.addFiles(urls, to: draftID)
             stagedAttachmentCount = stagedCount()
         } catch {
             // See chooseFiles().
@@ -1896,6 +1927,7 @@ struct EventRowActions {
     var edit: (BlinkEvent) -> Void
     var duplicate: (BlinkEvent) -> Void
     var addFiles: (BlinkEvent) -> Void
+    var pasteAttachment: (BlinkEvent) -> Void
     var pasteScreenshot: (BlinkEvent) -> Void
     var openAttachments: (BlinkEvent) -> Void
     var done: (BlinkEvent) -> Void
@@ -1905,6 +1937,24 @@ struct EventRowActions {
 
 private func clipboardImageAvailable() -> Bool {
     clipboardImageData() != nil
+}
+
+private func clipboardFileURLs() -> [URL] {
+    let options: [NSPasteboard.ReadingOptionKey: Any] = [
+        .urlReadingFileURLsOnly: true
+    ]
+    guard let objects = NSPasteboard.general.readObjects(
+        forClasses: [NSURL.self],
+        options: options
+    ) else { return [] }
+    return objects.compactMap { object in
+        guard let url = (object as? NSURL)?.filePathURL,
+              url.isFileURL,
+              (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
+            return nil
+        }
+        return url
+    }
 }
 
 private func clipboardImageData() -> Data? {
