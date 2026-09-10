@@ -660,10 +660,6 @@ private struct EventRowView: View {
     var body: some View {
         HStack {
             rowContent
-                .contentShape(Rectangle())
-                .onTapGesture(count: 2) {
-                    if !showsHistory { actions.edit(event) }
-                }
             Spacer()
             if showsDone {
                 Button("Done") { actions.done(event) }
@@ -690,6 +686,10 @@ private struct EventRowView: View {
         }
         .padding(.vertical, 4)
         .background(isHovered ? Color.primary.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 6))
+        .contentShape(Rectangle())
+        .simultaneousGesture(TapGesture(count: 2).onEnded {
+            if !showsHistory { actions.edit(event) }
+        })
         .onHover { isHovered = $0 }
         .contextMenu {
             if !showsHistory {
@@ -776,6 +776,7 @@ private struct AttachmentFileList: View {
         }
         .onAppear(perform: reload)
         .onChange(of: refreshToken) { reload() }
+        .onChange(of: ownerID) { reload() }
     }
 
     private func reload() {
@@ -834,6 +835,14 @@ private struct AttachmentPreviewList: View {
         }
         .onAppear(perform: reload)
         .onChange(of: refreshToken) { reload() }
+        .onChange(of: ownerID) { reload() }
+        .onChange(of: draftID) { reload() }
+        .task(id: previewReloadIdentity) { reload() }
+    }
+
+    private var previewReloadIdentity: String {
+        [workspace?.root.path ?? "none", draftID ?? "none", ownerID, String(refreshToken)]
+            .joined(separator: "|")
     }
 
     private func reload() {
@@ -959,6 +968,7 @@ struct EventEditorView: View {
                 refreshToken: stagedAttachmentCount,
                 onChange: { stagedAttachmentCount = stagedCount() }
             )
+            .id(attachmentPreviewIdentity)
             DatePicker(selection: $draft.date, displayedComponents: .date) {
                 RequiredLabel("Date")
             }
@@ -1076,6 +1086,11 @@ struct EventEditorView: View {
         if !series.isEmpty { return series }
         let manifestOwner = draft.attachments?.ownerID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return manifestOwner.isEmpty ? draft.id : manifestOwner
+    }
+
+    private var attachmentPreviewIdentity: String {
+        [attachmentWorkspace?.root.path ?? "none", draftID ?? "none", attachmentOwnerID]
+            .joined(separator: "|")
     }
 
     private func pasteScreenshot() {

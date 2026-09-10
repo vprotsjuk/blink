@@ -989,11 +989,15 @@ func testEventRowAttachmentListAndFolderButtonContracts() throws {
         .deletingLastPathComponent()
         .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
     let source = try String(contentsOf: sourceURL, encoding: .utf8)
-    try expect(source.contains(".onTapGesture(count: 2)"), "Event rows should open on double click")
     try expect(source.contains("AttachmentFileList"), "Event rows should show an attachment filename list")
     try expect(source.contains("lineLimit(1)"), "Attachment filenames should be shortened to one line")
     try expect(source.contains("ScrollView(.vertical"), "Many attachment filenames should scroll vertically")
     try expect(source.contains("systemName: \"folder\""), "Rows and editor should expose a folder button")
+    try expect(source.contains("simultaneousGesture(TapGesture(count: 2)"), "The whole event row should open on double click")
+    try expect(source.contains("onChange(of: ownerID)"), "Editor previews should reload when the event owner changes")
+    try expect(source.contains("onChange(of: draftID)"), "Editor previews should reload when the draft changes")
+    try expect(source.contains(".id(attachmentPreviewIdentity)"), "Editor previews should reset when the editor owner changes")
+    try expect(source.contains(".task(id: previewReloadIdentity)"), "Editor previews should load after the attachment inputs are ready")
 }
 
 func testAttachmentWorkspaceFolderContracts() throws {
