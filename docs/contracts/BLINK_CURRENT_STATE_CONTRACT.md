@@ -93,7 +93,8 @@ Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is
 
 ## 7. GUI and UX Contract
 
-- Navigation: Today, Upcoming, History, Astronomy, Weather, Location, Health, Search, New Event.
+- Navigation: Today, Upcoming, History, Astronomy, Weather, Location, Health, and Search. The Today header owns one compact round blue `+` action for creating a new event; there is no wide duplicate `New Event` button in the content area.
+- All navigation tabs use the Blink-owned tab buttons and provide a subtle hover background before selection, so pointer users can see the interactive target.
 - Today must not contain duplicate giant branding or duplicate New Event controls.
 - Today and Upcoming show clear dates including year, color/Attention, title/description, an attachment paperclip when applicable, and actions. The content area reacts to hover and a single click opens the editor.
 - History does not show meaningless On/Off for completed entries and is frozen: there is no Edit button or edit-on-click. History offers Duplicate as new event, attachment actions, and Delete.

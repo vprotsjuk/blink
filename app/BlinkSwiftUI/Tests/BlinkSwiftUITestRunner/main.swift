@@ -723,9 +723,24 @@ func testNewEventActionStaysInsideWindowContent() throws {
         .deletingLastPathComponent()
         .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
     let source = try String(contentsOf: contentView, encoding: .utf8)
-    try expect(source.contains(".safeAreaInset(edge: .top"), "New Event should use an in-window content inset")
-    try expect(source.contains("Button(\"New Event\""), "The in-window action row should keep the New Event action")
+    try expect(source.contains("Image(systemName: \"plus\")"), "New Event should use the compact in-window plus action")
+    try expect(source.contains("Text(\"Today\").font(.title.bold())"), "The Today title should remain next to the new event action")
+    try expect(!source.contains(".safeAreaInset(edge: .top"), "New Event should not use an overflowing top inset")
+    try expect(!source.contains("Button(\"New Event\")"), "The old wide New Event button should be removed")
     try expect(!source.contains("ToolbarItemGroup(placement: .automatic) {\n            TextField(\"Search\", text: $searchQuery)\n                .textFieldStyle(.roundedBorder)\n                .frame(width: 220)\n            Button(\"New Event\", action: onNewEvent)"), "New Event should not live in the overflowing automatic toolbar group")
+}
+
+func testNewEventPlusButtonAndTabHoverContracts() throws {
+    let contentView = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: contentView, encoding: .utf8)
+    try expect(source.contains("Image(systemName: \"plus\")"), "Today should expose a round plus button for creating events")
+    try expect(source.contains(".clipShape(Circle())"), "The new event action should be circular")
+    try expect(source.contains(".onHover { isHovered in"), "Every custom tab should react to mouse hover")
+    try expect(source.contains("isHovered ? Color.primary.opacity(0.07)"), "Hovered tabs should have a subtle visual state")
 }
 
 func testImportancePickerUsesEventColor() throws {
@@ -997,6 +1012,7 @@ let tests: [(String, () throws -> Void)] = [
     ("editor backdrop and time field UI contracts", testEditorBackdropAndTimeFieldUiContracts),
     ("event editor layout contracts", testEventEditorLayoutContracts),
     ("new event action stays inside window content", testNewEventActionStaysInsideWindowContent),
+    ("new event plus button and tab hover contracts", testNewEventPlusButtonAndTabHoverContracts),
     ("importance picker uses event color", testImportancePickerUsesEventColor),
     ("active attention UI contracts", testActiveAttentionUiContracts),
     ("location search and custom coordinate contracts", testLocationSearchAndCustomCoordinateContracts),

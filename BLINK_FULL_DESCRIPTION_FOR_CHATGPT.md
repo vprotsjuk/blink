@@ -369,7 +369,7 @@ The editor has two mutually exclusive modes:
 
 ### Today
 
-Shows active events for today, including overdue unfinished items. Each row displays date/time, saturated priority dot, title, description, `📎` when attachments exist, `Done`, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on click and reacts to hover. Overdue rows and the Today tab may pulse according to attention rules.
+Shows active events for today, including overdue unfinished items. The header places one compact round blue `+` button immediately to the left of `Today` for creating a new event. Each row displays date/time, saturated priority dot, title, description, `📎` when attachments exist, `Done`, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on click and reacts to hover. Overdue rows and the Today tab may pulse according to attention rules.
 
 ### Upcoming
 
@@ -399,6 +399,8 @@ Health is a diagnostics surface. It should report watcher heartbeat, launch/runt
 
 The toolbar search field searches user-visible event title and description across Active/Today, Upcoming, and History. Results remain visible in the content viewport; search must not scroll the first match underneath the toolbar or into an invisible top region. Clearing the query restores the current tab view.
 
+All navigation tabs use Blink-owned buttons with a subtle pointer-hover background before selection. This keeps hover feedback consistent across Today, Upcoming, History, Astronomy, Weather, Location, and Health without changing navigation state or data ownership.
+
 ### New Event
 
 Opens the event editor with the default final-row blinker selection. The modal supports date picking, direct 24-hour time entry, stepper arrows, importance, enabled state, recurrence, reminders, multiline Title/Description, Finder multi-file selection, and screenshot paste. It creates a temporary draft ID/folder before Save. Clicking outside a clean modal closes it. A dirty form requires the user to choose whether to discard, so accidental outside clicks do not erase edits.
@@ -406,6 +408,8 @@ Opens the event editor with the default final-row blinker selection. The modal s
 ### Event context menu
 
 Today and Upcoming rows support hover, content-click editing, and a context menu with Edit, Add Files, Paste Screenshot, Open Attachments Folder, Duplicate as new event, On/Off, Done, and Delete as applicable. History rows are frozen and omit Edit/On/Off; they offer Duplicate as new event, attachment actions, and Delete.
+
+`Paste Screenshot` accepts image data currently available on the macOS pasteboard (including a copied photo), converts it to a timestamped JPEG, and stages it in the event draft. It does not import Excel/PDF file URLs or folder contents; those use `Attach Files`. Dragging files onto a row is intentionally not a second attachment path yet. If enabled later, it should accept regular file URLs only, reuse the same draft staging code, reject directories, and remain disabled for frozen History rows.
 
 ### Save buttons
 

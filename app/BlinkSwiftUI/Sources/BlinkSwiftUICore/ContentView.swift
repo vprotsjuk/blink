@@ -32,6 +32,7 @@ private struct BlinkTabButton: View {
     let attentionColor: Color?
     let pulseVisible: Bool
     let action: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
@@ -39,10 +40,18 @@ private struct BlinkTabButton: View {
                 .foregroundStyle(displayColor)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
-                .background(selected ? Color.primary.opacity(0.12) : .clear, in: Capsule())
+                .background(
+                    selected
+                        ? Color.primary.opacity(0.12)
+                        : (isHovered ? Color.primary.opacity(0.07) : .clear),
+                    in: Capsule()
+                )
                 .animation(.easeInOut(duration: 0.3), value: pulseVisible)
         }
         .buttonStyle(.plain)
+        .onHover { isHovered in
+            self.isHovered = isHovered
+        }
     }
 
     private var displayColor: Color {
@@ -292,15 +301,6 @@ public struct ContentView: View {
             }
         }
         .padding(18)
-        .safeAreaInset(edge: .top, spacing: 8) {
-            HStack {
-                Spacer()
-                Button("New Event") { openEditor(EditableEvent.blank()) }
-                    .buttonStyle(.borderedProminent)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 18)
-        }
     }
 
     private var actions: EventRowActions {
@@ -502,7 +502,19 @@ struct TodayView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Today").font(.title.bold())
+            HStack(spacing: 10) {
+                Button(action: actions.newEvent) {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(Color.accentColor, in: Circle())
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help("New Event")
+                Text("Today").font(.title.bold())
+            }
             Text("Active").font(.headline)
             EventRows(
                 events: filtered(snapshot.active),
