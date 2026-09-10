@@ -715,6 +715,9 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains("HStack(spacing: 18)"), "Reminder controls should use aligned columns")
     try expect(source.contains(".frame(width: 230, alignment: .leading)"), "Reminder columns should have a stable width")
     try expect(source.contains(".frame(maxWidth: 620, alignment: .leading)"), "Editor form should use a centered readable content width")
+    try expect(source.contains("eventEditorFieldCard()"), "Title and Description should use the softened field-card style")
+    try expect(source.contains("scrollContentBackground(.hidden)"), "Text editors should use the card background instead of native edge-to-edge fill")
+    try expect(source.contains("RoundedRectangle(cornerRadius: 12, style: .continuous)"), "Text field cards should have continuous rounded corners")
 }
 
 func testNewEventActionStaysInsideWindowContent() throws {

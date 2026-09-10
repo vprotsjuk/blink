@@ -14,6 +14,20 @@ extension View {
             .padding(BlinkDesign.cardPadding)
             .background(.quaternary.opacity(0.28), in: RoundedRectangle(cornerRadius: BlinkDesign.cardRadius))
     }
+
+    func eventEditorFieldCard() -> some View {
+        self
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                .background.opacity(0.78),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.primary.opacity(0.14), lineWidth: 1)
+            }
+    }
 }
 
 private enum BlinkTab: Hashable {
@@ -925,20 +939,26 @@ struct EventEditorView: View {
                 RequiredLabel("Title")
                 ZStack(alignment: .topLeading) {
                     TextEditor(text: $draft.title)
+                        .scrollContentBackground(.hidden)
+                        .padding(2)
                     if draft.title.isEmpty {
                         Text("Required")
                             .foregroundStyle(.secondary)
-                            .padding(.top, 8)
-                            .padding(.leading, 5)
+                            .padding(.top, 12)
+                            .padding(.leading, 13)
                             .allowsHitTesting(false)
                     }
                 }
-                .frame(minHeight: 42, maxHeight: 90)
+                .frame(minHeight: 48, maxHeight: 96)
+                .eventEditorFieldCard()
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text("Description")
                 TextEditor(text: $draft.description)
+                    .scrollContentBackground(.hidden)
+                    .padding(2)
                     .frame(minHeight: 72, maxHeight: 180)
+                    .eventEditorFieldCard()
             }
             Section {
                 HStack(spacing: 12) {
