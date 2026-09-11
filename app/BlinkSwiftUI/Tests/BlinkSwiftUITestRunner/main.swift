@@ -784,6 +784,32 @@ func testEventEditorFitsWindowAndScrolls() throws {
     try expect(source.contains(".frame(maxHeight: .infinity, alignment: .top)"), "Editor content should stay top-aligned and scroll within the modal")
 }
 
+func testEventEditorModalIsMovableAndResizable() throws {
+    let contentView = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: contentView, encoding: .utf8)
+    try expect(source.contains("eventEditorModalDefaultHeight"), "Editor should default to a nearly full-height modal")
+    try expect(source.contains("@State private var editorModalSize"), "Editor size should be user-adjustable")
+    try expect(source.contains("@State private var editorModalOffset"), "Editor position should be user-adjustable")
+    try expect(source.contains("DragGesture()"), "Editor should expose drag gestures for move and resize")
+    try expect(source.contains("clampedEditorOffset"), "Editor movement should stay within the app window")
+    try expect(source.contains("editorResizeHandle"), "Editor should expose a visible resize handle")
+}
+
+func testCalendarGridUsesCompactSpacing() throws {
+    let contentView = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: contentView, encoding: .utf8)
+    try expect(source.contains("calendarGridSpacing"), "Calendar spacing should be an explicit compact design constant")
+    try expect(source.contains("calendarCellSpacing"), "Calendar cell spacing should be independently controlled")
+}
+
 func testNewEventActionStaysInsideWindowContent() throws {
     let contentView = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -1234,6 +1260,8 @@ let tests: [(String, () throws -> Void)] = [
     ("calendar day markers use today priority and past state", testCalendarDayMarkersUseTodayPriorityAndPastState),
     ("save buttons require actual changes", testSaveButtonsRequireActualChanges),
     ("event editor fits window and scrolls", testEventEditorFitsWindowAndScrolls),
+    ("event editor modal is movable and resizable", testEventEditorModalIsMovableAndResizable),
+    ("calendar grid uses compact spacing", testCalendarGridUsesCompactSpacing),
     ("new event action stays inside window content", testNewEventActionStaysInsideWindowContent),
     ("new event plus button and tab hover contracts", testNewEventPlusButtonAndTabHoverContracts),
     ("importance picker uses event color", testImportancePickerUsesEventColor),

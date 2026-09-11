@@ -9,8 +9,13 @@ public enum BlinkDesign {
     public static let fieldWidth: CGFloat = 112
 }
 
-private let eventEditorModalHeight: CGFloat = 720
+private let eventEditorModalDefaultHeight: CGFloat = 900
+private let eventEditorModalHeight: CGFloat = eventEditorModalDefaultHeight
 private let eventEditorModalWidth: CGFloat = 920
+private let eventEditorModalMinWidth: CGFloat = 700
+private let eventEditorModalMinHeight: CGFloat = 560
+private let calendarGridSpacing: CGFloat = 2
+private let calendarCellSpacing: CGFloat = 2
 
 extension View {
     func blinkSettingsCard() -> some View {
@@ -147,6 +152,10 @@ public struct ContentView: View {
     @State private var editorAttachmentWorkspace: AttachmentWorkspace?
     @State private var editorDraftID: String?
     @State private var editorIsDirty = false
+    @State private var editorModalSize = CGSize(width: eventEditorModalWidth, height: eventEditorModalDefaultHeight)
+    @State private var editorModalOffset = CGSize.zero
+    @State private var editorDragStartOffset: CGSize?
+    @State private var editorResizeStartSize: CGSize?
     @State private var locationEditor: EditableLocation?
     @State private var searchQuery = ""
     @State private var errorMessage: String?
@@ -252,53 +261,155 @@ public struct ContentView: View {
     @ViewBuilder
     private var eventEditorOverlay: some View {
         if let event = editorEvent {
-            Color.black.opacity(0.22)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    if shouldDismissEventEditorOnBackdropTap(editorIsDirty: editorIsDirty) {
-                        closeEditor()
+            GeometryReader { proxy in
+                let modalSize = constrainedEditorSize(editorModalSize, in: proxy.size)
+                ZStack {
+                    Color.black.opacity(0.22)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            if shouldDismissEventEditorOnBackdropTap(editorIsDirty: editorIsDirty) {
+                                closeEditor()
+                            }
+                        }
+
+                    VStack(spacing: 0) {
+                        editorModalHeader(in: proxy.size, event: event)
+                        EventEditorView(
+                            event: event,
+                            reminderConfig: reminderConfig,
+                            calendarEvents: events.filter { $0.isPersonal },
+                            // Keep the preview backed by the project-local workspace even
+                            // while SwiftUI is settling the editor state assignment.
+                            attachmentWorkspace: editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root),
+                            draftID: editorDraftID,
+                            onDirtyChange: { editorIsDirty = $0 },
+                            onCancel: { closeEditor() },
+                            onOpenAttachments: {
+                                let workspace = editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root)
+                                if let draftID = editorDraftID, !events.contains(where: { $0.id == event.id }) {
+                                    NSWorkspace.shared.open(workspace.draftURL(draftID))
+                                } else {
+                                    _ = try? workspace.ensureAttachmentFolder(ownerID: event.id)
+                                    NSWorkspace.shared.open(workspace.attachmentURL(ownerID: event.id))
+                                }
+                            }
+                        ) { savedEvent, pendingRemovedNames in
+                            perform {
+                                let workspace = editorAttachmentWorkspace
+                                for name in pendingRemovedNames {
+                                    let fileURL = workspace?.attachmentURL(ownerID: savedEvent.id).appendingPathComponent(name)
+                                    if let fileURL { try? workspace?.moveFileToTrash(fileURL, ownerID: savedEvent.id) }
+                                }
+                                try store.save(
+                                    savedEvent,
+                                    attachmentWorkspace: editorAttachmentWorkspace,
+                                    draftID: editorDraftID
+                                )
+                                reload()
+                                closeEditor(discardDraft: false)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        editorResizeHandle(in: proxy.size)
                     }
-                }
-            EventEditorView(
-                event: event,
-                reminderConfig: reminderConfig,
-                calendarEvents: events.filter { $0.isPersonal },
-                // Keep the preview backed by the project-local workspace even
-                // while SwiftUI is settling the editor state assignment.
-                attachmentWorkspace: editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root),
-                draftID: editorDraftID,
-                onDirtyChange: { editorIsDirty = $0 },
-                onCancel: { closeEditor() },
-                onOpenAttachments: {
-                    let workspace = editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root)
-                    if let draftID = editorDraftID, !events.contains(where: { $0.id == event.id }) {
-                        NSWorkspace.shared.open(workspace.draftURL(draftID))
-                    } else {
-                        _ = try? workspace.ensureAttachmentFolder(ownerID: event.id)
-                        NSWorkspace.shared.open(workspace.attachmentURL(ownerID: event.id))
-                    }
-                }
-            ) { savedEvent, pendingRemovedNames in
-                perform {
-                    let workspace = editorAttachmentWorkspace
-                    for name in pendingRemovedNames {
-                        let fileURL = workspace?.attachmentURL(ownerID: savedEvent.id).appendingPathComponent(name)
-                        if let fileURL { try? workspace?.moveFileToTrash(fileURL, ownerID: savedEvent.id) }
-                    }
-                    try store.save(
-                        savedEvent,
-                        attachmentWorkspace: editorAttachmentWorkspace,
-                        draftID: editorDraftID
+                    .frame(width: modalSize.width, height: modalSize.height)
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .shadow(radius: 18)
+                    .position(
+                        x: proxy.size.width / 2 + editorModalOffset.width,
+                        y: proxy.size.height / 2 + editorModalOffset.height
                     )
-                    reload()
-                    closeEditor(discardDraft: false)
+                }
+                .onAppear {
+                    editorModalSize = modalSize
+                    editorModalOffset = clampedEditorOffset(editorModalOffset, size: modalSize, in: proxy.size)
                 }
             }
-            .frame(width: eventEditorModalWidth, height: eventEditorModalHeight)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .shadow(radius: 18)
         }
+    }
+
+    private func editorModalHeader(in bounds: CGSize, event: EditableEvent) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "rectangle.and.pencil.and.ellipsis")
+                .foregroundStyle(.secondary)
+            Text(event.title.isEmpty ? "New Event" : event.title)
+                .font(.headline)
+                .lineLimit(1)
+            Spacer()
+            Text("Drag to move")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity)
+        .background(.quaternary.opacity(0.42))
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    if editorDragStartOffset == nil { editorDragStartOffset = editorModalOffset }
+                    let origin = editorDragStartOffset ?? editorModalOffset
+                    editorModalOffset = clampedEditorOffset(
+                        CGSize(width: origin.width + value.translation.width, height: origin.height + value.translation.height),
+                        size: constrainedEditorSize(editorModalSize, in: bounds),
+                        in: bounds
+                    )
+                }
+                .onEnded { _ in
+                    editorDragStartOffset = nil
+                }
+        )
+    }
+
+    private func editorResizeHandle(in bounds: CGSize) -> some View {
+        HStack {
+            Spacer()
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(10)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            if editorResizeStartSize == nil { editorResizeStartSize = editorModalSize }
+                            let origin = editorResizeStartSize ?? editorModalSize
+                            editorModalSize = constrainedEditorSize(
+                                CGSize(width: origin.width + value.translation.width, height: origin.height + value.translation.height),
+                                in: bounds
+                            )
+                            editorModalOffset = clampedEditorOffset(editorModalOffset, size: editorModalSize, in: bounds)
+                        }
+                        .onEnded { _ in
+                            editorResizeStartSize = nil
+                        }
+                )
+        }
+        .frame(height: 34)
+        .padding(.trailing, 4)
+        .padding(.bottom, 2)
+    }
+
+    private func constrainedEditorSize(_ requested: CGSize, in bounds: CGSize) -> CGSize {
+        let maxWidth = max(eventEditorModalMinWidth, bounds.width - 32)
+        let maxHeight = max(eventEditorModalMinHeight, bounds.height - 32)
+        return CGSize(
+            width: min(max(requested.width, eventEditorModalMinWidth), maxWidth),
+            height: min(max(requested.height, eventEditorModalMinHeight), maxHeight)
+        )
+    }
+
+    private func clampedEditorOffset(_ requested: CGSize, size: CGSize, in bounds: CGSize) -> CGSize {
+        let horizontalLimit = max(0, (bounds.width - size.width) / 2)
+        let verticalLimit = max(0, (bounds.height - size.height) / 2)
+        return CGSize(
+            width: min(max(requested.width, -horizontalLimit), horizontalLimit),
+            height: min(max(requested.height, -verticalLimit), verticalLimit)
+        )
     }
 
     @ViewBuilder
@@ -1145,7 +1256,7 @@ private struct EventCalendarView: View {
                 .buttonStyle(.plain)
             }
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 6) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: calendarCellSpacing), count: 7), spacing: calendarGridSpacing) {
                 ForEach(weekdaySymbols, id: \.self) { symbol in
                     Text(symbol)
                         .font(.caption.weight(.semibold))
@@ -1161,14 +1272,14 @@ private struct EventCalendarView: View {
                             action: { selection = day }
                         )
                     } else {
-                        Color.clear.frame(height: 32)
+                        Color.clear.frame(height: 28)
                     }
                 }
             }
         }
-        .padding(16)
+        .padding(12)
         .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .frame(width: 360)
+        .frame(width: 320)
     }
 
     private var weekdaySymbols: [String] {
@@ -1213,7 +1324,7 @@ private struct CalendarDayCell: View {
                 .font(.system(.body, design: .rounded).weight(.medium))
                 .foregroundStyle(textColor)
                 .frame(maxWidth: .infinity)
-                .frame(height: 32)
+                .frame(height: 28)
                 .background(backgroundShape)
                 .overlay {
                     if selected && marker != .today {
@@ -1358,7 +1469,7 @@ struct EventEditorView: View {
                         .disabled(!canSave)
                     }
                 }
-                .frame(width: 380, alignment: .leading)
+                .frame(width: 340, alignment: .leading)
             }
             .frame(maxWidth: 860, alignment: .top)
         }

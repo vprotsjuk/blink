@@ -345,12 +345,20 @@ and the Cancel/Save actions. This keeps the calendar and time together while
 leaving the text and event options visible near the top. Save remains disabled
 until the draft is both valid and different from its original value.
 
+The editor opens nearly full-height within the Blink window. Its header is a
+drag handle for repositioning the modal, and the lower-right resize handle lets
+the user make it wider, narrower, taller, or shorter. Both movement and size
+are clamped to the available Blink window; the editor content remains scrollable
+at every size.
+
 Title and Description are growing multiline editors: an empty or short value is
 kept at a compact one-line height, and the field grows only as wrapping or
 explicit paragraph breaks require it, up to a bounded scrollable height. The
 stored text is never truncated.
 
-The calendar is Blink-owned so it can show event context. The current local day
+The calendar is Blink-owned so it can show event context. Its day cells use
+compact spacing so the calendar stays narrow and leaves more width to the text
+column. The current local day
 is a blue filled square with white numerals. A future day containing personal
 events uses the color of the highest-priority event on that day (green, yellow,
 or red). A past day containing an event receives a muted gray background. A
