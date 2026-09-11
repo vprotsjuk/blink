@@ -37,6 +37,8 @@ def build_event_notification(
         title = f"{_attention_icon(event)}{marker} {title}"
     title = _truncate_utf8(title, MAX_NTFY_TITLE_BYTES)
     date_line = _event_date_label(event, start_value)
+    if event.get("source") == "astronomy":
+        return title, _build_astronomy_body(date_line, event)
     description = str(event.get("description", "")).strip()
     reminder_line = _reminder_label(offset_minutes)
     return title, _build_bounded_body(date_line, description, reminder_line)
@@ -74,8 +76,28 @@ def _build_bounded_body(date_line: str, description: str, reminder_line: str) ->
     return f"{date_line}\n{bounded_description}\n{reminder_line}"
 
 
+def _build_astronomy_body(date_line: str, event: dict[str, Any]) -> str:
+    """Keep astronomy facts while removing duplicated event boilerplate."""
+    event_name = _single_line_title(event.get("title", "")).casefold().rstrip(".")
+    cleaned: list[str] = []
+    for raw_line in str(event.get("description", "")).splitlines():
+        line = raw_line.strip()
+        normalized = line.casefold().rstrip(".")
+        if not line or normalized in {event_name, "event starts now"}:
+            continue
+        if normalized.startswith("solar noon. sun:"):
+            altitude = line[len("Solar noon. Sun:"):].strip()
+            if altitude:
+                cleaned.append(f"Sun altitude: {altitude}")
+            continue
+        cleaned.append(line)
+    return "\n".join([date_line, *cleaned])
+
+
 def push_tags_for_event(event: dict[str, Any], default_tags: list[str] | None = None) -> list[str]:
     """Return ntfy tags without Blink's internal calendar marker for reminders."""
+    if event.get("source", "personal") == "astronomy":
+        return []
     raw_tags = event.get("tags") or default_tags or []
     tags = [str(tag).strip() for tag in raw_tags if str(tag).strip()]
     if event.get("source", "personal") == "personal":

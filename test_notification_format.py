@@ -5,6 +5,7 @@ from app.notification_format import (
     MAX_NTFY_BODY_BYTES,
     MAX_NTFY_TITLE_BYTES,
     build_event_notification,
+    push_tags_for_event,
 )
 
 
@@ -133,6 +134,34 @@ class NotificationFormatTests(unittest.TestCase):
                     0,
                 )
                 self.assertEqual(actual, f"{icon} {title}")
+
+    def test_individual_astronomy_body_removes_duplicate_event_and_start_line(self):
+        title, body = build_event_notification(
+            {
+                "title": "Solar noon",
+                "description": "Solar noon. Sun: 57.4° above horizon.",
+                "start": "2026-09-10T13:05:00-07:00",
+                "source": "astronomy",
+                "tags": ["astronomy", "solar-noon"],
+            },
+            0,
+        )
+        self.assertEqual(title, "☀️ Solar noon")
+        self.assertEqual(
+            body,
+            "September 10, 2026 at 13:05\nSun altitude: 57.4° above horizon.",
+        )
+        self.assertNotIn("Solar noon.", body)
+        self.assertNotIn("Event starts now", body)
+
+    def test_individual_astronomy_push_has_no_outgoing_ntfy_tags(self):
+        self.assertEqual(
+            push_tags_for_event(
+                {"source": "astronomy", "tags": ["astronomy", "sunset"]},
+                ["calendar"],
+            ),
+            [],
+        )
 
 
 if __name__ == "__main__":
