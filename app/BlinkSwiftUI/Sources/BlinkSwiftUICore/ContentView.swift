@@ -10,6 +10,7 @@ public enum BlinkDesign {
 }
 
 private let eventEditorModalHeight: CGFloat = 720
+private let eventEditorModalWidth: CGFloat = 920
 
 extension View {
     func blinkSettingsCard() -> some View {
@@ -261,6 +262,7 @@ public struct ContentView: View {
             EventEditorView(
                 event: event,
                 reminderConfig: reminderConfig,
+                calendarEvents: events.filter { $0.isPersonal },
                 // Keep the preview backed by the project-local workspace even
                 // while SwiftUI is settling the editor state assignment.
                 attachmentWorkspace: editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root),
@@ -292,7 +294,7 @@ public struct ContentView: View {
                     closeEditor(discardDraft: false)
                 }
             }
-            .frame(width: 760, height: eventEditorModalHeight)
+            .frame(width: eventEditorModalWidth, height: eventEditorModalHeight)
             .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(radius: 18)
@@ -1039,6 +1041,216 @@ private struct AttachmentThumbnail: View {
     }
 }
 
+public enum CalendarDayMarker: Equatable {
+    case normal
+    case today
+    case futureEvent(AttentionState)
+    case pastEvent
+}
+
+public func calendarDayMarker(
+    for day: Date,
+    today: Date,
+    events: [BlinkEvent]
+) -> CalendarDayMarker {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = blinkTimeZone
+    let dayStart = calendar.startOfDay(for: day)
+    let todayStart = calendar.startOfDay(for: today)
+    let dayEvents = events.filter { event in
+        guard event.isPersonal, let start = parseISODate(event.start) else { return false }
+        return calendar.isDate(start, inSameDayAs: dayStart)
+    }
+
+    if calendar.isDate(dayStart, inSameDayAs: todayStart) {
+        return .today
+    }
+    if dayStart < todayStart {
+        return dayEvents.isEmpty ? .normal : .pastEvent
+    }
+    guard let highest = dayEvents.map(\.attentionLevel).max() else { return .normal }
+    return .futureEvent(highest)
+}
+
+private struct GrowingTextEditor: View {
+    @Binding var text: String
+    let placeholder: String
+    let minHeight: CGFloat
+    let maxHeight: CGFloat
+    let estimatedCharactersPerLine: Int
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            TextEditor(text: $text)
+                .scrollContentBackground(.hidden)
+                .padding(2)
+            if text.isEmpty {
+                Text(placeholder)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 12)
+                    .padding(.leading, 13)
+                    .allowsHitTesting(false)
+            }
+        }
+        .frame(height: editorHeight)
+        .eventEditorFieldCard()
+    }
+
+    private var editorHeight: CGFloat {
+        let lines = text
+            .components(separatedBy: .newlines)
+            .map { max(Int(ceil(Double(max($0.count, 1)) / Double(estimatedCharactersPerLine))), 1) }
+            .reduce(0, +)
+        return min(max(minHeight, CGFloat(lines) * 22 + 16), maxHeight)
+    }
+}
+
+private struct EventCalendarView: View {
+    @Binding var selection: Date
+    let events: [BlinkEvent]
+    @State private var displayedMonth: Date
+
+    private var calendar: Calendar {
+        var value = Calendar(identifier: .gregorian)
+        value.timeZone = blinkTimeZone
+        return value
+    }
+
+    init(selection: Binding<Date>, events: [BlinkEvent]) {
+        self._selection = selection
+        self.events = events
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = blinkTimeZone
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: selection.wrappedValue)) ?? selection.wrappedValue
+        self._displayedMonth = State(initialValue: monthStart)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(monthTitle)
+                    .font(.headline)
+                Spacer()
+                Button {
+                    displayedMonth = calendar.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .buttonStyle(.plain)
+                Button {
+                    displayedMonth = calendar.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .buttonStyle(.plain)
+            }
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 6) {
+                ForEach(weekdaySymbols, id: \.self) { symbol in
+                    Text(symbol)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+                ForEach(Array(monthDays.enumerated()), id: \.offset) { _, day in
+                    if let day {
+                        CalendarDayCell(
+                            day: day,
+                            marker: calendarDayMarker(for: day, today: Date(), events: events),
+                            selected: calendar.isDate(day, inSameDayAs: selection),
+                            action: { selection = day }
+                        )
+                    } else {
+                        Color.clear.frame(height: 32)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .frame(width: 360)
+    }
+
+    private var weekdaySymbols: [String] {
+        ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+    }
+
+    private var monthTitle: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = blinkTimeZone
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: displayedMonth)
+    }
+
+    private var monthDays: [Date?] {
+        guard let range = calendar.range(of: .day, in: .month, for: displayedMonth),
+              let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) else {
+            return []
+        }
+        let leading = calendar.component(.weekday, from: firstDay) - 1
+        let dates = range.compactMap { calendar.date(byAdding: .day, value: $0 - 1, to: firstDay) }
+        let trailing = (7 - ((leading + dates.count) % 7)) % 7
+        return Array(repeating: nil, count: leading) + dates.map(Optional.some) + Array(repeating: nil, count: trailing)
+    }
+}
+
+private struct CalendarDayCell: View {
+    let day: Date
+    let marker: CalendarDayMarker
+    let selected: Bool
+    let action: () -> Void
+
+    private var calendar: Calendar {
+        var value = Calendar(identifier: .gregorian)
+        value.timeZone = blinkTimeZone
+        return value
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(String(calendar.component(.day, from: day)))
+                .font(.system(.body, design: .rounded).weight(.medium))
+                .foregroundStyle(textColor)
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
+                .background(backgroundShape)
+                .overlay {
+                    if selected && marker != .today {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .stroke(Color.accentColor.opacity(0.7), lineWidth: 1.5)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var backgroundShape: some View {
+        switch marker {
+        case .today:
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(Color.blue)
+        case .pastEvent:
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(Color.gray.opacity(0.28))
+        default:
+            Color.clear
+        }
+    }
+
+    private var textColor: Color {
+        switch marker {
+        case .today:
+            return .white
+        case .futureEvent(let state):
+            return color(for: state)
+        case .normal, .pastEvent:
+            return .primary
+        }
+    }
+}
+
 struct EventEditorView: View {
     @State private var draft: EditableEvent
     @State private var timeText: String
@@ -1046,6 +1258,7 @@ struct EventEditorView: View {
     @State private var pendingRemovedAttachmentNames: Set<String> = []
     private let original: EditableEvent
     let reminderConfig: ReminderConfig
+    let calendarEvents: [BlinkEvent]
     let attachmentWorkspace: AttachmentWorkspace?
     let draftID: String?
     let onDirtyChange: (Bool) -> Void
@@ -1056,6 +1269,7 @@ struct EventEditorView: View {
     init(
         event: EditableEvent,
         reminderConfig: ReminderConfig,
+        calendarEvents: [BlinkEvent],
         attachmentWorkspace: AttachmentWorkspace?,
         draftID: String?,
         onDirtyChange: @escaping (Bool) -> Void,
@@ -1068,6 +1282,7 @@ struct EventEditorView: View {
         self._stagedAttachmentCount = State(initialValue: event.attachments?.count ?? 0)
         self.original = event
         self.reminderConfig = reminderConfig
+        self.calendarEvents = calendarEvents
         self.attachmentWorkspace = attachmentWorkspace
         self.draftID = draftID
         self.onDirtyChange = onDirtyChange
@@ -1078,142 +1293,76 @@ struct EventEditorView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                RequiredLabel("Title")
-                ZStack(alignment: .topLeading) {
-                    TextEditor(text: $draft.title)
-                        .scrollContentBackground(.hidden)
-                        .padding(2)
-                    if draft.title.isEmpty {
-                        Text("Required")
+            HStack(alignment: .top, spacing: 20) {
+                VStack(alignment: .leading, spacing: 12) {
+                    RequiredLabel("Title")
+                    GrowingTextEditor(
+                        text: $draft.title,
+                        placeholder: "Required",
+                        minHeight: 34,
+                        maxHeight: 132,
+                        estimatedCharactersPerLine: 40
+                    )
+
+                    Text("Description")
+                    GrowingTextEditor(
+                        text: $draft.description,
+                        placeholder: "",
+                        minHeight: 34,
+                        maxHeight: 220,
+                        estimatedCharactersPerLine: 40
+                    )
+
+                    attachmentSection
+                    Toggle("Enabled", isOn: $draft.enabled)
+                    Picker("Importance", selection: $draft.attentionLevel) {
+                        Text("Normal").tag(AttentionState.green)
+                        Text("Important").tag(AttentionState.yellow)
+                        Text("Critical").tag(AttentionState.red)
+                    }
+                    .pickerStyle(.segmented)
+                    .tint(color(for: draft.attentionLevel))
+                    recurrenceSection
+                    remindersSection
+                    Picker("Start blinking", selection: blinkerSelectionBinding) {
+                        ForEach(reminderConfig.presets) { preset in
+                            Text(preset.label).tag(preset.minutes_before)
+                        }
+                    }
+                    .disabled(!isReminderAvailable(draft.blinkerMinutesBefore ?? 0))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    RequiredLabel("Date")
+                    EventCalendarView(selection: $draft.date, events: calendarEvents)
+                    HStack {
+                        RequiredLabel("Time")
+                        TextField("HH:mm", text: $timeText)
+                            .font(.system(.body, design: .monospaced))
+                            .multilineTextAlignment(.center)
+                            .frame(width: eventEditorTimeFieldWidth)
+                        Stepper("", value: timeMinutesBinding, in: 0...1439)
+                            .labelsHidden()
+                        Text("HH:mm")
                             .foregroundStyle(.secondary)
-                            .padding(.top, 12)
-                            .padding(.leading, 13)
-                            .allowsHitTesting(false)
+                            .font(.caption)
+                    }
+                    HStack {
+                        Button("Cancel") { onCancel() }
+                        Button("Save") {
+                            pruneUnavailableReminders()
+                            onSave(draft, pendingRemovedAttachmentNames)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!canSave)
                     }
                 }
-                .frame(minHeight: 48, maxHeight: 96)
-                .eventEditorFieldCard()
+                .frame(width: 380, alignment: .leading)
             }
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Description")
-                TextEditor(text: $draft.description)
-                    .scrollContentBackground(.hidden)
-                    .padding(2)
-                    .frame(minHeight: 72, maxHeight: 180)
-                    .eventEditorFieldCard()
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Attachments").font(.headline)
-                    Spacer()
-                    Text("\(stagedAttachmentCount)").foregroundStyle(.secondary)
-                }
-                AttachmentPreviewList(
-                    workspace: attachmentWorkspace,
-                    draftID: draftID,
-                    ownerID: attachmentOwnerID,
-                    refreshToken: stagedAttachmentCount,
-                    hiddenSavedNames: pendingRemovedAttachmentNames,
-                    onRemoveSaved: { name in
-                        pendingRemovedAttachmentNames.insert(name)
-                        stagedAttachmentCount = stagedCount()
-                    },
-                    onChange: { stagedAttachmentCount = stagedCount() }
-                )
-                .id(attachmentPreviewIdentity)
-                HStack(spacing: 10) {
-                    Button("+ Add Files") { chooseFiles() }
-                    if clipboardAttachmentAvailable() {
-                        Button("Paste") { paste() }
-                    }
-                    Button(action: onOpenAttachments) { Image(systemName: "folder") }
-                        .buttonStyle(.bordered)
-                        .help("Open Attachments Folder")
-                }
-                Text("Drop files here • folders are not imported")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(12)
-            .background(.quaternary.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
-            .onDrop(of: [UTType.fileURL.identifier], isTargeted: nil) { providers in
-                handleDrop(providers)
-            }
-            DatePicker(selection: $draft.date, displayedComponents: .date) {
-                RequiredLabel("Date")
-            }
-            .datePickerStyle(.graphical)
-            HStack {
-                RequiredLabel("Time")
-                    .frame(width: 80, alignment: .trailing)
-                TextField("HH:mm", text: $timeText)
-                    .font(.system(.body, design: .monospaced))
-                    .multilineTextAlignment(.center)
-                    .frame(width: eventEditorTimeFieldWidth)
-                Stepper("", value: timeMinutesBinding, in: 0...1439)
-                    .labelsHidden()
-                Text("HH:mm")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-                Spacer()
-            }
-            Toggle("Enabled", isOn: $draft.enabled)
-            Picker("Importance", selection: $draft.attentionLevel) {
-                Text("Normal").tag(AttentionState.green)
-                Text("Important").tag(AttentionState.yellow)
-                Text("Critical").tag(AttentionState.red)
-            }
-            .pickerStyle(.segmented)
-            .tint(color(for: draft.attentionLevel))
-            Section {
-                Picker("Repeat", selection: recurrenceModeBinding) {
-                    Text("None").tag("none")
-                    Text("Every selected weekday/time").tag("weekly_fixed")
-                    Text("Days after Done").tag("after_done_days")
-                }
-                if draft.recurrence?.mode == "weekly_fixed" {
-                    Text("Next event will repeat every \(weekdayName(draft.startDate())) at \(clockTimeText(hour: draft.hour, minute: draft.minute)) after Done.")
-                        .foregroundStyle(.secondary)
-                }
-                if draft.recurrence?.mode == "after_done_days" {
-                    Stepper(value: recurrenceDaysBinding, in: 1...730) {
-                        Text("\(draft.recurrence?.days ?? 7) days after Done")
-                    }
-                }
-            }
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(reminderConfig.presets) { preset in
-                        Toggle(preset.label, isOn: reminderBinding(preset.minutes_before))
-                            .disabled(!isReminderAvailable(preset.minutes_before))
-                            .foregroundStyle(isReminderAvailable(preset.minutes_before) ? .primary : .secondary)
-                    }
-                }
-            } header: {
-                RequiredLabel("Reminders")
-            }
-            Picker("Start blinking", selection: blinkerSelectionBinding) {
-                ForEach(reminderConfig.presets) { preset in
-                    Text(preset.label).tag(preset.minutes_before)
-                }
-            }
-            .disabled(!isReminderAvailable(draft.blinkerMinutesBefore ?? 0))
-            HStack {
-                Button("Cancel") {
-                    onCancel()
-                }
-                Button("Save") {
-                    pruneUnavailableReminders()
-                    onSave(draft, pendingRemovedAttachmentNames)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!canSave)
-            }
-            }
+            .frame(maxWidth: 860, alignment: .top)
         }
-        .frame(maxWidth: 620, alignment: .leading)
+        .frame(maxWidth: 880, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, 30)
         .padding(.vertical, 16)
@@ -1237,6 +1386,82 @@ struct EventEditorView: View {
         }
         .onAppear {
             stagedAttachmentCount = stagedCount()
+        }
+    }
+
+    @ViewBuilder
+    private var attachmentSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Attachments").font(.headline)
+                Spacer()
+                Text("\(stagedAttachmentCount)").foregroundStyle(.secondary)
+            }
+            AttachmentPreviewList(
+                workspace: attachmentWorkspace,
+                draftID: draftID,
+                ownerID: attachmentOwnerID,
+                refreshToken: stagedAttachmentCount,
+                hiddenSavedNames: pendingRemovedAttachmentNames,
+                onRemoveSaved: { name in
+                    pendingRemovedAttachmentNames.insert(name)
+                    stagedAttachmentCount = stagedCount()
+                },
+                onChange: { stagedAttachmentCount = stagedCount() }
+            )
+            .id(attachmentPreviewIdentity)
+            HStack(spacing: 10) {
+                Button("+ Add Files") { chooseFiles() }
+                if clipboardAttachmentAvailable() {
+                    Button("Paste") { paste() }
+                }
+                Button(action: onOpenAttachments) { Image(systemName: "folder") }
+                    .buttonStyle(.bordered)
+                    .help("Open Attachments Folder")
+            }
+            Text("Drop files here • folders are not imported")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        .onDrop(of: [UTType.fileURL.identifier], isTargeted: nil) { providers in
+            handleDrop(providers)
+        }
+    }
+
+    @ViewBuilder
+    private var recurrenceSection: some View {
+        Section {
+            Picker("Repeat", selection: recurrenceModeBinding) {
+                Text("None").tag("none")
+                Text("Every selected weekday/time").tag("weekly_fixed")
+                Text("Days after Done").tag("after_done_days")
+            }
+            if draft.recurrence?.mode == "weekly_fixed" {
+                Text("Next event will repeat every \(weekdayName(draft.startDate())) at \(clockTimeText(hour: draft.hour, minute: draft.minute)) after Done.")
+                    .foregroundStyle(.secondary)
+            }
+            if draft.recurrence?.mode == "after_done_days" {
+                Stepper(value: recurrenceDaysBinding, in: 1...730) {
+                    Text("\(draft.recurrence?.days ?? 7) days after Done")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var remindersSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(reminderConfig.presets) { preset in
+                    Toggle(preset.label, isOn: reminderBinding(preset.minutes_before))
+                        .disabled(!isReminderAvailable(preset.minutes_before))
+                        .foregroundStyle(isReminderAvailable(preset.minutes_before) ? .primary : .secondary)
+                }
+            }
+        } header: {
+            RequiredLabel("Reminders")
         }
     }
 

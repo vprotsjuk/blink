@@ -336,6 +336,27 @@ The UI filters presets against the effective event start. The watcher schedules 
 
 Time input is 24-hour `HH:mm` everywhere. Users may type a valid time directly or use the stepper arrows. Inputs have stable width so `00:00` through `23:59` always fit. Date selection explicitly preserves/loads the selected year.
 
+### Event editor layout and calendar
+
+The event editor is a scrollable two-column form. The left column contains the
+Title, Description, attachment panel, Enabled/Importance, recurrence, reminders,
+and blinker controls. The right column contains the date calendar, time field,
+and the Cancel/Save actions. This keeps the calendar and time together while
+leaving the text and event options visible near the top. Save remains disabled
+until the draft is both valid and different from its original value.
+
+Title and Description are growing multiline editors: an empty or short value is
+kept at a compact one-line height, and the field grows only as wrapping or
+explicit paragraph breaks require it, up to a bounded scrollable height. The
+stored text is never truncated.
+
+The calendar is Blink-owned so it can show event context. The current local day
+is a blue filled square with white numerals. A future day containing personal
+events uses the color of the highest-priority event on that day (green, yellow,
+or red). A past day containing an event receives a muted gray background. A
+selected non-today day keeps an accent outline; these markers are presentation
+only and do not alter event scheduling or persistence.
+
 ## 9. Notification Transport and Formatting
 
 The production sender is `watcher.py` through the shared `app/notification_format.py` helpers. The ntfy request uses headers such as:

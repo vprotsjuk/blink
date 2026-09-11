@@ -728,13 +728,36 @@ func testEventEditorLayoutContracts() throws {
         .deletingLastPathComponent()
         .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
     let source = try String(contentsOf: contentView, encoding: .utf8)
-    try expect(source.contains("TextEditor(text: $draft.title)"), "Title editor should support multiline text")
+    try expect(source.contains("GrowingTextEditor("), "Title and Description should use the compact growing multiline editor")
+    try expect(source.contains("estimatedCharactersPerLine: 40"), "Text editors should grow when content wraps")
     try expect(source.contains("Picker(\"Start blinking\", selection: blinkerSelectionBinding)"), "Blinker should be an independent picker")
     try expect(!source.contains("Turn on blinker"), "Blinker should not be attached to reminder rows")
-    try expect(source.contains(".frame(maxWidth: 620, alignment: .leading)"), "Editor form should use a centered readable content width")
+    try expect(source.contains(".frame(maxWidth: 880, alignment: .leading)"), "Editor form should use a centered two-column content width")
     try expect(source.contains("eventEditorFieldCard()"), "Title and Description should use the softened field-card style")
     try expect(source.contains("scrollContentBackground(.hidden)"), "Text editors should use the card background instead of native edge-to-edge fill")
     try expect(source.contains("RoundedRectangle(cornerRadius: 12, style: .continuous)"), "Text field cards should have continuous rounded corners")
+    try expect(source.contains("EventCalendarView(selection: $draft.date, events: calendarEvents)"), "Editor should use the event-aware calendar")
+    try expect(source.contains("HStack(alignment: .top, spacing: 20)"), "Editor should use two top-aligned columns")
+}
+
+func testCalendarDayMarkersUseTodayPriorityAndPastState() throws {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = blinkTimeZone
+    func day(_ value: Int) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: 9, day: value))!
+    }
+
+    let today = day(10)
+    let events = [
+        BlinkEvent(id: "green", title: "Green", description: nil, start: "2026-09-12T09:00:00-07:00", reminders_minutes_before: [0], enabled: true, source: nil, requires_done: true, done: false, done_at: nil, attention_level: "green"),
+        BlinkEvent(id: "critical", title: "Critical", description: nil, start: "2026-09-12T11:00:00-07:00", reminders_minutes_before: [0], enabled: true, source: nil, requires_done: true, done: false, done_at: nil, attention_level: "red"),
+        BlinkEvent(id: "past", title: "Past", description: nil, start: "2026-09-08T11:00:00-07:00", reminders_minutes_before: [0], enabled: true, source: nil, requires_done: true, done: true, done_at: "2026-09-08T12:00:00-07:00", attention_level: "yellow")
+    ]
+
+    try expect(calendarDayMarker(for: today, today: today, events: events) == .today, "Today should always use the blue marker")
+    try expect(calendarDayMarker(for: day(12), today: today, events: events) == .futureEvent(.red), "Future date should use its highest event priority")
+    try expect(calendarDayMarker(for: day(8), today: today, events: events) == .pastEvent, "Past event date should use the gray marker")
+    try expect(calendarDayMarker(for: day(11), today: today, events: events) == .normal, "Date without events should use the normal marker")
 }
 
 func testSaveButtonsRequireActualChanges() throws {
@@ -1055,8 +1078,7 @@ func testEventRowsExposeAttachmentAndHistoryContracts() throws {
         .deletingLastPathComponent()
         .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
     let source = try String(contentsOf: sourceURL, encoding: .utf8)
-    try expect(source.contains("TextEditor(text: $draft.title)"), "Title should use a multiline editor")
-    try expect(source.contains("TextEditor(text: $draft.description)"), "Description should use a multiline editor")
+    try expect(source.contains("GrowingTextEditor("), "Title and Description should use growing multiline editors")
     try expect(source.contains("Button(\"Paste\")"), "Context menu should expose unified paste")
     try expect(!source.contains("Paste Attachment"), "Old split paste action should be removed")
     try expect(!source.contains("Paste Screenshot"), "Old split screenshot action should be removed")
@@ -1209,6 +1231,7 @@ let tests: [(String, () throws -> Void)] = [
     ("editable event writes recurrence contracts", testEditableEventWritesRecurrenceContracts),
     ("editor backdrop and time field UI contracts", testEditorBackdropAndTimeFieldUiContracts),
     ("event editor layout contracts", testEventEditorLayoutContracts),
+    ("calendar day markers use today priority and past state", testCalendarDayMarkersUseTodayPriorityAndPastState),
     ("save buttons require actual changes", testSaveButtonsRequireActualChanges),
     ("event editor fits window and scrolls", testEventEditorFitsWindowAndScrolls),
     ("new event action stays inside window content", testNewEventActionStaysInsideWindowContent),
