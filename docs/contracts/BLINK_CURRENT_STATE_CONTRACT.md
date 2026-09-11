@@ -24,6 +24,16 @@ SwiftUI GUI -> local JSON files -> watcher.py -> ntfy -> iPhone
 - Keep personal events, transport/queue, weather, astronomy, location, and UI as independent blocks connected by explicit JSON contracts.
 - Use atomic writes and preserve unknown JSON fields unless a documented migration removes a retired field.
 
+### Future iPhone exchange (not implemented)
+
+A separate feasibility spike may use a private iCloud Drive mailbox under
+`Shortcuts/Blink_Feasibility/{ToMac,ToPhone}`. This is transport only, not a
+database or source of truth: `agenda.json` and Blink-local attachment folders
+remain Mac-only, and ntfy remains Mac → iPhone push transport. No production
+watcher/UI/agenda integration, public links, HTTP, or Photos/Documents access
+is permitted until the iPhone fixed-destination test is accepted. See
+[`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](../feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
+
 ## 2. Runtime Boundaries
 
 | Block | Owner | Contract |
@@ -140,8 +150,9 @@ Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is
 - Event rows show a green `On` button for enabled events and a red `Off` button for disabled events. The status remains a toggle, not completion.
 - Disabled rows dim their date/title/description to show that they are inactive, but their priority circle stays fully saturated. Active-row pulsing also leaves the priority circle solid and readable.
 - Forms use English labels, red asterisks for required fields, stable `HH:mm` widths, consistent Cancel/Save placement, and shared save feedback: after successful save the button reads `Saved`, dims, and reactivates only after a new edit.
-- The event editor is a scrollable two-column form: Title/Description, attachments, and event options are in the left column; the date calendar, time controls, and Cancel/Save actions are in the right column. It opens nearly full-height, has a draggable header and a bounded lower-right resize handle, and keeps content scrollable at every size. Empty/short Title and Description fields stay compact and grow only for wrapping or paragraph breaks, within a bounded height. The custom compact-spacing calendar marks today with a blue filled square, colors future event dates by that date's highest personal-event priority, and gives past event dates a muted gray background. These are presentation-only markers.
+- The event editor is a scrollable two-column form: Title/Description, attachments, and event options are in the left column; the explicit full local event date, date calendar, time controls, and Cancel/Save actions are in the right column. It opens nearly full-height, has a draggable header and a bounded lower-right resize handle, and keeps content scrollable at every size. Empty/short Title and Description fields stay compact and grow only for wrapping or paragraph breaks, within a bounded height. The custom compact-spacing calendar marks today with a blue filled square, colors future event dates by that date's highest personal-event priority, and gives past event dates a muted gray background. These are presentation-only markers. The explicit date label is driven by the draft date and the editor view is keyed by event ID so reopening another event resets the calendar month and selection to that event.
 - Clean modal forms close on Cancel, Escape, or backdrop click. Dirty forms require an explicit choice.
+- A clean editor may double-click a calendar day to leave the editor and open the selected-day view. Initial draft normalization and attachment preview loading never mark the editor dirty. If the draft contains real edits beyond the calendar's transient date selection, the existing Save-or-Cancel guard remains in force.
 - Event forms use multiline Title/Description editors, Finder multi-file selection, and screenshot paste. New-event drafts live under Blink-local `event_data/drafts/` until Save; saved files live under `event_data/attachments/`.
 - Event-row context menus expose only currently applicable actions: Edit
   (Today/Upcoming only), Duplicate as new event, Duplicate with Attachments when
@@ -206,8 +217,10 @@ Double-clicking a non-today day in the editor calendar enters a transient
 Selected Day mode by relabeling the first tab with `MMM d`. It uses the shared
 snapshot (no second store), filters by the event's local calendar date, includes
 unfinished/Done/Off records, and sorts by local start then event ID. The page
-shows full date/weekday, `Exit`, and `+ New Event` with the selected date
-prefilled. Search is cleared on entry and is scoped to the selected day.
+shows full date/weekday, then an `Exit` button immediately to the right of that
+date block, with `+ New Event` kept on the right and the selected date
+prefilled. The button and keyboard Escape call the same guarded exit action and
+are behaviorally identical. Search is cleared on entry and is scoped to the selected day.
 Double-clicking today returns Today; switching tabs preserves selection; Exit
 clears it; relaunch does not restore it. Frozen rows retain History actions, and
 dirty editor drafts require Save or Cancel before navigation. Failed reloads

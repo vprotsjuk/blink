@@ -9,6 +9,11 @@ Keep Blink's independent runtime architecture stable while fixing personal-event
 
 The canonical current-state contract for future agents is [`docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`](contracts/BLINK_CURRENT_STATE_CONTRACT.md). Update it together with this handoff whenever a boundary or user-visible contract changes.
 
+The iPhone ↔ private iCloud exchange is currently a separate feasibility spike,
+not a production feature. Its safety boundary, filesystem findings, mailbox
+format, and manual iPhone checklist are recorded in
+[`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
+
 ## Pre-change reconciliation checkpoint (2026-09-10)
 
 This checkpoint is an audit only; no source code was changed for it.
@@ -24,6 +29,8 @@ Checkpoint and source prompt saved. The briefing timing regression is covered: s
 The Blink-local event attachments feature is implemented. It keeps multiline event text, draft/permanent attachment folders under `event_data/`, unified clipboard paste (file URLs first, otherwise image-to-JPEG), paperclip-only personal pushes, frozen History, double-click editing in Today/Upcoming, compact paperclip/count rows with a filename/type popover, folder buttons, and tab-aware context actions. Every occurrence owns an event-ID folder. The final row/editor split is explicit: Today/Upcoming context-menu `Paste` and `Add Files` attach immediately to the persisted event without opening the editor or requiring Save; editor Add Files/Paste/drop remain staged until Save/Cancel. Immediate multi-file operations validate and copy transactionally, roll back on failure, and update counts only from finalized physical files. The Today header owns a round blue `+` action for New Event, and every navigation tab has a subtle pointer-hover state. The editor modal now uses a window-safe height with a top-aligned scroll view, so Title/Description, attachments, reminders, Blinker, and Cancel/Save remain reachable on shorter windows. Event reloads preserve the last-good shared snapshot on read/JSON failure and expose Loaded vs Error/Stale diagnostics in Health. The historical design/plan files are retained for traceability and marked `HISTORICAL / SUPERSEDED`; the current contract and full description are authoritative.
 
 Selected Day view is now implemented on the same snapshot: double-clicking a non-today editor-calendar day temporarily relabels the first tab (`MMM d`) and shows all local-date records with deterministic ordering, `Exit`, scoped search, and date-prefilled `+ New Event`. Switching tabs preserves the transient selection; double-click today and Exit return to Today; relaunch does not persist it. Per-row frozen History policy, dirty-editor protection, move feedback, and last-good reload behavior remain in force.
+
+Selected Day's Exit button is positioned immediately after the date/weekday block on the left. It and keyboard Escape share one guarded handler, so both clear the selected day, restore Today, reset the calendar to the local current day, and clear search identically.
 
 ## Key decisions (decision -> rationale)
 - The `Use Weather briefing time` switch controls delivery mode -> enabled appends a plain `ASTRONOMY` section to Weather, disabled sends a separate native ntfy `ASTRONOMY` title; Markdown markers are not sent because the phone displays them literally.
@@ -63,6 +70,7 @@ Selected Day view is now implemented on the same snapshot: double-clicking a non
 - Legacy shared-series attachment folders are handled only by an idempotent copy migration. Sources are preserved and deterministic collisions are renamed; no live recurring data currently requires migration.
 - Git privacy is verified before commit: `event_data/`, `agenda.json`, app bundles, and build products remain ignored, while source/contracts/tests/docs are tracked.
 - Editor layout regression is covered by a Swift UI-contract test and release build; the installed app was restarted after deployment.
+- The event editor now shows the full local event date beside the calendar, rebuilds its calendar state per event ID, and suppresses initial draft/preview callbacks from falsely enabling dirty navigation. A clean calendar double-click opens the selected-day tab; real edits still require Save or Cancel.
 
 ## Resolved interaction decisions to preserve across compaction
 

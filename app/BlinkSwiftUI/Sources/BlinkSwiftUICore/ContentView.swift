@@ -69,6 +69,14 @@ public func selectedDayWeekdayTitle(_ day: Date) -> String {
     return formatter.string(from: day)
 }
 
+public func eventEditorDateTitle(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = blinkTimeZone
+    formatter.dateFormat = "MMMM d, yyyy"
+    return formatter.string(from: date)
+}
+
 extension View {
     func blinkSettingsCard() -> some View {
         self
@@ -302,9 +310,7 @@ public struct ContentView: View {
         }
         .onAppear(perform: reload)
         .onExitCommand {
-            if selectedDay != nil && editorEvent == nil {
-                exitSelectedDay()
-            }
+            handleSelectedDayExit()
         }
         .onChange(of: newEventToken) {
             guard newEventToken != nil else { return }
@@ -346,7 +352,9 @@ public struct ContentView: View {
                             // while SwiftUI is settling the editor state assignment.
                             attachmentWorkspace: editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root),
                             draftID: editorDraftID,
-                            onSelectDay: openSelectedDayFromCalendar,
+                            onSelectDay: { day, canDiscardDateOnlyChange in
+                                openSelectedDayFromCalendar(day, canDiscardDateOnlyChange: canDiscardDateOnlyChange)
+                            },
                             onDirtyChange: { editorIsDirty = $0 },
                             onCancel: { closeEditor() },
                             onOpenAttachments: {
@@ -381,6 +389,7 @@ public struct ContentView: View {
                                 closeEditor(discardDraft: false)
                             }
                         }
+                        .id(event.id)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         editorResizeHandle(in: proxy.size)
                     }
@@ -500,7 +509,7 @@ public struct ContentView: View {
                             activeEventIDs: activeEventIDs,
                             pulseVisible: attentionPulseOn,
                             frozenEventIDs: Set(events.filter { eventIsHistoryFrozen($0) }.map(\.id)),
-                            onExit: exitSelectedDay
+                            onExit: handleSelectedDayExit
                         )
                     } else {
                         TodayView(
@@ -638,8 +647,8 @@ public struct ContentView: View {
         return value
     }
 
-    private func openSelectedDayFromCalendar(_ day: Date) {
-        guard !editorIsDirty else {
+    private func openSelectedDayFromCalendar(_ day: Date, canDiscardDateOnlyChange: Bool = false) {
+        guard !editorIsDirty || canDiscardDateOnlyChange else {
             showFeedback("Save or Cancel the editor first")
             return
         }
@@ -665,6 +674,11 @@ public struct ContentView: View {
         selectedTab = .today
         calendarSelectionDate = blinkLocalDay(Date())
         searchQuery = ""
+    }
+
+    private func handleSelectedDayExit() {
+        guard selectedDay != nil, editorEvent == nil else { return }
+        exitSelectedDay()
     }
 
     private func openEditor(_ event: EditableEvent, workspace: AttachmentWorkspace? = nil, draftID: String? = nil) {
@@ -1016,9 +1030,10 @@ struct SelectedDayView: View {
                     Text(selectedDayHeaderTitle(day)).font(.title.bold())
                     Text(selectedDayWeekdayTitle(day)).foregroundStyle(.secondary)
                 }
-                Spacer()
                 Button("Exit", action: onExit)
                     .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
             }
             if events.isEmpty {
                 Text("No events on this day").foregroundStyle(.secondary)
@@ -1559,13 +1574,14 @@ struct EventEditorView: View {
     @State private var draft: EditableEvent
     @State private var timeText: String
     @State private var stagedAttachmentCount: Int
+    @State private var isInitializing = true
     @State private var pendingRemovedAttachmentNames: Set<String> = []
     private let original: EditableEvent
     let reminderConfig: ReminderConfig
     let calendarEvents: [BlinkEvent]
     let attachmentWorkspace: AttachmentWorkspace?
     let draftID: String?
-    let onSelectDay: (Date) -> Void
+    let onSelectDay: (Date, Bool) -> Void
     let onDirtyChange: (Bool) -> Void
     let onCancel: () -> Void
     let onOpenAttachments: () -> Void
@@ -1577,7 +1593,7 @@ struct EventEditorView: View {
         calendarEvents: [BlinkEvent],
         attachmentWorkspace: AttachmentWorkspace?,
         draftID: String?,
-        onSelectDay: @escaping (Date) -> Void = { _ in },
+        onSelectDay: @escaping (Date, Bool) -> Void = { _, _ in },
         onDirtyChange: @escaping (Bool) -> Void,
         onCancel: @escaping () -> Void,
         onOpenAttachments: @escaping () -> Void,
@@ -1642,7 +1658,16 @@ struct EventEditorView: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     RequiredLabel("Date")
-                    EventCalendarView(selection: $draft.date, events: calendarEvents, onDoubleClick: onSelectDay)
+                    Text(eventEditorDateTitle(draft.date))
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    EventCalendarView(
+                        selection: $draft.date,
+                        events: calendarEvents,
+                        onDoubleClick: { day in
+                            onSelectDay(day, !hasUnsavedChangesOtherThanDate)
+                        }
+                    )
                     HStack {
                         RequiredLabel("Time")
                         TextField("HH:mm", text: $timeText)
@@ -1674,25 +1699,35 @@ struct EventEditorView: View {
         .padding(.horizontal, 30)
         .padding(.vertical, 16)
         .onChange(of: draft.date) {
+            guard !isInitializing else { return }
             pruneUnavailableReminders()
         }
         .onChange(of: draft.hour) {
+            guard !isInitializing else { return }
             pruneUnavailableReminders()
         }
         .onChange(of: draft.minute) {
+            guard !isInitializing else { return }
             pruneUnavailableReminders()
         }
         .onChange(of: timeText) {
             applyTimeText()
         }
         .onChange(of: draft) {
+            guard !isInitializing else { return }
             onDirtyChange(hasUnsavedChanges)
         }
         .onChange(of: stagedAttachmentCount) {
+            guard !isInitializing else { return }
             onDirtyChange(hasUnsavedChanges)
         }
         .onAppear {
+            isInitializing = true
             stagedAttachmentCount = stagedCount()
+            DispatchQueue.main.async {
+                isInitializing = false
+                onDirtyChange(false)
+            }
         }
     }
 
@@ -1898,6 +1933,15 @@ struct EventEditorView: View {
         draft != original
         || stagedAttachmentCount != (original.attachments?.count ?? 0)
         || !pendingRemovedAttachmentNames.isEmpty
+    }
+
+    private var hasUnsavedChangesOtherThanDate: Bool {
+        var draftWithoutDate = draft
+        draftWithoutDate.date = original.date
+        draftWithoutDate.attachments = original.attachments
+        return draftWithoutDate != original
+            || stagedAttachmentCount != (original.attachments?.count ?? 0)
+            || !pendingRemovedAttachmentNames.isEmpty
     }
 
     private var blinkerSelectionBinding: Binding<Int> {

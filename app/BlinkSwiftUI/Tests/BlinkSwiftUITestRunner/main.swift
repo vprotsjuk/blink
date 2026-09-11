@@ -736,8 +736,12 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains("eventEditorFieldCard()"), "Title and Description should use the softened field-card style")
     try expect(source.contains("scrollContentBackground(.hidden)"), "Text editors should use the card background instead of native edge-to-edge fill")
     try expect(source.contains("RoundedRectangle(cornerRadius: 12, style: .continuous)"), "Text field cards should have continuous rounded corners")
-    try expect(source.contains("EventCalendarView(selection: $draft.date, events: calendarEvents, onDoubleClick: onSelectDay)"), "Editor should use the event-aware calendar")
+    try expect(source.contains("EventCalendarView(") && source.contains("onDoubleClick: { day in"), "Editor should use the event-aware calendar")
     try expect(source.contains("HStack(alignment: .top, spacing: 20)"), "Editor should use two top-aligned columns")
+    try expect(source.contains(".id(event.id)"), "Opening another event should rebuild editor date state")
+    try expect(source.contains("isInitializing"), "Editor should suppress dirty callbacks during initial setup")
+    try expect(source.contains("canDiscardDateOnlyChange"), "Calendar navigation should distinguish a date-only tap from real edits")
+    try expect(source.contains("hasUnsavedChangesOtherThanDate"), "Calendar double-click should preserve dirty-edit safety")
 }
 
 func testSelectedDayFilteringUsesLocalDateAndDeterministicSort() throws {
@@ -768,7 +772,18 @@ func testSelectedDayNavigationContracts() throws {
     try expect(source.contains("isOutsideMonth"), "Adjacent month days should be visually distinguishable")
     try expect(source.contains("SelectedDayView("), "Selected day should render a dedicated page")
     try expect(source.contains("selectedDayTabTitle(selectedDay)"), "First tab label should become the selected local date")
-    try expect(source.contains("onSelectDay: openSelectedDayFromCalendar"), "Editor calendar should route double-click through ContentView")
+    try expect(source.contains("openSelectedDayFromCalendar(day, canDiscardDateOnlyChange: canDiscardDateOnlyChange)"), "Editor calendar should route double-click through ContentView")
+    try expect(source.contains("private func handleSelectedDayExit()"), "Selected day Exit and Escape should share one handler")
+    try expect(source.contains(".onExitCommand {\n            handleSelectedDayExit()"), "Escape should use the selected day Exit handler")
+    try expect(source.contains("onExit: handleSelectedDayExit"), "Selected day Exit button should use the shared handler")
+    try expect(source.contains(".keyboardShortcut(.cancelAction)"), "Selected day Exit should expose the Escape cancel shortcut")
+    guard let exitRange = source.range(of: "Button(\"Exit\", action: onExit)") else {
+        throw TestFailure(description: "Selected day should expose an Exit button")
+    }
+    guard let spacerRange = source.range(of: "Spacer()", range: exitRange.upperBound..<source.endIndex) else {
+        throw TestFailure(description: "Selected day header should keep the New Event action right-aligned")
+    }
+    try expect(exitRange.lowerBound < spacerRange.lowerBound, "Exit should be placed immediately after the selected date block")
 }
 
 func testSelectedDayDateLabels() throws {
@@ -777,6 +792,8 @@ func testSelectedDayDateLabels() throws {
     try expect(selectedDayHeaderTitle(day) == "September 18, 2026", "Selected day should show full date")
     try expect(selectedDayWeekdayTitle(day) == "Friday", "Selected day should show weekday")
     try expect(selectedDayTabTitle(nil) == "Today", "Ordinary first tab should remain Today")
+    let eventDate = parseISODate("2026-09-22T06:59:00-07:00")!
+    try expect(eventEditorDateTitle(eventDate) == "September 22, 2026", "Editor should show the event's full local date")
 }
 
 func testCalendarDayMarkersUseTodayPriorityAndPastState() throws {

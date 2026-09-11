@@ -44,6 +44,18 @@ The boundaries are deliberate:
 
 The project intentionally keeps the blocks independent. A change to one block must be traced through its explicit dependencies, but unrelated blocks must not be mixed into the same implementation path.
 
+### Future iPhone exchange boundary (feasibility only)
+
+The future Blink ↔ iPhone exchange is deliberately not part of the current
+production runtime. A separate spike tests a private iCloud Drive mailbox at
+`iCloud Drive/Shortcuts/Blink_Feasibility/ToMac` and `ToPhone`, using flat
+JSON/file packages with a final `.ready` marker. iCloud is transport only:
+`agenda.json`, event folders, and the Mac JSON contracts remain the source of
+truth; iPhone commands never edit them directly. ntfy remains Mac → iPhone
+notification transport only. No public links, HTTP, Photos/Documents access,
+or production `watcher.py` changes are allowed. Results and the manual iPhone
+checklist are in [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
+
 ## 3. Project Layout
 
 Important files and directories:
@@ -340,7 +352,8 @@ Time input is 24-hour `HH:mm` everywhere. Users may type a valid time directly o
 
 The event editor is a scrollable two-column form. The left column contains the
 Title, Description, attachment panel, Enabled/Importance, recurrence, reminders,
-and blinker controls. The right column contains the date calendar, time field,
+and blinker controls. The right column contains the explicit full local event date,
+date calendar, time field,
 and the Cancel/Save actions. This keeps the calendar and time together while
 leaving the text and event options visible near the top. Save remains disabled
 until the draft is both valid and different from its original value.
@@ -363,7 +376,9 @@ is a blue filled square with white numerals. A future day containing personal
 events uses the color of the highest-priority event on that day (green, yellow,
 or red). A past day containing an event receives a muted gray background. A
 selected non-today day keeps an accent outline; these markers are presentation
-only and do not alter event scheduling or persistence.
+only and do not alter event scheduling or persistence. The explicit date label is
+driven by the draft date and the editor view is keyed by event ID, so reopening a
+different event resets the calendar month and selection to that event.
 
 ## 9. Notification Transport and Formatting
 
@@ -672,12 +687,19 @@ the first tab into a compact local date label such as `Sep 18` and shows that
 day's page. It reuses the shared in-memory event snapshot, filters by each
 event's local calendar date, includes unfinished, Done, and Off records, and
 sorts by local start time with event ID as a deterministic tie-breaker. The
-header shows the full date and weekday and provides `Exit` plus `+ New Event`.
+header shows the full date and weekday, places `Exit` immediately after that
+date block on the left, and keeps `+ New Event` right-aligned. The `Exit` button
+and keyboard Escape use the same guarded action and therefore leave Selected Day
+in exactly the same way.
 New Event is prefilled to the selected date but can be changed before Save.
 Search is cleared on entry and remains scoped to the selected day. Double-click
 today returns ordinary Today; switching tabs preserves the selection and the
 dynamic first tab returns to it; Exit clears it and restores Today. Selection is
-not persisted across relaunch. A dirty editor draft is never discarded by this
-navigation. Moving an event to another date gives short save/move feedback.
+not persisted across relaunch. A draft with real edits is never discarded by this
+navigation; the transient date selection from a calendar double-click is the one
+explicit exception. Moving an event to another date gives short save/move feedback.
 Reload errors retain the last-good snapshot rather than showing a false empty
-day.
+day. The editor suppresses initial draft normalization and attachment-preview
+callbacks from falsely marking a clean draft dirty. Therefore a clean double-click
+opens the selected-day view immediately; a draft with real edits beyond the
+transient date selection still requires Save or Cancel before navigation.
