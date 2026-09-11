@@ -74,9 +74,12 @@ ToPhone/
   <occurrence_id>.ready                  # created last
 ```
 
-The spike created and validated two incoming packages and one outgoing manifest;
+The spike created and validated two incoming `CREATE_EVENT` packages, one
+`DONE` command package, and one outgoing manifest;
 the `.ready` marker for `AI_TEST-order` was written after its JSON and attachment
-(mtime check passed). The future Mac reader must ignore incomplete packages until `.ready` exists,
+(mtime check passed). The `DONE` fixture uses the same flat
+`<command_id>.done.json` + `<command_id>.ready` shape. The future Mac reader
+must ignore incomplete packages until `.ready` exists,
 validate the JSON and all listed files, process a package once, and move or mark
 it only after successful processing. No per-event dynamic directories are
 needed.
