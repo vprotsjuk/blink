@@ -43,3 +43,12 @@ Today/Upcoming/History/Search сохраняют last-good snapshot, а Health �
 статус, count, source path, last successful load и last error. Remote queue signature
 обязательно учитывает `attachments.has_files`, чтобы переходы 0→1 и 1→0 обновляли
 paperclip в запланированном push без дублей при изменении только count.
+
+Selected Day уже реализуется поверх общего snapshot: double-click не-сегодняшнего дня
+в календаре редактора временно меняет первый таб на `MMM d`, показывает полную дату и
+weekday, все события этой локальной даты (unfinished/Done/Off) с сортировкой local
+start + event ID, `Exit` и `+ New Event` с предзаполненной датой. Поиск очищается и
+после входа ограничен выбранным днём; переход по другим табам выбор сохраняет,
+double-click сегодня возвращает Today, relaunch его не сохраняет. Frozen rows
+сохраняют History policy. Dirty editor нельзя потерять при навигации; reload error
+сохраняет last-good snapshot и не показывает ложный пустой день.

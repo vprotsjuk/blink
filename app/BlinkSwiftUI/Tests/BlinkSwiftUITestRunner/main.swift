@@ -736,8 +736,47 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains("eventEditorFieldCard()"), "Title and Description should use the softened field-card style")
     try expect(source.contains("scrollContentBackground(.hidden)"), "Text editors should use the card background instead of native edge-to-edge fill")
     try expect(source.contains("RoundedRectangle(cornerRadius: 12, style: .continuous)"), "Text field cards should have continuous rounded corners")
-    try expect(source.contains("EventCalendarView(selection: $draft.date, events: calendarEvents)"), "Editor should use the event-aware calendar")
+    try expect(source.contains("EventCalendarView(selection: $draft.date, events: calendarEvents, onDoubleClick: onSelectDay)"), "Editor should use the event-aware calendar")
     try expect(source.contains("HStack(alignment: .top, spacing: 20)"), "Editor should use two top-aligned columns")
+}
+
+func testSelectedDayFilteringUsesLocalDateAndDeterministicSort() throws {
+    let events = [
+        BlinkEvent(id: "late", title: "Late", description: nil, start: "2026-09-18T23:59:00-07:00", reminders_minutes_before: [0], enabled: false, source: nil, requires_done: true, done: false, done_at: nil, attention_level: "red"),
+        BlinkEvent(id: "early", title: "Early", description: nil, start: "2026-09-18T00:01:00-07:00", reminders_minutes_before: [0], enabled: true, source: nil, requires_done: true, done: true, done_at: "2026-09-18T00:02:00-07:00", attention_level: "green"),
+        BlinkEvent(id: "outside", title: "Outside", description: nil, start: "2026-09-19T00:00:00-07:00", reminders_minutes_before: [0], enabled: true, source: nil, requires_done: true, done: false, done_at: nil, attention_level: "yellow")
+    ]
+    let day = parseISODate("2026-09-18T12:00:00-07:00")!
+    let selected = selectedDayEventRecords(events, day: day)
+    try expect(selected.map(\.id) == ["early", "late"], "Selected day should include all lifecycle states and sort by local start")
+    try expect(selectedDayEventRecords(events, day: parseISODate("2026-09-19T12:00:00-07:00")!).map(\.id) == ["outside"], "Selected day should use local calendar date boundaries")
+}
+
+func testSelectedDayNavigationContracts() throws {
+    let contentView = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: contentView, encoding: .utf8)
+    try expect(source.contains("@State private var selectedDay: Date?"), "Selected day must be transient view state")
+    try expect(source.contains("private func openSelectedDay(_ day: Date)"), "Selected day entry action is required")
+    try expect(source.contains("private func exitSelectedDay()"), "Selected day must have an explicit Exit action")
+    try expect(source.contains("searchQuery = \"\""), "Entering or leaving selected day should clear search")
+    try expect(source.contains("TapGesture(count: 2)"), "Calendar day selection should support double-click")
+    try expect(source.contains("CalendarDayEntry"), "Calendar should expose adjacent month days for boundary navigation")
+    try expect(source.contains("isOutsideMonth"), "Adjacent month days should be visually distinguishable")
+    try expect(source.contains("SelectedDayView("), "Selected day should render a dedicated page")
+    try expect(source.contains("selectedDayTabTitle(selectedDay)"), "First tab label should become the selected local date")
+    try expect(source.contains("onSelectDay: openSelectedDayFromCalendar"), "Editor calendar should route double-click through ContentView")
+}
+
+func testSelectedDayDateLabels() throws {
+    let day = parseISODate("2026-09-18T23:59:00-07:00")!
+    try expect(selectedDayTabTitle(day) == "Sep 18", "Selected tab should use compact local date")
+    try expect(selectedDayHeaderTitle(day) == "September 18, 2026", "Selected day should show full date")
+    try expect(selectedDayWeekdayTitle(day) == "Friday", "Selected day should show weekday")
+    try expect(selectedDayTabTitle(nil) == "Today", "Ordinary first tab should remain Today")
 }
 
 func testCalendarDayMarkersUseTodayPriorityAndPastState() throws {
@@ -1262,6 +1301,9 @@ let tests: [(String, () throws -> Void)] = [
     ("event editor fits window and scrolls", testEventEditorFitsWindowAndScrolls),
     ("event editor modal is movable and resizable", testEventEditorModalIsMovableAndResizable),
     ("calendar grid uses compact spacing", testCalendarGridUsesCompactSpacing),
+    ("selected day filtering uses local date and deterministic sort", testSelectedDayFilteringUsesLocalDateAndDeterministicSort),
+    ("selected day navigation contracts", testSelectedDayNavigationContracts),
+    ("selected day date labels", testSelectedDayDateLabels),
     ("new event action stays inside window content", testNewEventActionStaysInsideWindowContent),
     ("new event plus button and tab hover contracts", testNewEventPlusButtonAndTabHoverContracts),
     ("importance picker uses event color", testImportancePickerUsesEventColor),

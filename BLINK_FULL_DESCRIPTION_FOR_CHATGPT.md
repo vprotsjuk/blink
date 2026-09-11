@@ -664,3 +664,20 @@ Before changing code, a future Codex thread must:
 8. Update this report, the contract, and the handoff whenever a boundary or user-visible behavior changes.
 
 The most important invariant is simple: one source of truth per block, one production watcher, explicit location/timezone inputs, deterministic event state transitions, and user-facing notifications that contain readable content rather than transport JSON.
+
+### Selected day view
+
+Double-clicking a non-today day in the event editor calendar temporarily turns
+the first tab into a compact local date label such as `Sep 18` and shows that
+day's page. It reuses the shared in-memory event snapshot, filters by each
+event's local calendar date, includes unfinished, Done, and Off records, and
+sorts by local start time with event ID as a deterministic tie-breaker. The
+header shows the full date and weekday and provides `Exit` plus `+ New Event`.
+New Event is prefilled to the selected date but can be changed before Save.
+Search is cleared on entry and remains scoped to the selected day. Double-click
+today returns ordinary Today; switching tabs preserves the selection and the
+dynamic first tab returns to it; Exit clears it and restores Today. Selection is
+not persisted across relaunch. A dirty editor draft is never discarded by this
+navigation. Moving an event to another date gives short save/move feedback.
+Reload errors retain the last-good snapshot rather than showing a false empty
+day.

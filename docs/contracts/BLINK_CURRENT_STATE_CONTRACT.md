@@ -199,3 +199,16 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 - Manual visual walkthrough is still required for compact window layouts, modal/backdrop behavior, search positioning, native notification rendering, and physical lamp behavior.
 
 When a new requirement conflicts with this contract, stop and ask before changing a boundary. Update this file, `docs/HANDOFF.md`, and the relevant full report in the same change.
+
+### Selected Day contract
+
+Double-clicking a non-today day in the editor calendar enters a transient
+Selected Day mode by relabeling the first tab with `MMM d`. It uses the shared
+snapshot (no second store), filters by the event's local calendar date, includes
+unfinished/Done/Off records, and sorts by local start then event ID. The page
+shows full date/weekday, `Exit`, and `+ New Event` with the selected date
+prefilled. Search is cleared on entry and is scoped to the selected day.
+Double-clicking today returns Today; switching tabs preserves selection; Exit
+clears it; relaunch does not restore it. Frozen rows retain History actions, and
+dirty editor drafts require Save or Cancel before navigation. Failed reloads
+retain the last-good snapshot and never render a false empty selected day.

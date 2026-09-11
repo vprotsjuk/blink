@@ -17,6 +17,58 @@ private let eventEditorModalMinHeight: CGFloat = 560
 private let calendarGridSpacing: CGFloat = 2
 private let calendarCellSpacing: CGFloat = 2
 
+public func blinkLocalCalendar() -> Calendar {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = blinkTimeZone
+    return calendar
+}
+
+public func blinkLocalDay(_ date: Date) -> Date {
+    blinkLocalCalendar().startOfDay(for: date)
+}
+
+public func selectedDayEventRecords(_ events: [BlinkEvent], day: Date) -> [BlinkEvent] {
+    let calendar = blinkLocalCalendar()
+    let selectedDay = calendar.startOfDay(for: day)
+    return events
+        .filter { event in
+            guard event.isPersonal else { return false }
+            guard let start = parseISODate(event.start) else { return false }
+            return calendar.isDate(start, inSameDayAs: selectedDay)
+        }
+        .sorted {
+            let lhsStart = parseISODate($0.start) ?? .distantFuture
+            let rhsStart = parseISODate($1.start) ?? .distantFuture
+            if lhsStart != rhsStart { return lhsStart < rhsStart }
+            return $0.id < $1.id
+        }
+}
+
+public func selectedDayTabTitle(_ day: Date?) -> String {
+    guard let day else { return "Today" }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = blinkTimeZone
+    formatter.dateFormat = "MMM d"
+    return formatter.string(from: day)
+}
+
+public func selectedDayHeaderTitle(_ day: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = blinkTimeZone
+    formatter.dateFormat = "MMMM d, yyyy"
+    return formatter.string(from: day)
+}
+
+public func selectedDayWeekdayTitle(_ day: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = blinkTimeZone
+    formatter.dateFormat = "EEEE"
+    return formatter.string(from: day)
+}
+
 extension View {
     func blinkSettingsCard() -> some View {
         self
@@ -61,6 +113,7 @@ private struct BlinkTabButton: View {
         Button(action: action) {
             Text(title)
                 .foregroundStyle(displayColor)
+                .frame(minWidth: 56)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
                 .background(
@@ -85,13 +138,14 @@ private struct BlinkTabButton: View {
 
 private struct BlinkTabBar: View {
     @Binding var selectedTab: BlinkTab
+    let selectedDay: Date?
     let todayAttentionColor: Color?
     let pulseVisible: Bool
 
     var body: some View {
         HStack(spacing: 2) {
             BlinkTabButton(
-                title: "Today",
+                title: selectedDayTabTitle(selectedDay),
                 selected: selectedTab == .today,
                 attentionColor: todayAttentionColor,
                 pulseVisible: pulseVisible
@@ -110,6 +164,7 @@ private struct BlinkTabBar: View {
 
 private struct BlinkTopToolbar: ToolbarContent {
     @Binding var selectedTab: BlinkTab
+    let selectedDay: Date?
     let todayAttentionColor: Color?
     let pulseVisible: Bool
     @Binding var searchQuery: String
@@ -118,6 +173,7 @@ private struct BlinkTopToolbar: ToolbarContent {
         ToolbarItem(placement: .principal) {
             BlinkTabBar(
                 selectedTab: $selectedTab,
+                selectedDay: selectedDay,
                 todayAttentionColor: todayAttentionColor,
                 pulseVisible: pulseVisible
             )
@@ -163,6 +219,8 @@ public struct ContentView: View {
     @State private var pendingDelete: BlinkEvent?
     @State private var attentionPulseOn = true
     @State private var selectedTab: BlinkTab = .today
+    @State private var selectedDay: Date?
+    @State private var calendarSelectionDate = Date()
 
     public init(
         store: BlinkStore,
@@ -184,6 +242,7 @@ public struct ContentView: View {
         .toolbar {
             BlinkTopToolbar(
                 selectedTab: $selectedTab,
+                selectedDay: selectedDay,
                 todayAttentionColor: todayTabAttentionColor,
                 pulseVisible: attentionPulseOn,
                 searchQuery: $searchQuery
@@ -242,6 +301,11 @@ public struct ContentView: View {
                 : "The event will be removed from Blink.")
         }
         .onAppear(perform: reload)
+        .onExitCommand {
+            if selectedDay != nil && editorEvent == nil {
+                exitSelectedDay()
+            }
+        }
         .onChange(of: newEventToken) {
             guard newEventToken != nil else { return }
             openEditor(EditableEvent.blank())
@@ -282,6 +346,7 @@ public struct ContentView: View {
                             // while SwiftUI is settling the editor state assignment.
                             attachmentWorkspace: editorAttachmentWorkspace ?? AttachmentWorkspace(root: store.root),
                             draftID: editorDraftID,
+                            onSelectDay: openSelectedDayFromCalendar,
                             onDirtyChange: { editorIsDirty = $0 },
                             onCancel: { closeEditor() },
                             onOpenAttachments: {
@@ -295,6 +360,7 @@ public struct ContentView: View {
                             }
                         ) { savedEvent, pendingRemovedNames in
                             perform {
+                                let selectedDayBeforeSave = selectedDay
                                 let workspace = editorAttachmentWorkspace
                                 for name in pendingRemovedNames {
                                     let fileURL = workspace?.attachmentURL(ownerID: savedEvent.id).appendingPathComponent(name)
@@ -306,6 +372,12 @@ public struct ContentView: View {
                                     draftID: editorDraftID
                                 )
                                 reload()
+                                if let selectedDayBeforeSave {
+                                    let savedDay = blinkLocalDay(savedEvent.startDate())
+                                    if !blinkLocalCalendar().isDate(savedDay, inSameDayAs: selectedDayBeforeSave) {
+                                        showFeedback("Saved for \(selectedDayTabTitle(savedDay))")
+                                    }
+                                }
                                 closeEditor(discardDraft: false)
                             }
                         }
@@ -419,15 +491,28 @@ public struct ContentView: View {
             case .today:
                 VStack(alignment: .leading, spacing: 10) {
                     eventLoadBanner
-                    TodayView(
-                        snapshot: snapshot,
-                        actions: actions,
-                        searchQuery: searchQuery,
-                        attachmentNames: { store.attachmentNames(for: $0) },
-                        attachmentRoot: store.root,
-                        activeEventIDs: activeEventIDs,
-                        pulseVisible: attentionPulseOn
-                    )
+                    if let selectedDay {
+                        SelectedDayView(
+                            day: selectedDay,
+                            events: filtered(selectedDayEventRecords(events, day: selectedDay)),
+                            actions: selectedDayActions,
+                            attachmentRoot: store.root,
+                            activeEventIDs: activeEventIDs,
+                            pulseVisible: attentionPulseOn,
+                            frozenEventIDs: Set(events.filter { eventIsHistoryFrozen($0) }.map(\.id)),
+                            onExit: exitSelectedDay
+                        )
+                    } else {
+                        TodayView(
+                            snapshot: snapshot,
+                            actions: actions,
+                            searchQuery: searchQuery,
+                            attachmentNames: { store.attachmentNames(for: $0) },
+                            attachmentRoot: store.root,
+                            activeEventIDs: activeEventIDs,
+                            pulseVisible: attentionPulseOn
+                        )
+                    }
                 }
             case .upcoming:
                 VStack(alignment: .leading, spacing: 10) {
@@ -541,6 +626,47 @@ public struct ContentView: View {
         )
     }
 
+    private var selectedDayActions: EventRowActions {
+        var value = actions
+        value.newEvent = {
+            var event = EditableEvent.blank()
+            if let selectedDay {
+                event.date = blinkLocalDay(selectedDay)
+            }
+            openEditor(event)
+        }
+        return value
+    }
+
+    private func openSelectedDayFromCalendar(_ day: Date) {
+        guard !editorIsDirty else {
+            showFeedback("Save or Cancel the editor first")
+            return
+        }
+        closeEditor()
+        openSelectedDay(day)
+    }
+
+    private func openSelectedDay(_ day: Date) {
+        let normalizedDay = blinkLocalDay(day)
+        calendarSelectionDate = normalizedDay
+        searchQuery = ""
+        if blinkLocalCalendar().isDate(normalizedDay, inSameDayAs: Date()) {
+            selectedDay = nil
+            selectedTab = .today
+        } else {
+            selectedDay = normalizedDay
+            selectedTab = .today
+        }
+    }
+
+    private func exitSelectedDay() {
+        selectedDay = nil
+        selectedTab = .today
+        calendarSelectionDate = blinkLocalDay(Date())
+        searchQuery = ""
+    }
+
     private func openEditor(_ event: EditableEvent, workspace: AttachmentWorkspace? = nil, draftID: String? = nil) {
         editorIsDirty = false
         let resolvedWorkspace = workspace ?? AttachmentWorkspace(root: store.root)
@@ -638,7 +764,8 @@ public struct ContentView: View {
     }
 
     private var todayTabAttentionColor: Color? {
-        snapshot.active.isEmpty ? nil : color(for: snapshot.attentionState)
+        guard selectedDay == nil else { return nil }
+        return snapshot.active.isEmpty ? nil : color(for: snapshot.attentionState)
     }
 
     private func reload() {
@@ -840,6 +967,7 @@ struct EventRows: View {
     var showsDone = false
     var showsToggle = true
     var showsHistory = false
+    var frozenEventIDs: Set<String> = []
 
     var body: some View {
         if events.isEmpty {
@@ -854,7 +982,7 @@ struct EventRows: View {
                     pulseVisible: pulseVisible,
                     showsDone: showsDone,
                     showsToggle: showsToggle,
-                    showsHistory: showsHistory,
+                    showsHistory: showsHistory || frozenEventIDs.contains(event.id),
                     rowContentOpacity: rowContentOpacity(for:)
                 )
             }
@@ -868,6 +996,51 @@ struct EventRows: View {
         guard event.enabled else { return 0.42 }
         guard activeEventIDs.contains(event.id) else { return 1 }
         return pulseVisible ? 1 : 0.35
+    }
+}
+
+struct SelectedDayView: View {
+    let day: Date
+    let events: [BlinkEvent]
+    let actions: EventRowActions
+    let attachmentRoot: URL
+    let activeEventIDs: Set<String>
+    let pulseVisible: Bool
+    let frozenEventIDs: Set<String>
+    let onExit: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(selectedDayHeaderTitle(day)).font(.title.bold())
+                    Text(selectedDayWeekdayTitle(day)).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Exit", action: onExit)
+                    .buttonStyle(.borderedProminent)
+            }
+            if events.isEmpty {
+                Text("No events on this day").foregroundStyle(.secondary)
+                Button(action: actions.newEvent) {
+                    Label("New Event", systemImage: "plus")
+                }
+                .buttonStyle(.borderedProminent)
+                Spacer()
+            } else {
+                EventRows(
+                    events: events,
+                    actions: actions,
+                    attachmentRoot: attachmentRoot,
+                    activeEventIDs: activeEventIDs,
+                    pulseVisible: pulseVisible,
+                    showsDone: true,
+                    showsToggle: true,
+                    frozenEventIDs: frozenEventIDs
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
@@ -888,7 +1061,7 @@ private struct EventRowView: View {
         HStack {
             rowContent
             Spacer()
-            if showsDone {
+            if showsDone && !showsHistory && event.requires_done == true && event.done != true {
                 Button("Done") { actions.done(event) }
                     .buttonStyle(.borderedProminent)
             }
@@ -899,7 +1072,7 @@ private struct EventRowView: View {
                 .buttonStyle(.bordered)
                 .help("Open Attachments Folder")
             }
-            if showsToggle {
+            if showsToggle && !showsHistory {
                 Button(event.enabled ? "On" : "Off") { actions.toggle(event) }
                     .buttonStyle(.bordered)
                     .foregroundStyle(event.enabled ? .green : .red)
@@ -933,10 +1106,10 @@ private struct EventRowView: View {
             if !showsHistory || event.hasAttachments {
                 Button("Open Attachments Folder") { actions.openAttachments(event) }
             }
-            if showsDone {
+            if showsDone && !showsHistory && event.requires_done == true && event.done != true {
                 Button("Done") { actions.done(event) }
             }
-            if showsToggle {
+            if showsToggle && !showsHistory {
                 Button(event.enabled ? "Turn Off" : "Turn On") { actions.toggle(event) }
             }
             Button("Delete", role: .destructive) { actions.delete(event) }
@@ -1216,9 +1389,17 @@ private struct GrowingTextEditor: View {
     }
 }
 
+private struct CalendarDayEntry: Identifiable {
+    let date: Date
+    let isCurrentMonth: Bool
+
+    var id: Date { date }
+}
+
 private struct EventCalendarView: View {
     @Binding var selection: Date
     let events: [BlinkEvent]
+    let onDoubleClick: ((Date) -> Void)?
     @State private var displayedMonth: Date
 
     private var calendar: Calendar {
@@ -1227,9 +1408,10 @@ private struct EventCalendarView: View {
         return value
     }
 
-    init(selection: Binding<Date>, events: [BlinkEvent]) {
+    init(selection: Binding<Date>, events: [BlinkEvent], onDoubleClick: ((Date) -> Void)? = nil) {
         self._selection = selection
         self.events = events
+        self.onDoubleClick = onDoubleClick
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = blinkTimeZone
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: selection.wrappedValue)) ?? selection.wrappedValue
@@ -1263,17 +1445,20 @@ private struct EventCalendarView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
-                ForEach(Array(monthDays.enumerated()), id: \.offset) { _, day in
-                    if let day {
-                        CalendarDayCell(
-                            day: day,
-                            marker: calendarDayMarker(for: day, today: Date(), events: events),
-                            selected: calendar.isDate(day, inSameDayAs: selection),
-                            action: { selection = day }
-                        )
-                    } else {
-                        Color.clear.frame(height: 28)
-                    }
+                ForEach(monthDays) { entry in
+                    CalendarDayCell(
+                        day: entry.date,
+                        marker: calendarDayMarker(for: entry.date, today: Date(), events: events),
+                        selected: calendar.isDate(entry.date, inSameDayAs: selection),
+                        isOutsideMonth: !entry.isCurrentMonth,
+                        action: {
+                            selection = entry.date
+                            if !entry.isCurrentMonth {
+                                displayedMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: entry.date)) ?? displayedMonth
+                            }
+                        },
+                        onDoubleClick: { onDoubleClick?(entry.date) }
+                    )
                 }
             }
         }
@@ -1294,15 +1479,19 @@ private struct EventCalendarView: View {
         return formatter.string(from: displayedMonth)
     }
 
-    private var monthDays: [Date?] {
+    private var monthDays: [CalendarDayEntry] {
         guard let range = calendar.range(of: .day, in: .month, for: displayedMonth),
               let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth)) else {
             return []
         }
         let leading = calendar.component(.weekday, from: firstDay) - 1
         let dates = range.compactMap { calendar.date(byAdding: .day, value: $0 - 1, to: firstDay) }
+        let previous = (0..<leading).compactMap { calendar.date(byAdding: .day, value: $0 - leading, to: firstDay) }
         let trailing = (7 - ((leading + dates.count) % 7)) % 7
-        return Array(repeating: nil, count: leading) + dates.map(Optional.some) + Array(repeating: nil, count: trailing)
+        let next = (0..<trailing).compactMap { calendar.date(byAdding: .day, value: $0 + dates.count, to: firstDay) }
+        return previous.map { CalendarDayEntry(date: $0, isCurrentMonth: false) }
+            + dates.map { CalendarDayEntry(date: $0, isCurrentMonth: true) }
+            + next.map { CalendarDayEntry(date: $0, isCurrentMonth: false) }
     }
 }
 
@@ -1310,7 +1499,9 @@ private struct CalendarDayCell: View {
     let day: Date
     let marker: CalendarDayMarker
     let selected: Bool
+    let isOutsideMonth: Bool
     let action: () -> Void
+    let onDoubleClick: () -> Void
 
     private var calendar: Calendar {
         var value = Calendar(identifier: .gregorian)
@@ -1332,8 +1523,10 @@ private struct CalendarDayCell: View {
                             .stroke(Color.accentColor.opacity(0.7), lineWidth: 1.5)
                     }
                 }
+                .opacity(isOutsideMonth && marker == .normal ? 0.45 : 1)
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(TapGesture(count: 2).onEnded { onDoubleClick() })
     }
 
     @ViewBuilder
@@ -1372,6 +1565,7 @@ struct EventEditorView: View {
     let calendarEvents: [BlinkEvent]
     let attachmentWorkspace: AttachmentWorkspace?
     let draftID: String?
+    let onSelectDay: (Date) -> Void
     let onDirtyChange: (Bool) -> Void
     let onCancel: () -> Void
     let onOpenAttachments: () -> Void
@@ -1383,6 +1577,7 @@ struct EventEditorView: View {
         calendarEvents: [BlinkEvent],
         attachmentWorkspace: AttachmentWorkspace?,
         draftID: String?,
+        onSelectDay: @escaping (Date) -> Void = { _ in },
         onDirtyChange: @escaping (Bool) -> Void,
         onCancel: @escaping () -> Void,
         onOpenAttachments: @escaping () -> Void,
@@ -1396,6 +1591,7 @@ struct EventEditorView: View {
         self.calendarEvents = calendarEvents
         self.attachmentWorkspace = attachmentWorkspace
         self.draftID = draftID
+        self.onSelectDay = onSelectDay
         self.onDirtyChange = onDirtyChange
         self.onCancel = onCancel
         self.onOpenAttachments = onOpenAttachments
@@ -1446,7 +1642,7 @@ struct EventEditorView: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     RequiredLabel("Date")
-                    EventCalendarView(selection: $draft.date, events: calendarEvents)
+                    EventCalendarView(selection: $draft.date, events: calendarEvents, onDoubleClick: onSelectDay)
                     HStack {
                         RequiredLabel("Time")
                         TextField("HH:mm", text: $timeText)
