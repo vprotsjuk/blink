@@ -328,7 +328,7 @@ iPhone Shortcut <-> private iCloud Drive mailbox <-> future Mac-side worker
 ntfy remains Mac -> iPhone notification transport only.
 ```
 
-The dedicated test area is outside the repository:
+The private exchange folders are outside the repository and predate this spike:
 
 ```text
 iCloud Drive/Shortcuts/Blink_Feasibility/
@@ -341,6 +341,12 @@ Actual local iCloud root:
 ```text
 /Users/vitaliiprotsiuk/Library/Mobile Documents/com~apple~CloudDocs
 ```
+
+Finder screenshots supplied by the owner on 2026-09-11 confirm that both
+folders already contain ordinary owner files. Those files are not fixtures and
+are outside the proposed protocol. Never rename, move, delete, parse, or treat
+them as incoming/outgoing packages. The spike may create and later remove only
+clearly bounded `AI_TEST_*` artifacts that it created itself.
 
 ### Spike rules
 
@@ -390,7 +396,8 @@ filename. The test validated Mac filesystem create/read/rename/delete,
 subdirectories, Unicode, spaces, duplicate display names, and atomic
 temp-to-rename. It created two CREATE_EVENT fixtures, one DONE fixture, and one
 outgoing manifest. Outgoing PDF/JPG files are minimal placeholders proving
-package shape only; they are not user documents.
+package shape only; they are not user documents. Existing ordinary owner files
+in either exchange folder are not packages and must be ignored.
 
 `/usr/bin/shortcuts` exists but only provides `run`, `list`, `view`, and `sign`;
 this Mac cannot create or import a Shortcut from its CLI.

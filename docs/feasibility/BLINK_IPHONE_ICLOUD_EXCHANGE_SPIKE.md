@@ -27,7 +27,8 @@ for viewing.
 
 ## Test area
 
-The test area is intentionally outside the Blink repository:
+The exchange folders are pre-existing owner-maintained private iCloud folders
+outside the Blink repository:
 
 ```text
 iCloud Drive/Shortcuts/Blink_Feasibility/
@@ -44,19 +45,25 @@ symbolic links are used.
 |---|---|
 | macOS version | `26.5.2` (build `25F84`) |
 | iCloud Drive filesystem path | `/Users/vitaliiprotsiuk/Library/Mobile Documents/com~apple~CloudDocs` |
-| `Shortcuts` availability | was absent; created only as the dedicated test area |
+| `Shortcuts/Blink_Feasibility` availability | pre-existing owner-maintained folders; not created by this spike |
 | ordinary filesystem access | PASS: create/read/rename/delete/subdirectory/Unicode/space tests |
 | atomic temp → rename | PASS inside `ToMac` |
 | `shortcuts` CLI | `/usr/bin/shortcuts`; run/list/view/sign only; no create/import subcommand |
 
 The test used only ordinary filesystem operations. The local path is readable
-and writable by the normal user process; no special Apple API was required. The
-filesystem test artifacts were removed after verification. The mailbox fixtures
-below remain for the owner's manual Shortcut test.
+and writable by the normal user process; no special Apple API was required.
+Bounded `AI_TEST_*` filesystem artifacts created by the spike were removed
+after verification. The folders may contain owner files that predate the spike;
+they are user-owned, are not fixtures, and must never be renamed, moved,
+deleted, or interpreted as a mailbox package. The user-provided Finder
+screenshots on 2026-09-11 confirm ordinary files already exist in both `ToMac`
+and `ToPhone`.
 
 ## Part 2 — mailbox package format
 
-The tested package shape is deliberately flat and uses a final marker. Two
+The tested package shape is deliberately flat and uses a final marker. The
+examples describe the proposed protocol only; they do not describe or authorize
+treatment of pre-existing owner files in these folders. Two
 `CREATE_EVENT` fixtures with different transfer IDs but the same
 `original_filename` validated that display names do not have to be unique:
 
@@ -115,9 +122,10 @@ The owner must test on a real iPhone:
 
 ## Part 5 — Mac → iPhone viewing package
 
-The outgoing fixture currently uses minimal test placeholders with the expected
-`.pdf`/`.jpg` names; it is a package-shape test, not a claim that those files
-contain user documents. The future `Blink Files` Shortcut should read only `ToPhone`, select files by
+The outgoing fixture used minimal test placeholders with the expected
+`.pdf`/`.jpg` names; it was a package-shape test, not a claim that those files
+contain user documents. Existing ordinary files visible in `ToPhone` are
+owner-owned and outside the fixture/protocol. The future `Blink Files` Shortcut should read only `ToPhone`, select files by
 `occurrence_id`, ignore `.manifest.json` and `.ready`, and open one file directly
 or present a list when there are two or more. Quick Look/standard preview is
 enough. No public links, HTTP, or ntfy are involved.
@@ -135,6 +143,7 @@ and accepts the result.
 ## Reproducibility evidence
 
 The bounded filesystem test creates only `AI_TEST_*` files under the dedicated
-`Blink_Feasibility` area and removes only those files. The mailbox directories
-remain available for the owner's manual Shortcut test. No production runtime
-files are part of this spike.
+`Blink_Feasibility` area and removes only those files. It must never clean,
+rename, or otherwise mutate pre-existing owner files in either mailbox folder.
+The folders remain available for the owner's manual Shortcut test. No production
+runtime files are part of this spike.

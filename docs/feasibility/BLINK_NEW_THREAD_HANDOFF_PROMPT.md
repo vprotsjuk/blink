@@ -84,7 +84,8 @@ Mailbox — только transport, не database и не source of truth. iPhon
 - тестовая зона:
   `iCloud Drive/Shortcuts/Blink_Feasibility/ToMac/`
   `iCloud Drive/Shortcuts/Blink_Feasibility/ToPhone/`;
-- `Shortcuts` ранее отсутствовала, создана только эта dedicated test area;
+- `Shortcuts/Blink_Feasibility/{ToMac,ToPhone}` — заранее существующие
+  private owner-maintained папки; они не были созданы этим spike;
 - обычный filesystem API успешно проверен: create/read/rename/delete,
   subdirectory, Unicode, пробелы, одинаковые display names с разными UUID,
   atomic temp→rename;
@@ -94,8 +95,12 @@ Mailbox — только transport, не database и не source of truth. iPhon
   `view`, `sign`; create/import Shortcut с Mac невозможен;
 - cross-device iCloud sync и iPhone Share Sheet с Mac не симулировались и не
   считаются подтверждёнными;
-- outgoing PDF/JPG в test area — минимальные placeholders для проверки формы
-  пакета, не пользовательские документы.
+- `AI_TEST_*` артефакты этого spike были удалены после проверки. Скриншоты
+  владельца от 2026-09-11 подтверждают, что в обеих папках уже есть обычные
+  пользовательские файлы. Они не являются fixtures, не должны
+  переименовываться/перемещаться/удаляться и не должны интерпретироваться как
+  mailbox package. Outgoing PDF/JPG fixture были минимальными placeholders для
+  проверки формы пакета, не пользовательскими документами.
 
 ## Формат mailbox под тестом
 
@@ -156,7 +161,8 @@ blocker. Не добавляй workaround до отдельного решени
 ## Правила продолжения
 
 1. Если задача касается только spike — работай исключительно в dedicated iCloud
-   test area и его отчёте.
+   test area и его отчёте; никогда не трогай pre-existing owner files в `ToMac`
+   или `ToPhone`.
 2. Если предлагается production-изменение — сначала остановись и явно раздели
    его от spike; не смешивай workstreams.
 3. Не утверждай, что iPhone или cross-device sync проверены, пока это не сделал
