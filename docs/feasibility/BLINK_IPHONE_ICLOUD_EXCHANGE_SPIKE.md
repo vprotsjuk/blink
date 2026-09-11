@@ -42,19 +42,23 @@ symbolic links are used.
 
 | Check | Result |
 |---|---|
-| macOS version | recorded by the spike command below |
-| iCloud Drive filesystem path | recorded by the spike command below |
-| `Shortcuts` availability | created only as the dedicated test area |
-| ordinary filesystem access | create/read/rename/delete/subdirectory/Unicode/space tests |
-| atomic temp → rename | tested inside `ToMac` |
-| `shortcuts` CLI | present; run/list/view/sign only; no create/import subcommand |
+| macOS version | `26.5.2` (build `25F84`) |
+| iCloud Drive filesystem path | `/Users/vitaliiprotsiuk/Library/Mobile Documents/com~apple~CloudDocs` |
+| `Shortcuts` availability | was absent; created only as the dedicated test area |
+| ordinary filesystem access | PASS: create/read/rename/delete/subdirectory/Unicode/space tests |
+| atomic temp → rename | PASS inside `ToMac` |
+| `shortcuts` CLI | `/usr/bin/shortcuts`; run/list/view/sign only; no create/import subcommand |
 
-The exact command output and pass/fail matrix are appended to this report after
-the bounded test run.
+The test used only ordinary filesystem operations. The local path is readable
+and writable by the normal user process; no special Apple API was required. The
+filesystem test artifacts were removed after verification. The mailbox fixtures
+below remain for the owner's manual Shortcut test.
 
 ## Part 2 — mailbox package format
 
-The tested package shape is deliberately flat and uses a final marker:
+The tested package shape is deliberately flat and uses a final marker. Two
+`CREATE_EVENT` fixtures with different transfer IDs but the same
+`original_filename` validated that display names do not have to be unique:
 
 ```text
 ToMac/
@@ -70,7 +74,9 @@ ToPhone/
   <occurrence_id>.ready                  # created last
 ```
 
-The future Mac reader must ignore incomplete packages until `.ready` exists,
+The spike created and validated two incoming packages and one outgoing manifest;
+the `.ready` marker for `AI_TEST-order` was written after its JSON and attachment
+(mtime check passed). The future Mac reader must ignore incomplete packages until `.ready` exists,
 validate the JSON and all listed files, process a package once, and move or mark
 it only after successful processing. No per-event dynamic directories are
 needed.
@@ -106,7 +112,9 @@ The owner must test on a real iPhone:
 
 ## Part 5 — Mac → iPhone viewing package
 
-The future `Blink Files` Shortcut should read only `ToPhone`, select files by
+The outgoing fixture currently uses minimal test placeholders with the expected
+`.pdf`/`.jpg` names; it is a package-shape test, not a claim that those files
+contain user documents. The future `Blink Files` Shortcut should read only `ToPhone`, select files by
 `occurrence_id`, ignore `.manifest.json` and `.ready`, and open one file directly
 or present a list when there are two or more. Quick Look/standard preview is
 enough. No public links, HTTP, or ntfy are involved.
@@ -116,8 +124,10 @@ enough. No public links, HTTP, or ntfy are involved.
 The flat package plus final `.ready` marker is feasible with ordinary filesystem
 operations and avoids complicated directory-sync semantics. The main unknown is
 not Mac storage; it is whether iOS Shortcuts can save to a fixed private iCloud
-subfolder without presenting a destination picker. Production Blink must remain
-unchanged until the owner completes that iPhone test and accepts the result.
+subfolder without presenting a destination picker. The spike cannot simulate the
+iPhone Share Sheet or prove cross-device sync; those remain manual checks.
+Production Blink must remain unchanged until the owner completes that iPhone test
+and accepts the result.
 
 ## Reproducibility evidence
 
@@ -125,4 +135,3 @@ The bounded filesystem test creates only `AI_TEST_*` files under the dedicated
 `Blink_Feasibility` area and removes only those files. The mailbox directories
 remain available for the owner's manual Shortcut test. No production runtime
 files are part of this spike.
-
