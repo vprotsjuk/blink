@@ -28,8 +28,10 @@ production-функцией: это была документационная о
 ## Git и rollback
 
 - ветка: `main`
-- текущий HEAD на момент handoff: `6d10e32`
-- предыдущие commits результата spike: `3f2dc8e`, `f82ce49`, `6d10e32`
+- текущий HEAD может быть новее этого документа; проверь его через
+  `git log -4 --oneline --decorate`
+- commits результата spike и handoff-документа: `3f2dc8e`, `f82ce49`,
+  `6d10e32`, `a1a3668`
 - rollback до начала iCloud spike:
   `rollback-before-icloud-feasibility-2026-09-10`
 - rollback-tag указывает на commit `d6476b6`
