@@ -58,6 +58,13 @@ Controlled Phase 4B acceptance passed with `Blink DONE Test`, input
 The importer remained disabled; this does not enable production mailbox
 processing.
 
+SwiftUI also has the approved Phase 7 fast refresh: `ContentView` observes the
+parent directory containing `agenda.json`, filters/debounces atomic-replace
+events, and rereads the file through `BlinkStore.loadEventResult()` so the
+normal snapshot, Attention, Dock, and search flow remains canonical. The
+30-second polling fallback remains enabled; observer failure is non-fatal and
+does not write agenda data.
+
 ## 2. Runtime Boundaries
 
 | Block | Owner | Contract |
@@ -230,7 +237,7 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 
 ## 10. Current Verification Snapshot
 
-- Python: 180 tests passing via `.venv/bin/python -m unittest -q`.
+- Python: 181 tests passing via `.venv/bin/python -m unittest -q`.
 - Alternate discovery command `.venv/bin/python -m unittest discover -s tests -p
   'test_*.py' -v` is not runnable here because this checkout has no importable
   `tests/` directory; root-level `test_*.py` modules are covered by the default

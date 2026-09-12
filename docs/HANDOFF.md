@@ -68,8 +68,13 @@ not enable the real mailbox or modify Shortcuts. The resulting feasibility
 pair was `20260912163022-101411924.done.json` +
 `20260912163022-101411924.ready`.
 
+Phase 7 fast external agenda refresh is implemented in SwiftUI. A
+parent-directory `DispatchSource` watcher debounces relevant atomic
+`agenda.json` replacements and reuses the normal reload path; 30-second
+polling remains the correctness fallback, and observer failure is non-fatal.
+
 The long historical checkpoint paragraph immediately above contains older
-`120`/`133`/`160`/`162`/`163` test counts; they are superseded by the current `180` result
+`120`/`133`/`160`/`162`/`163` test counts; they are superseded by the current `181` result
 recorded below.
 Checkpoint and source prompt saved. The briefing timing regression is covered: saving Weather or Astronomy after today's configured local time records the change instant and defers that newly configured briefing to the next local day instead of sending immediately; saving before the target still sends today, and ordinary missed targets retain late catch-up. Python verification: 120 passing. Swift test runner and release build pass. The live watcher was restarted with the fix and did not emit another Weather/Astronomy briefing for today's already-past saved targets. Astronomy push rise/set labels now use thin arrows after the matching icon (`☀️ ↑/↓`, `🌙 ↑/↓`) in grouped lines and individual titles; large arrows remain phase-only. Disabled past unfinished events now remain in History, new GUI events default the blinker to `At time`, personal push titles include the event attention color icon, editing a completed event into the future reopens it, and stale completed records with future starts are repaired on load. Enabled overdue unfinished events now pulse in the app until `Done`; Blink's app-owned `Today` tab alternates between normal text and the highest active priority color from every tab. It is app-owned because macOS `TabView.tabItem` ignores dynamic label color. This is UI-only and does not change lifecycle or sending. Event toggle labels are `On`/`Off`, with disabled row text dimmed but its priority dot retained. Astronomy now uses `☀️` for all Sun events and never emits `🌅`. Moon-related messages use `Waxing Moon`/`Waning Moon` on ordinary days and reserve `New Moon`/`Full Moon` for the exact event day; one large `⬆️`/`⬇️` phase arrow appears on ordinary days only, with one countdown, no textual `Moon is …` line, and no repeated Sunset or standalone Moon event name in the body. Thin `↑`/`↓` UI arrows now mean only rise/set; large arrows mean only waxing/waning. The watcher owns the shared formatter; SwiftUI mirrors the approved icon language only. Astronomy also presents a scrollable Weather-style settings surface plus today's Sun/Moon summary. Its upper settings and lower summaries share the same two columns, so Sun and Moon remain vertically aligned. Weather now uses day/night icons for compact temperature and humidity lines; the Astronomy briefing respects `Use Weather briefing time` by either appending to Weather or sending a separate ntfy briefing. The app reads live JSON from `/Users/vitaliiprotsiuk/Desktop/Blink`; an empty UI after a build is an app-process restart issue, not a data-loss state. Watcher remains the only sender.
 
@@ -100,7 +105,7 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - Row `Paste`/`Add Files` use a short-lived immediate transaction; editor attachments retain the longer Save/Cancel draft lifecycle.
 
 ## Tried & results (bullets)
-- Python verification -> `Ran 180 tests; OK` (`.venv/bin/python -m unittest -q`).
+- Python verification -> `Ran 181 tests; OK` (`.venv/bin/python -m unittest -q`).
 - Alternate discovery -> not runnable: `ImportError: Start directory is not importable: 'tests'` because this checkout has no importable `tests/` directory; root-level `test_*.py` modules are covered by the default command.
 - Swift verification -> `Swift Blink store tests passed.` and release build completed, including briefing-change persistence coverage.
 - Astronomy regeneration -> 732 day records generated.
@@ -139,7 +144,7 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 `watcher.py`, `app/attachment_store.py`, `app/weather_store.py`, `test_watcher.py`, `test_weather_store.py`, `app/agenda_store.py`, `app/notification_format.py`, `test_agenda_store.py`, `test_notification_format.py`, `test_attachment_store.py`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/Models.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AttachmentStore.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift`, `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`, `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `CODEX_NEXT_THREAD_PROMPT.md`, `docs/superpowers/plans/2026-09-09-astronomy-push-format.md`, `docs/superpowers/plans/2026-09-09-event-attachments-and-history-freeze.md`.
 
 ## Commands run (command -> outcome)
-- `.venv/bin/python -m unittest -q` -> 180 tests passed.
+- `.venv/bin/python -m unittest -q` -> 181 tests passed.
 - `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` -> not runnable (`ImportError: Start directory is not importable: 'tests'`; no `tests/` directory in this checkout).
 - `.venv/bin/python -m py_compile watcher.py app/attachment_store.py app/agenda_store.py app/notification_format.py` -> passed.
 - `.venv/bin/python -m py_compile watcher.py app/*.py astronomy/generate_astronomy.py` -> passed.

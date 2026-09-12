@@ -1,7 +1,7 @@
 # Blink: Short Prompt for the Next Codex Task
 
-**Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility and Phase
-4B real iPhone DONE-action acceptance are complete; Phase 1 shared agenda locking, Phase 2A importer core, Phase 2B
+**Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility, Phase 4B
+real iPhone DONE-action acceptance, and Phase 7 fast agenda refresh are complete; Phase 1 shared agenda locking, Phase 2A importer core, Phase 2B
 canonical transactions/recovery, Phase 3's opt-in watcher worker, and Phase 4A
 Mac ntfy DONE action support are implemented. Production mailbox integration
 and DONE action delivery remain disabled by default after controlled acceptance. The verified private Apple
@@ -36,7 +36,7 @@ Shortcut migration checklist; production iCloud, ntfy Actions, and Shortcuts
 remain unchanged. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
-Current verification: `.venv/bin/python -m unittest -q` ran 180 tests and passed;
+Current verification: `.venv/bin/python -m unittest -q` ran 181 tests and passed;
 Python compile, plist lint, `./status_watcher.command`, Swift test runner, and
 Swift release build passed. The alternate command with `-s tests` is not
 runnable because this checkout has no importable `tests/` directory; root-level

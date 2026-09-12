@@ -9,6 +9,7 @@ PHASE 3 COMPLETE (opt-in in-process watcher worker; production mailbox remains d
 PHASE 4A COMPLETE (Mac ntfy DONE action support; disabled by default)
 PHASE 4B COMPLETE (real iPhone ntfy DONE action accepted)
 PHASE 5 NOT STARTED
+PHASE 7 COMPLETE (debounced external agenda refresh; 30-second polling retained)
 
 ## Approved architecture
 
@@ -143,6 +144,166 @@ and the existing local attachment contract.
   compatibility.
 - DONE ntfy input remains `blink-done-v1|<event_id>`.
 
+### Phase 7 — fast external agenda refresh
+
+- Added `AgendaDirectoryObserver`, a macOS-native `DispatchSource` watcher for
+  the parent directory containing `agenda.json`; it never holds the old file
+  inode or descriptor.
+- Directory events are debounced and filtered by the current agenda inode,
+  size, and modification-time signature before invoking the existing SwiftUI
+  `reload()` path. Unrelated files do not trigger a reload.
+- The existing 30-second polling timers remain enabled as the correctness
+  fallback. If the observer cannot open its parent directory, it reports a
+  non-fatal failure and polling continues. The observer performs no writes and
+  introduces no importer-to-GUI IPC.
+- External atomic replacement therefore refreshes Today/Upcoming/History and
+  Search through the normal snapshot path, including Attention and Dock
+  outputs. Ordinary GUI saves produce at most one debounced refresh and do not
+  recurse.
+
+## Phase 5 — iPhone `Blink Create Test` migration checklist
+
+This is a preparation checklist only. It does not modify the Shortcut, enable
+the importer, or authorize production `Blink_Production/ToMac`. Perform the
+actions against a new clean acceptance inbox, not the historical
+`Blink_Feasibility/ToMac` contents.
+
+### Existing blocks that remain unchanged
+
+1. Keep the existing `Shortcut Input` entry path so direct launch remains
+   valid.
+2. Keep the Share Sheet input types limited to `Images`, `PDFs`, and `Files`.
+3. Keep `Ask Where To Save = OFF` and the fixed acceptance destination
+   `Blink_Feasibility/ToMac` until a separately approved clean inbox is chosen.
+4. Keep the final stop/return behavior after the package is completely written.
+
+### Blocks to delete
+
+1. Delete the old random-only ID block and every use of its bare 9-digit value
+   as a filename stem.
+2. Delete feasibility-only JSON keys `event_datetime`, `priority`,
+   `blink_datetime`, `occurrence_id`, and every Mac-owned lifecycle field.
+3. Delete any branch that tests whether an empty direct-launch Text “has any
+   value” as an attachment; it created the historical zero-byte artifact.
+
+### Blocks to modify
+
+1. Modify the input/attachment branch to use the Shortcuts boolean
+   `HasAttachment is true`. Direct launch must take the no-attachment branch;
+   Share Sheet launch may take the one-attachment branch.
+2. Replace old prompts with the exact prompts below and map their outputs to
+   the production v1 field names.
+3. Change the date formatter to emit an offset-bearing ISO-8601 `start` value
+   and an equivalent `created_at` value.
+4. Change the JSON construction, attachment basename, and `.ready` marker to
+   the exact shapes and write order below.
+
+### New blocks to insert, in this order
+
+1. **Current Date** → **Format Date** with custom format
+   `yyyyMMddHHmmss` (device local time).
+2. **Random Number** between `100000000` and `999999999`.
+3. **Text** combine the formatted timestamp, a literal `-`, and the random
+   number: `yyyyMMddHHmmss-<9-digit-random>`. Store it as `transfer_id` and
+   never use only one component as identity.
+4. **Ask for Input — Text** with prompt `Title` (required; stop if empty).
+5. **Ask for Input — Text** with prompt `Description (optional)`; preserve
+   multiline text and use an empty string when omitted.
+6. **Ask for Input — Date** with prompt `Event start date and time`.
+7. **Format Date** for that date using custom format
+   `yyyy-MM-dd'T'HH:mm:ssXXX`, 24-hour time, and the device’s current time
+   zone. This is the explicit-offset `start` string; `XXX` yields values such
+   as `-07:00`.
+8. **Choose from Menu — Attention level** with exact values `green`,
+   `yellow`, and `red`; default to `green`. Store the selected lower-case value
+   as `attention_level`.
+9. **Ask for Input — Text** with prompt
+   `Reminder offsets in minutes before start (comma-separated, e.g. 30,0)`.
+   Split on commas, trim each token, convert to integers, reject negatives or
+   an empty list, remove duplicates, and emit
+   `reminder_intent.offsets_minutes_before`.
+10. **Ask for Input — Number** with prompt
+    `Blinker lead time in minutes before start (default 0)`. Reject negatives
+    and emit `blinker_intent.minutes_before`; `0` is the canonical `At event`
+    default.
+11. **Current Date** → **Format Date** with the same
+    `yyyy-MM-dd'T'HH:mm:ssXXX` format for `created_at`.
+12. Build the JSON object shown below, without adding Mac-owned fields.
+13. If `HasAttachment is true`, require exactly one regular file, derive its
+    non-empty extension, create the attachment object, and write the matching
+    attachment file. If there is no attachment, omit the attachment object.
+14. Write the JSON file, then the optional attachment file, then the `.ready`
+    marker last. Do not write `.ready` before all preceding files are complete.
+
+### Exact final prompts and JSON
+
+The user-facing prompts are exactly: `Title`; `Description (optional)`;
+`Event start date and time`; `Reminder offsets in minutes before start
+(comma-separated, e.g. 30,0)`; `Blinker lead time in minutes before start
+(default 0)`. Attention is selected from the exact green/yellow/red menu.
+
+The final no-attachment JSON is:
+
+```json
+{
+  "version": 1,
+  "type": "CREATE_EVENT",
+  "transfer_id": "20260912154532-482193775",
+  "title": "Call the contractor",
+  "description": "Optional multiline text",
+  "start": "2026-09-13T09:00:00-07:00",
+  "reminder_intent": {"offsets_minutes_before": [30, 0]},
+  "attention_level": "green",
+  "blinker_intent": {"minutes_before": 0},
+  "created_at": "2026-09-12T18:30:00-07:00"
+}
+```
+
+With one attachment, add exactly:
+
+```json
+"attachment": {
+  "basename": "20260912154532-482193775.attachment.pdf",
+  "original_filename": "contract.pdf"
+}
+```
+
+The native transport ID is exactly `yyyyMMddHHmmss-<9-digit-random>` where the
+random value is inclusive from `100000000` through `999999999`. Filenames are
+exactly `<transfer_id>.event.json`, optional
+`<transfer_id>.attachment.<extension>`, and `<transfer_id>.ready`; `.ready` is
+always last. The combined ID is transport/dedupe identity only, never the
+event ID or event start time.
+
+### Mapping and Mac-owned fields
+
+| Shortcut value | Production v1 field | Rule |
+|---|---|---|
+| Title | `title` | Required, trimmed, non-empty. |
+| Description | `description` | Optional string; preserve newlines. |
+| Event start date and time | `start` | ISO-8601 with explicit device UTC offset. |
+| Reminder offsets | `reminder_intent.offsets_minutes_before` | Non-empty, non-negative integer list; parser sorts unique values. |
+| Attention menu | `attention_level` | Exactly `green`, `yellow`, or `red`. |
+| Blinker lead time | `blinker_intent.minutes_before` | Non-negative integer; canonical default `0`. |
+| Current Date | `created_at` | Audit metadata only; never scheduling time. |
+| Optional file | `attachment` | `basename` plus display-only `original_filename`; no bytes in JSON. |
+
+The Mac supplies `id` (`event-<UUID>`), `enabled=true`, `requires_done=true`,
+`done=false`, `done_at=null`, `tags:["calendar"]`, `priority:"default"`,
+`recurrence=null`, `mailbox_transfer_id`, and the physical attachment manifest.
+The phone MUST NOT send or override those fields, nor send `event_id`,
+`reminders_minutes_before`, `blinker_minutes_before`, recurrence, tags, or
+absolute `blink_datetime`.
+
+### Direct launch, Share Sheet, and zero-byte protection
+
+Direct launch has no attachment and must write only the JSON plus final `.ready`.
+Share Sheet launch accepts one image, PDF, or regular file and writes one
+matching attachment. More than one attachment must stop without writing a
+package; a file without a usable extension must also stop. The attachment
+branch must be guarded by `HasAttachment is true`, so an empty direct-launch
+Text can never create `<id>.attachment.` or any zero-byte attachment.
+
 ## Files changed
 
 - `.gitignore` — ignore agenda lock and mailbox runtime state.
@@ -151,6 +312,8 @@ and the existing local attachment contract.
   implementation interoperable with Python `flock`.
 - `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/Models.swift` — shared lock around
   all Swift agenda read/modify/write and repair paths.
+- `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AgendaDirectoryObserver.swift` —
+  parent-directory DispatchSource observer with signature filtering and debounce.
 - `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift` — Swift lock and
   Python interoperability tests.
 - `test_agenda_store.py` — Python contention and lost-update regression tests.
@@ -182,7 +345,8 @@ and the existing local attachment contract.
 - Previous Phase 4 notification/watcher focused suite remains covered by the
   full run; its prior checkpoint was 88 passing tests.
 - `swift run BlinkSwiftUITestRunner` → all Swift store/UI tests passed,
-  including Python `flock` interoperability.
+  including Python `flock` interoperability and the Phase 7 atomic-replace,
+  debounce, unrelated-write, save-loop, and observer-failure regressions.
 - `swift build -c release` → build completed.
 - `.venv/bin/python -m py_compile watcher.py app/*.py astronomy/generate_astronomy.py`
   → passed.
@@ -238,4 +402,7 @@ coverage: `5cc53de Add mailbox iteration coverage`. Worker diagnostics:
 `cf75720 Prepare configurable Blink DONE shortcut name`. Verification fixture:
 `05c6b3f Stabilize Swift history test fixture`. Phase 4B URL fix:
 `49eaf30 Fix Shortcuts action URL space encoding`. Phase 4B manual acceptance
-passed with native DONE package `20260912163022-101411924`.
+passed with native DONE package `20260912163022-101411924`. Phase 4B closeout:
+`0e19104 Close Phase 4B manual acceptance`. Phase 7:
+`16bdf7b Add fast external agenda refresh`. Phase 5 checklist:
+`e7037e5 Prepare Phase 5 Create Shortcut checklist`.

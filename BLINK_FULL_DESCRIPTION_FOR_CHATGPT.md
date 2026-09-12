@@ -87,6 +87,15 @@ controlled acceptance with `BLINK_NTFY_DONE_ACTION_ENABLED=1`. Weather,
 Astronomy, and system messages never receive this action. No `clear=true`
 behavior is implemented.
 
+Phase 4B real iPhone DONE-action acceptance is complete. The controlled
+`Blink DONE Test` action carried `blink-done-v1|EVENT123`; the user tapped
+`Done`, and the Shortcut created the native package pair
+`20260912163022-101411924.done.json` plus `.ready` in feasibility `ToMac`.
+Phase 7 fast external agenda refresh is also implemented: SwiftUI observes the
+parent directory of `agenda.json`, debounces relevant atomic replacements, and
+reuses the normal reload/snapshot path while retaining the 30-second polling
+fallback. Production mailbox processing remains disabled.
+
 The completed CREATE_EVENT feasibility flow supports direct launch without a
 file and Share Sheet input limited to Images, PDFs, and Files, with at most one
 attachment. It writes `<transfer_id>.event.json`, then an optional
