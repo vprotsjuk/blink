@@ -7,8 +7,9 @@ communicate with the owner in Russian unless they request otherwise.
 
 This document is the practical, self-contained entry point for a new ChatGPT
 or Codex thread. It explains what Blink is, what is actually implemented,
-which boundaries must not be crossed, and the one currently open feasibility
-workstream. Read it before editing code or runtime data.
+which boundaries must not be crossed, and the completed manual feasibility
+workstream that precedes any future production integration. Read it before
+editing code or runtime data.
 
 ## 1. Authority and reading order
 
@@ -315,10 +316,10 @@ an Open-Meteo city matrix of 20/20 successful timezone-bearing results. Treat
 this as historical evidence, not a replacement for running relevant current
 checks after a change.
 
-## 12. Separate iCloud ↔ iPhone feasibility spike — not production
+## 12. Separate iCloud ↔ iPhone feasibility spike — manual phase complete, not production
 
-This is the only unfinished workstream. It is a robustness/feasibility spike,
-not an approved feature. It must not be mixed into production changes.
+This is a completed robustness/feasibility spike, not an approved production
+feature. It must not be mixed into production changes.
 
 The candidate topology is:
 
@@ -336,10 +337,10 @@ iCloud Drive/Shortcuts/Blink_Feasibility/
   ToPhone/
 ```
 
-Actual local iCloud root:
+Actual local private Apple Shortcuts container:
 
 ```text
-/Users/vitaliiprotsiuk/Library/Mobile Documents/com~apple~CloudDocs
+/Users/vitaliiprotsiuk/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents
 ```
 
 Finder screenshots supplied by the owner on 2026-09-11 confirm that both
@@ -359,8 +360,8 @@ clearly bounded `AI_TEST_*` artifacts that it created itself.
 - Do not use public iCloud links, “Anyone with the link”, HTTP/ntfy for reverse
   file transfer, symbolic links, or scanning/accessing Photos, Documents,
   Downloads, Desktop, or other user folders.
-- Do not connect the exchange to production until the separate manual iPhone
-  acceptance test has succeeded.
+- Do not connect the exchange to production until a separate integration design
+  is reviewed and accepted.
 
 ### Tested mailbox package shape
 
@@ -391,37 +392,33 @@ ToPhone/<occurrence_id>.ready                # written last
 
 A future reader must ignore a package until its `.ready` exists, validate its
 JSON and every listed file, process it once, and only then mark or move it.
-Flat package names are intentional: different UUIDs may have the same display
-filename. The test validated Mac filesystem create/read/rename/delete,
-subdirectories, Unicode, spaces, duplicate display names, and atomic
-temp-to-rename. It created two CREATE_EVENT fixtures, one DONE fixture, and one
-outgoing manifest. Outgoing PDF/JPG files are minimal placeholders proving
-package shape only; they are not user documents. Existing ordinary owner files
-in either exchange folder are not packages and must be ignored.
+Flat package names are intentional: different IDs may have the same display
+filename. The Mac filesystem shape and the real iPhone paths were validated.
+Existing ordinary owner files in either exchange folder are not packages and
+must be ignored. Test Shortcuts use 9-digit Random Numbers only for feasibility;
+they are not a production identity strategy.
 
 `/usr/bin/shortcuts` exists but only provides `run`, `list`, `view`, and `sign`;
 this Mac cannot create or import a Shortcut from its CLI.
 
-### Required manual iPhone validation — still open
+### Confirmed manual iPhone results
 
-The owner must verify on a real iPhone:
+The following all passed on the real iPhone/Mac: iPhone → Mac file transport,
+Mac → iPhone `ToPhone` + Quick Look, external Shortcut URL input, the real ntfy
+DONE button producing `.done.json` + `.ready`, CREATE_EVENT direct launch
+without attachment, CREATE_EVENT with image and PDF, repeated Viber PDF share
+after `Always Allow`, and direct-launch regression after attachment changes.
 
-1. `Blink Test` appears in Files Share Sheet.
-2. It accepts a PDF.
-3. It accepts an explicitly shared photo/image.
-4. It accepts at most one attachment with a clear multiple-input rule.
-5. Direct Home Screen/Shortcuts launch works without input.
-6. It collects Title, Description, Event Date/Time, Priority
-   (green/yellow/red), and Blink Date/Time.
-7. It generates a UUID `transfer_id`.
-8. It writes JSON first, attachment second if present, and `.ready` last.
-9. Destination remains fixed at
-   `iCloud Drive/Shortcuts/Blink_Feasibility/ToMac`, without a folder picker on
-   each launch.
-10. The Mac sees the complete package.
+The observed privacy facts are limited to: Photos received `Always Allow`, Viber
+received `Always Allow`, first access showed prompts, and repeated Viber PDF
+sharing showed no further prompt. No internal iOS permission model is inferred.
 
-If iOS forces destination selection each time, record that as an architecture
-blocker. Do not invent a workaround until the owner makes a separate decision.
+### Open design question: ntfy DONE notification lifecycle
+
+After DONE is tapped and the package is written, it remains undecided whether
+the originating notification is cleared immediately, kept until Mac confirms
+successful application, or handled by another acknowledgement UX. `clear=true`
+is not an approved production decision.
 
 The future `Blink Files` Shortcut may read only `ToPhone`, select by
 `occurrence_id`, ignore manifest/ready markers, directly open one file or show
@@ -438,8 +435,8 @@ a list for multiple files. It must not create public links or use HTTP/ntfy.
 4. For a production change, trace each altered field through model, persistence,
    watcher, notification projection, UI, and tests. Keep modules independent.
 5. For a spike-only task, operate only within the dedicated iCloud test area and
-   update its feasibility report; do not claim iPhone/cross-device behavior
-   without a real manual test.
+   update its feasibility report; the manual results are already confirmed, but
+   do not extend them into production behavior without an accepted design.
 6. Run proportional automated and manual verification. Before final response,
    run `git diff --check` and report actual results, changed files, remaining
    blockers, and the next safe step.
@@ -468,5 +465,6 @@ For any completed task, state:
 - what was not verified manually or on-device;
 - any open blocker and the next safe action.
 
-Do not describe iPhone Share Sheet behavior or cross-device iCloud sync as
-verified until the owner has performed the manual iPhone checklist above.
+The manual iPhone Share Sheet and cross-device iCloud paths are now verified as
+listed above. Do not extrapolate those feasibility results into production
+integration until the design and importer gates are accepted.

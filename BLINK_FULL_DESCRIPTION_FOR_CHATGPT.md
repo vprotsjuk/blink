@@ -1,6 +1,6 @@
 # Blink: Complete Current Specification, Architecture, Behavior, and Contracts
 
-**Snapshot:** 2026-09-09  
+**Snapshot:** 2026-09-12
 **Project root:** `/Users/vitaliiprotsiuk/Desktop/Blink`  
 **Document purpose:** one standalone current specification for the owner, ChatGPT analysis, and future Codex threads. It describes what is implemented now; it is not a wish-list.
 
@@ -44,17 +44,44 @@ The boundaries are deliberate:
 
 The project intentionally keeps the blocks independent. A change to one block must be traced through its explicit dependencies, but unrelated blocks must not be mixed into the same implementation path.
 
-### Future iPhone exchange boundary (feasibility only)
+### Future iPhone exchange boundary (feasibility only; manual phase complete)
 
 The future Blink ↔ iPhone exchange is deliberately not part of the current
-production runtime. A separate spike tests a private iCloud Drive mailbox at
-`iCloud Drive/Shortcuts/Blink_Feasibility/ToMac` and `ToPhone`, using flat
-JSON/file packages with a final `.ready` marker. iCloud is transport only:
-`agenda.json`, event folders, and the Mac JSON contracts remain the source of
-truth; iPhone commands never edit them directly. ntfy remains Mac → iPhone
+production runtime. Manual feasibility testing is complete against the private
+Apple Shortcuts container at
+`~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents`, using
+`Blink_Feasibility/ToMac` and `ToPhone`. The mailbox is transport only:
+`agenda.json`, event folders, and Mac JSON contracts remain the source of truth;
+iPhone commands never edit them directly. ntfy remains Mac → iPhone
 notification transport only. No public links, HTTP, Photos/Documents access,
-or production `watcher.py` changes are allowed. Results and the manual iPhone
-checklist are in [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
+or production `watcher.py` changes are allowed. Confirmed results, package
+formats, and the remaining design question are in
+[`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
+
+Confirmed manual results (2026-09-12): iPhone → Mac file transport, Mac →
+iPhone `ToPhone` + Quick Look, external Shortcut URL input, the real ntfy DONE
+button producing `.done.json` + `.ready`, CREATE_EVENT direct launch without an
+attachment, CREATE_EVENT with an image, CREATE_EVENT with a PDF, repeated PDF
+sharing after `Always Allow`, and a direct-launch regression after attachment
+logic changes all passed. These results do not authorize production integration.
+
+The iPhone DONE notification lifecycle remains an open design question. After
+the button creates a DONE package, it is not yet decided whether the ntfy
+notification disappears immediately, remains until Mac acknowledgement, or
+uses another acknowledgement UX. `clear=true` is not an approved production
+decision.
+
+The completed CREATE_EVENT feasibility flow supports direct launch without a
+file and Share Sheet input limited to Images, PDFs, and Files, with at most one
+attachment. It writes `<transfer_id>.event.json`, then an optional
+`<transfer_id>.attachment.<extension>`, then `<transfer_id>.ready` last. A
+test bug where an empty direct-launch Text was treated as an attachment was
+fixed by checking `HasAttachment is true`; the zero-byte
+`918491446.attachment.` was a feasibility artifact, and the regression after
+the fix produced no attachment. Photos and Viber required observed
+`Always Allow` prompts on first access; repeated Viber PDF sharing did not
+prompt again. These are observed behaviors, not an inferred iOS permission
+model.
 
 ## 3. Project Layout
 

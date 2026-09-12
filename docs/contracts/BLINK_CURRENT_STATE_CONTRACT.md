@@ -4,7 +4,7 @@
 > `docs/HANDOFF.md` and all historical plans. Historical plans never override a
 > newer owner decision recorded here.
 
-**Snapshot:** 2026-09-09  
+**Snapshot:** 2026-09-12
 **Project root:** `/Users/vitaliiprotsiuk/Desktop/Blink`
 
 The complete technical description for ChatGPT is [`BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`](../../BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md). The immediate continuation prompt for a new Codex task is [`CODEX_NEXT_THREAD_PROMPT.md`](../../CODEX_NEXT_THREAD_PROMPT.md).
@@ -24,15 +24,24 @@ SwiftUI GUI -> local JSON files -> watcher.py -> ntfy -> iPhone
 - Keep personal events, transport/queue, weather, astronomy, location, and UI as independent blocks connected by explicit JSON contracts.
 - Use atomic writes and preserve unknown JSON fields unless a documented migration removes a retired field.
 
-### Future iPhone exchange (not implemented)
+### Future iPhone exchange (manual feasibility complete; production not implemented)
 
-A separate feasibility spike may use a private iCloud Drive mailbox under
-`Shortcuts/Blink_Feasibility/{ToMac,ToPhone}`. This is transport only, not a
-database or source of truth: `agenda.json` and Blink-local attachment folders
-remain Mac-only, and ntfy remains Mac → iPhone push transport. No production
+A private Apple Shortcuts container has been manually verified at
+`~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents` with
+`Blink_Feasibility/{ToMac,ToPhone}`. This is transport only, not a database or
+source of truth: `agenda.json` and Blink-local attachment folders remain
+Mac-only, and ntfy remains Mac → iPhone push transport. Manual feasibility
+coverage is complete for file transport, Quick Look, external Shortcut input,
+DONE, and CREATE_EVENT with no attachment, image, and PDF. No production
 watcher/UI/agenda integration, public links, HTTP, or Photos/Documents access
-is permitted until the iPhone fixed-destination test is accepted. See
+is permitted until a separate integration design is accepted. See
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](../feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
+
+The 9-digit Random Number used by the test Shortcuts is feasibility-only and is
+not a production identity strategy. The future Mac importer must use normal
+Blink business logic, remain idempotent, and preserve the local source of
+truth. The lifecycle of the originating ntfy DONE notification is unresolved;
+do not treat `clear=true` as an approved decision.
 
 ## 2. Runtime Boundaries
 

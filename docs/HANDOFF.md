@@ -1,6 +1,6 @@
 # Blink Work Handoff
 
-**Snapshot:** 2026-09-09  
+**Snapshot:** 2026-09-12
 **Full technical description:** [`BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`](../BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md)  
 **Next Codex prompt:** [`CODEX_NEXT_THREAD_PROMPT.md`](../CODEX_NEXT_THREAD_PROMPT.md)
 
@@ -9,9 +9,10 @@ Keep Blink's independent runtime architecture stable while fixing personal-event
 
 The canonical current-state contract for future agents is [`docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`](contracts/BLINK_CURRENT_STATE_CONTRACT.md). Update it together with this handoff whenever a boundary or user-visible contract changes.
 
-The iPhone ↔ private iCloud exchange is currently a separate feasibility spike,
-not a production feature. Its safety boundary, filesystem findings, mailbox
-format, and manual iPhone checklist are recorded in
+The iPhone ↔ private iCloud exchange remains separate from production, but its
+manual feasibility phase is now complete. Its safety boundary, private
+container, mailbox format, observed results, and open design question are
+recorded in
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
 ## Pre-change reconciliation checkpoint (2026-09-10)
@@ -24,6 +25,37 @@ This checkpoint is an audit only; no source code was changed for it.
 - **Current gate:** reconciliation is accepted by the owner. Implementation now follows the current contract: no product Snooze, independent Blinker, per-occurrence attachment ownership, unified Paste, editor-only Drop, and frozen History.
 
 ## Status (what is done / what is broken / what is verified)
+
+The manual iPhone/iCloud feasibility phase is complete. The verified private
+Apple Shortcuts container is
+`~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents`, with
+`Blink_Feasibility/ToMac` and `ToPhone`. Confirmed PASS results are:
+
+- iPhone → Mac file transport;
+- Mac → iPhone `ToPhone` plus Quick Look;
+- external Shortcut URL input;
+- real ntfy DONE button → `.done.json` + `.ready` on Mac;
+- CREATE_EVENT direct launch without an attachment;
+- CREATE_EVENT with image and with PDF;
+- repeated Viber PDF share after `Always Allow`;
+- direct-launch regression after attachment logic changes.
+
+The test Shortcuts use a 9-digit Random Number only as a feasibility transport
+ID. It is not a production identity strategy. A previously observed empty
+`918491446.attachment.` file was caused by testing `Attachment has any value`
+with an empty direct-launch Text; the branch now tests `HasAttachment is true`,
+and the follow-up direct launch produced only `.event.json` plus `.ready`.
+
+The feasibility phase does not change production Blink. There is no mailbox
+reader/importer yet. Future integration must validate packages, be idempotent,
+NO-OP duplicate DONE and stale occurrences, survive malformed packages, call
+existing Blink Done/Create paths, and archive/delete only after successful
+apply.
+
+One design question remains open: after the iPhone DONE button creates a
+package, the originating ntfy notification may disappear immediately, remain
+until Mac acknowledgement, or use another acknowledgement UX. `clear=true` is
+not an approved production decision.
 Checkpoint and source prompt saved. The briefing timing regression is covered: saving Weather or Astronomy after today's configured local time records the change instant and defers that newly configured briefing to the next local day instead of sending immediately; saving before the target still sends today, and ordinary missed targets retain late catch-up. Python verification: 120 passing. Swift test runner and release build pass. The live watcher was restarted with the fix and did not emit another Weather/Astronomy briefing for today's already-past saved targets. Astronomy push rise/set labels now use thin arrows after the matching icon (`☀️ ↑/↓`, `🌙 ↑/↓`) in grouped lines and individual titles; large arrows remain phase-only. Disabled past unfinished events now remain in History, new GUI events default the blinker to `At time`, personal push titles include the event attention color icon, editing a completed event into the future reopens it, and stale completed records with future starts are repaired on load. Enabled overdue unfinished events now pulse in the app until `Done`; Blink's app-owned `Today` tab alternates between normal text and the highest active priority color from every tab. It is app-owned because macOS `TabView.tabItem` ignores dynamic label color. This is UI-only and does not change lifecycle or sending. Event toggle labels are `On`/`Off`, with disabled row text dimmed but its priority dot retained. Astronomy now uses `☀️` for all Sun events and never emits `🌅`. Moon-related messages use `Waxing Moon`/`Waning Moon` on ordinary days and reserve `New Moon`/`Full Moon` for the exact event day; one large `⬆️`/`⬇️` phase arrow appears on ordinary days only, with one countdown, no textual `Moon is …` line, and no repeated Sunset or standalone Moon event name in the body. Thin `↑`/`↓` UI arrows now mean only rise/set; large arrows mean only waxing/waning. The watcher owns the shared formatter; SwiftUI mirrors the approved icon language only. Astronomy also presents a scrollable Weather-style settings surface plus today's Sun/Moon summary. Its upper settings and lower summaries share the same two columns, so Sun and Moon remain vertically aligned. Weather now uses day/night icons for compact temperature and humidity lines; the Astronomy briefing respects `Use Weather briefing time` by either appending to Weather or sending a separate ntfy briefing. The app reads live JSON from `/Users/vitaliiprotsiuk/Desktop/Blink`; an empty UI after a build is an app-process restart issue, not a data-loss state. Watcher remains the only sender.
 
 The Blink-local event attachments feature is implemented. It keeps multiline event text, draft/permanent attachment folders under `event_data/`, unified clipboard paste (file URLs first, otherwise image-to-JPEG), paperclip-only personal pushes, frozen History, double-click editing in Today/Upcoming, compact paperclip/count rows with a filename/type popover, folder buttons, and tab-aware context actions. Every occurrence owns an event-ID folder. The final row/editor split is explicit: Today/Upcoming context-menu `Paste` and `Add Files` attach immediately to the persisted event without opening the editor or requiring Save; editor Add Files/Paste/drop remain staged until Save/Cancel. Immediate multi-file operations validate and copy transactionally, roll back on failure, and update counts only from finalized physical files. The Today header owns a round blue `+` action for New Event, and every navigation tab has a subtle pointer-hover state. The editor modal now uses a window-safe height with a top-aligned scroll view, so Title/Description, attachments, reminders, Blinker, and Cancel/Save remain reachable on shorter windows. Event reloads preserve the last-good shared snapshot on read/JSON failure and expose Loaded vs Error/Stale diagnostics in Health. The historical design/plan files are retained for traceability and marked `HISTORICAL / SUPERSEDED`; the current contract and full description are authoritative.
