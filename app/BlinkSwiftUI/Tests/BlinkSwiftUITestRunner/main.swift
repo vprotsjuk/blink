@@ -1231,6 +1231,147 @@ func testEventReloadUsesLastGoodSnapshotAndExplicitErrorBanner() throws {
     try expect(app.contains("guard result.state == .loaded else"), "Menu-bar state should preserve its last-good snapshot on reload errors")
 }
 
+func replaceAtomically(_ url: URL, with content: String) throws {
+    let temporary = url.deletingLastPathComponent()
+        .appendingPathComponent(".agenda-observer-\(UUID().uuidString).tmp")
+    try content.write(to: temporary, atomically: true, encoding: .utf8)
+    _ = try FileManager.default.replaceItemAt(url, withItemAt: temporary)
+}
+
+func testAgendaDirectoryObserverDetectsAtomicReplaceAndDebounces() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try "{\"version\":1,\"events\":[]}".write(to: agenda, atomically: true, encoding: .utf8)
+    let semaphore = DispatchSemaphore(value: 0)
+    let lock = NSLock()
+    var callbackCount = 0
+    let observer = AgendaDirectoryObserver(
+        agendaURL: agenda,
+        debounceInterval: 0.2,
+        callbackQueue: DispatchQueue.global(qos: .userInitiated),
+        onChange: {
+            lock.lock()
+            callbackCount += 1
+            lock.unlock()
+            semaphore.signal()
+        }
+    )
+    observer.start()
+    defer { observer.stop() }
+    usleep(50_000)
+    try replaceAtomically(agenda, with: "{\"version\":1,\"events\":[{\"id\":\"one\"}]}")
+    try replaceAtomically(agenda, with: "{\"version\":1,\"events\":[{\"id\":\"two\"}]}")
+    try expect(semaphore.wait(timeout: .now() + 2) == .success, "Atomic agenda replacement did not trigger observer")
+    usleep(450_000)
+    lock.lock()
+    let observed = callbackCount
+    lock.unlock()
+    try expect(observed == 1, "Duplicate directory events should debounce to one callback")
+}
+
+func testAgendaDirectoryObserverDoesNotCreateSaveReloadLoop() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try "{\"version\":1,\"events\":[]}".write(to: agenda, atomically: true, encoding: .utf8)
+    let semaphore = DispatchSemaphore(value: 0)
+    let lock = NSLock()
+    var callbackCount = 0
+    let observer = AgendaDirectoryObserver(
+        agendaURL: agenda,
+        debounceInterval: 0.1,
+        callbackQueue: DispatchQueue.global(qos: .userInitiated),
+        onChange: {
+            lock.lock()
+            callbackCount += 1
+            lock.unlock()
+            semaphore.signal()
+        }
+    )
+    observer.start()
+    defer { observer.stop() }
+    usleep(50_000)
+    let event = EditableEvent(
+        id: "saved",
+        title: "Saved",
+        date: Date(timeIntervalSince1970: 4_000_000_000),
+        hour: 12,
+        minute: 0,
+        description: "",
+        reminderOffsets: [0],
+        enabled: true
+    )
+    try BlinkStore(root: root).save(event)
+    try expect(semaphore.wait(timeout: .now() + 2) == .success, "GUI save did not produce a directory event")
+    usleep(350_000)
+    lock.lock()
+    let observed = callbackCount
+    lock.unlock()
+    try expect(observed == 1, "Observer callback must not recursively reload after a GUI save")
+}
+
+func testAgendaDirectoryObserverIgnoresUnrelatedParentWrites() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try "{\"version\":1,\"events\":[]}".write(to: agenda, atomically: true, encoding: .utf8)
+    let change = DispatchSemaphore(value: 0)
+    let observer = AgendaDirectoryObserver(
+        agendaURL: agenda,
+        debounceInterval: 0.1,
+        callbackQueue: DispatchQueue.global(qos: .userInitiated),
+        onChange: { change.signal() }
+    )
+    observer.start()
+    defer { observer.stop() }
+    usleep(50_000)
+    try "unrelated".write(to: root.appendingPathComponent("other.json"), atomically: true, encoding: .utf8)
+    try expect(change.wait(timeout: .now() + 0.5) == .timedOut, "Unrelated parent writes must not trigger agenda reload")
+}
+
+func testAgendaDirectoryObserverFailureFallsBackToPolling() throws {
+    let missingAgenda = FileManager.default.temporaryDirectory
+        .appendingPathComponent("blink-missing-\(UUID().uuidString)")
+        .appendingPathComponent("agenda.json")
+    let failure = DispatchSemaphore(value: 0)
+    let change = DispatchSemaphore(value: 0)
+    let lock = NSLock()
+    var observedFailure = false
+    let observer = AgendaDirectoryObserver(
+        agendaURL: missingAgenda,
+        callbackQueue: DispatchQueue.global(qos: .userInitiated),
+        onChange: { change.signal() },
+        onFailure: { _ in
+            lock.lock()
+            observedFailure = true
+            lock.unlock()
+            failure.signal()
+        }
+    )
+    observer.start()
+    defer { observer.stop() }
+    try expect(failure.wait(timeout: .now() + 2) == .success, "Observer failure was not reported")
+    try expect(change.wait(timeout: .now() + 0.2) == .timedOut, "Failed observer emitted a change callback")
+    lock.lock()
+    let failed = observedFailure
+    lock.unlock()
+    try expect(failed, "Observer failure callback was not reached")
+}
+
+func testAgendaDirectoryObserverIsParentDirectoryRefreshOnly() throws {
+    let contentURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/AgendaDirectoryObserver.swift")
+    let source = try String(contentsOf: contentURL, encoding: .utf8)
+    let contentURLForView = contentURL.deletingLastPathComponent().appendingPathComponent("ContentView.swift")
+    let viewSource = try String(contentsOf: contentURLForView, encoding: .utf8)
+    try expect(source.contains("deletingLastPathComponent()"), "Observer must open the agenda parent directory")
+    try expect(source.contains("makeFileSystemObjectSource"), "Observer must use DispatchSource filesystem events")
+    try expect(source.contains("debounceInterval"), "Observer must debounce directory events")
+    try expect(viewSource.contains("AgendaDirectoryObserver"), "ContentView must own the agenda observer")
+    try expect(viewSource.contains("Timer.publish(every: 30"), "Thirty-second polling fallback must remain enabled")
+}
+
 func testAttachmentFolderMenuAndPreviewContracts() throws {
     let sourceURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -1382,6 +1523,11 @@ let tests: [(String, () throws -> Void)] = [
     ("event load result distinguishes error from empty agenda", testEventLoadResultDistinguishesErrorFromEmptyAgenda),
     ("event rows expose attachment and history contracts", testEventRowsExposeAttachmentAndHistoryContracts),
     ("event reload uses last good snapshot and explicit error banner", testEventReloadUsesLastGoodSnapshotAndExplicitErrorBanner),
+    ("agenda observer detects atomic replace and debounces", testAgendaDirectoryObserverDetectsAtomicReplaceAndDebounces),
+    ("agenda observer does not create save reload loop", testAgendaDirectoryObserverDoesNotCreateSaveReloadLoop),
+    ("agenda observer ignores unrelated parent writes", testAgendaDirectoryObserverIgnoresUnrelatedParentWrites),
+    ("agenda observer failure falls back to polling", testAgendaDirectoryObserverFailureFallsBackToPolling),
+    ("agenda observer uses parent directory refresh", testAgendaDirectoryObserverIsParentDirectoryRefreshOnly),
     ("attachment folder menu and preview contracts", testAttachmentFolderMenuAndPreviewContracts),
     ("event row attachment list and folder button contracts", testEventRowAttachmentListAndFolderButtonContracts),
     ("attachment workspace folder contracts", testAttachmentWorkspaceFolderContracts),

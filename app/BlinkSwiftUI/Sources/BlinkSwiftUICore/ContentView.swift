@@ -229,6 +229,7 @@ public struct ContentView: View {
     @State private var selectedTab: BlinkTab = .today
     @State private var selectedDay: Date?
     @State private var calendarSelectionDate = Date()
+    @State private var agendaObserver: AgendaDirectoryObserver?
 
     public init(
         store: BlinkStore,
@@ -308,7 +309,13 @@ public struct ContentView: View {
                 ? "The event will be removed and its Blink attachments moved to Trash."
                 : "The event will be removed from Blink.")
         }
-        .onAppear(perform: reload)
+        .onAppear {
+            reload()
+            startAgendaObserver()
+        }
+        .onDisappear {
+            stopAgendaObserver()
+        }
         .onExitCommand {
             handleSelectedDayExit()
         }
@@ -801,6 +808,23 @@ public struct ContentView: View {
         weatherConfig = store.loadWeatherConfig()
         weatherCache = store.loadWeatherCache()
         reminderConfig = store.loadReminderConfig()
+    }
+
+    private func startAgendaObserver() {
+        guard agendaObserver == nil else { return }
+        let observer = AgendaDirectoryObserver(
+            agendaURL: store.root.appendingPathComponent("agenda.json"),
+            callbackQueue: .main,
+            onChange: { reload() },
+            onFailure: { _ in }
+        )
+        observer.start()
+        agendaObserver = observer
+    }
+
+    private func stopAgendaObserver() {
+        agendaObserver?.stop()
+        agendaObserver = nil
     }
 
     @discardableResult
