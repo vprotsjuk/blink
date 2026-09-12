@@ -78,7 +78,7 @@ func testUpsertPreservesUnknownFields() throws {
         {
           "id": "dentist",
           "title": "Dentist",
-          "start": "2026-09-12T15:00:00-07:00",
+          "start": "2099-09-12T15:00:00-07:00",
           "reminders_minutes_before": [30],
           "enabled": true,
           "future_event": "keep-event"
