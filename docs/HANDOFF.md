@@ -40,8 +40,11 @@ Apple Shortcuts container is
 - repeated Viber PDF share after `Always Allow`;
 - direct-launch regression after attachment logic changes.
 
-The test Shortcuts use a 9-digit Random Number only as a feasibility transport
-ID. It is not a production identity strategy. A previously observed empty
+Real Apple Shortcuts has no native Generate UUID action. The production
+Shortcut transport ID therefore uses `<yyyyMMddHHmmss>-<9-digit-random>`, for
+example `20260912154532-482193775`; UUIDv4 remains accepted for backward
+compatibility. This combined value is transport/dedupe identity only, not an
+event ID or event start time. A previously observed empty
 `918491446.attachment.` file was caused by testing `Attachment has any value`
 with an empty direct-launch Text; the branch now tests `HasAttachment is true`,
 and the follow-up direct launch produced only `.event.json` plus `.ready`.

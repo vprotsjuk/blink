@@ -37,7 +37,7 @@ and the existing local attachment contract.
 
 ### Phase 2A — importer core
 
-- Added `app/mailbox_importer.py` with strict UUIDv4 package discovery,
+- Added `app/mailbox_importer.py` with strict native/UUID-compatible transport-ID package discovery,
   `.ready` semantics, DONE/CREATE v1 parsing, and pending-sync vs malformed
   classification.
 - CREATE v1 parser accepts user intent only: non-recurring, explicit timezone,
@@ -45,7 +45,7 @@ and the existing local attachment contract.
 - Added regular-file/symlink/path/basename safety checks, multiple-attachment
   rejection, and unrelated-file isolation.
 - Added local journal records, restart-readable pending journal state, atomic
-  indefinite processed UUID tombstones, local staging, and exact-package local
+  indefinite processed transport-ID tombstones, local staging, and exact-package local
   quarantine primitives.
 - No watcher call, iCloud production root, agenda mutation, ntfy action, or
   Shortcut change was added.
@@ -61,7 +61,7 @@ and the existing local attachment contract.
   event-ID owner folder inside the lock, and represented by the physical-file
   manifest. Journal recovery repairs a missing ledger and removes safe orphan
   staging/finalization folders.
-- Processed UUID tombstones retain durable result/event metadata indefinitely.
+- Processed transport-ID tombstones retain durable result/event metadata indefinitely.
 
 ### Phase 3 — watcher worker integration
 
@@ -101,6 +101,19 @@ and the existing local attachment contract.
   defaults off. The input contract remains `blink-done-v1|<event_id>` and the
   canonical direct/queued action builder is unchanged.
 
+### Phase 4B preparation — Shortcuts-native transport IDs
+
+- Real Apple Shortcuts does not provide a native Generate UUID action, so the
+  production phone-generated transport ID is
+  `<yyyyMMddHHmmss>-<9-digit-random>`, for example
+  `20260912154532-482193775`.
+- This combined value is transport/dedupe identity only; it is neither an
+  event ID nor the event start time. The same strict policy applies to
+  `command_id`, `transfer_id`, package stems, attachments, `.ready`, journal,
+  ledger, and quarantine ownership. UUIDv4 remains accepted for backward
+  compatibility.
+- DONE ntfy input remains `blink-done-v1|<event_id>`.
+
 ## Files changed
 
 - `.gitignore` — ignore agenda lock and mailbox runtime state.
@@ -133,8 +146,10 @@ and the existing local attachment contract.
 
 ## Tests
 
-- `.venv/bin/python -m unittest -q` → 176 tests passed.
-- `.venv/bin/python -m unittest -q test_notification_format test_ntfy_schedule test_watcher` → 88 tests passed.
+- `.venv/bin/python -m unittest -q` → 180 tests passed.
+- `.venv/bin/python -m unittest -q test_mailbox_importer` → 29 tests passed.
+- Previous Phase 4 notification/watcher focused suite remains covered by the
+  full run; its prior checkpoint was 88 passing tests.
 - `swift run BlinkSwiftUITestRunner` → all Swift store/UI tests passed,
   including Python `flock` interoperability.
 - `swift build -c release` → build completed.

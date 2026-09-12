@@ -39,10 +39,12 @@ production iCloud processing remains disabled by default; no real
 Actions, Shortcut changes, or Photos/Documents access is enabled. See
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](../feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
-The 9-digit Random Number used by the test Shortcuts is feasibility-only and is
-not a production identity strategy. The future Mac importer must use normal
-Blink business logic, remain idempotent, and preserve the local source of
-truth. The lifecycle of the originating ntfy DONE notification is unresolved;
+Real Apple Shortcuts has no native Generate UUID action. Production phone
+transport IDs therefore use `<yyyyMMddHHmmss>-<9-digit-random>`, for example
+`20260912154532-482193775`; UUIDv4 remains accepted for backward compatibility.
+This combined value is transport/dedupe identity only, never an event ID or
+event start time. The Mac importer uses normal Blink business logic, remains
+idempotent, and preserves the local source of truth. The lifecycle of the originating ntfy DONE notification is unresolved;
 do not treat `clear=true` as an approved decision.
 
 Mac-side DONE action support is implemented but disabled by default. When

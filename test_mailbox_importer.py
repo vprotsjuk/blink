@@ -70,6 +70,65 @@ class MailboxImporterTests(unittest.TestCase):
             self.assertEqual(parsed.kind, "DONE")
             self.assertEqual(parsed.event_id, "event-123")
 
+    def test_shortcuts_native_transport_id_is_accepted_for_done(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            transport_id = "20260912154532-482193775"
+            (root / f"{transport_id}.done.json").write_text(
+                json.dumps(done_payload(transport_id, "event-123")), encoding="utf-8"
+            )
+            (root / f"{transport_id}.ready").write_text("ready\n", encoding="utf-8")
+            candidate = mailbox_importer.discover_packages(root)[0]
+            parsed = mailbox_importer.parse_package(candidate)
+            self.assertEqual(parsed.transport_id, transport_id)
+
+    def test_shortcuts_native_transport_id_is_accepted_for_create_and_attachment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            transport_id = "20260912154532-482193775"
+            write_ready_package(root, transport_id, create_payload(transport_id, attachment=True), b"pdf")
+            candidate = mailbox_importer.discover_packages(root)[0]
+            parsed = mailbox_importer.parse_package(candidate)
+            self.assertEqual(parsed.transfer_id, transport_id)
+            self.assertEqual(parsed.attachment_path.name, f"{transport_id}.attachment.pdf")
+
+    def test_native_transport_id_requires_exact_shape_and_stem_ownership(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            valid = "20260912154532-482193775"
+            invalid = (
+                "..-abc", "2026-09-12-123", "abc-123", "20260912154532",
+                "20260912154532-123", "20260912154532-123456789-extra",
+            )
+            with self.assertRaises(mailbox_importer.MalformedPackage):
+                mailbox_importer._validate_transport_id("../../abc", "transport_id")
+            for value in invalid:
+                (root / f"{value}.ready").write_text("ready", encoding="utf-8")
+            (root / f"{valid}.ready").write_text("ready", encoding="utf-8")
+            (root / f"{valid}.done.json").write_text(
+                json.dumps(done_payload("20260912154533-482193775", "event-123")), encoding="utf-8"
+            )
+            (root / f"{valid}.attachment.pdf").write_bytes(b"pdf")
+            candidates = mailbox_importer.discover_packages(root)
+            self.assertEqual([candidate.transport_id for candidate in candidates], [valid])
+            with self.assertRaises(mailbox_importer.MalformedPackage):
+                mailbox_importer.parse_package(candidates[0])
+
+    def test_native_transport_id_duplicate_is_deduped_by_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agenda = self._agenda(root, [])
+            transport_id = "20260912154532-482193775"
+            command = mailbox_importer.ParsedCommand(
+                kind="CREATE_EVENT", transport_id=transport_id, transfer_id=transport_id,
+                title="Native", description="", start="2026-09-13T09:00:00-07:00",
+                reminder_offsets=(0,), attention_level="green", blinker_minutes_before=0,
+            )
+            first = mailbox_importer.apply_command(command, agenda, root)
+            second = mailbox_importer.apply_command(command, agenda, root)
+            self.assertEqual(first["event_id"], second["event_id"])
+            self.assertEqual(len(json.loads(agenda.read_text())["events"]), 1)
+
     def test_ready_missing_json_is_pending_sync(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

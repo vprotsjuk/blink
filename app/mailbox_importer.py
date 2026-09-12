@@ -25,9 +25,10 @@ from app.agenda_store import agenda_lock
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 )
+_SHORTCUTS_TRANSPORT_RE = re.compile(r"^[0-9]{14}-[0-9]{9}$")
 _SAFE_EVENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _READY_RE = re.compile(r"^(?P<id>[0-9a-f-]+)\.ready$")
-_ATTACHMENT_RE = re.compile(r"^(?P<id>[0-9a-f-]+)\.attachment\.(?P<ext>[A-Za-z0-9][A-Za-z0-9._-]*)$")
+_ATTACHMENT_RE = re.compile(r"^(?P<id>[A-Za-z0-9-]+)\.attachment\.(?P<ext>[A-Za-z0-9][A-Za-z0-9._-]*)$")
 _INTERNAL_CREATE_FIELDS = {
     "id",
     "enabled",
@@ -93,17 +94,23 @@ class ParsedCommand:
     payload: dict[str, Any] | None = None
 
 
-def _validate_uuid4(value: Any, label: str) -> str:
+def _validate_transport_id(value: Any, label: str) -> str:
     text = str(value or "").strip().lower()
+    if _SHORTCUTS_TRANSPORT_RE.fullmatch(text):
+        return text
     if not _UUID_RE.fullmatch(text):
-        raise MalformedPackage(f"{label} must be a canonical UUIDv4")
+        raise MalformedPackage(f"{label} must be yyyyMMddHHmmss-9digit-random or UUIDv4")
     try:
         parsed = uuid.UUID(text)
     except ValueError as exc:
-        raise MalformedPackage(f"{label} must be a UUIDv4") from exc
+        raise MalformedPackage(f"{label} must be a supported transport ID") from exc
     if parsed.version != 4:
-        raise MalformedPackage(f"{label} must be a UUIDv4")
+        raise MalformedPackage(f"{label} must be a supported transport ID")
     return text
+
+
+# Backward-compatible private name retained for existing callers/tests.
+_validate_uuid4 = _validate_transport_id
 
 
 def _validate_event_id(value: Any) -> str:
@@ -125,7 +132,7 @@ def _safe_display_name(value: Any) -> str:
 
 
 def discover_packages(root: Path) -> list[PackageCandidate]:
-    """Discover only ready-marked UUID packages; unrelated files are ignored."""
+    """Discover only ready-marked strict transport-ID packages."""
     root = Path(root)
     if root.is_symlink() or not root.is_dir():
         return []
@@ -138,7 +145,7 @@ def discover_packages(root: Path) -> list[PackageCandidate]:
             continue
         transport_id = match.group("id").lower()
         try:
-            _validate_uuid4(transport_id, "ready filename")
+            _validate_transport_id(transport_id, "ready filename")
         except MalformedPackage:
             continue
         event_json = root / f"{transport_id}.event.json"
@@ -250,7 +257,7 @@ def _parse_blinker(payload: dict[str, Any]) -> int:
 def _parse_done(candidate: PackageCandidate, payload: dict[str, Any]) -> ParsedCommand:
     if payload.get("version") != 1 or payload.get("type") != "DONE":
         raise MalformedPackage("invalid DONE version/type")
-    command_id = _validate_uuid4(payload.get("command_id"), "command_id")
+    command_id = _validate_transport_id(payload.get("command_id"), "command_id")
     if command_id != candidate.transport_id:
         raise MalformedPackage("command_id does not match filename")
     if "occurrence_id" in payload:
@@ -271,7 +278,7 @@ def _parse_done(candidate: PackageCandidate, payload: dict[str, Any]) -> ParsedC
 def _parse_create(candidate: PackageCandidate, payload: dict[str, Any]) -> ParsedCommand:
     if payload.get("version") != 1 or payload.get("type") != "CREATE_EVENT":
         raise MalformedPackage("invalid CREATE_EVENT version/type")
-    transfer_id = _validate_uuid4(payload.get("transfer_id"), "transfer_id")
+    transfer_id = _validate_transport_id(payload.get("transfer_id"), "transfer_id")
     if transfer_id != candidate.transport_id:
         raise MalformedPackage("transfer_id does not match filename")
     forbidden = _INTERNAL_CREATE_FIELDS.intersection(payload)

@@ -20,7 +20,9 @@ local JSON remain the source of truth.
 
 The originating ntfy DONE notification lifecycle is an OPEN DESIGN QUESTION:
 clear immediately, keep until Mac acknowledgement, or use another UX.
-`clear=true` is not selected. Phase 2B must reuse existing Blink Done/Create
+`clear=true` is not selected. Production transport IDs use
+`<yyyyMMddHHmmss>-<9-digit-random>` (UUIDv4 remains accepted for compatibility)
+and are never event IDs. Phase 2B must reuse existing Blink Done/Create
 logic, be idempotent, treat duplicate/stale DONE as NO-OP, survive malformed
 packages, and delete transport files only after successful apply.
 
