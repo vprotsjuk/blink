@@ -1,7 +1,8 @@
 # Blink: Short Prompt for the Next Codex Task
 
 **Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility is
-complete; production integration is not implemented. The verified private Apple
+complete; Phase 1 shared agenda locking and Phase 2A importer core are
+implemented, while production mailbox integration is not connected. The verified private Apple
 Shortcuts container is
 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents` with
 `Blink_Feasibility/ToMac` and `ToPhone`. Four test Shortcuts were used:
@@ -17,12 +18,17 @@ local JSON remain the source of truth.
 
 The originating ntfy DONE notification lifecycle is an OPEN DESIGN QUESTION:
 clear immediately, keep until Mac acknowledgement, or use another UX.
-`clear=true` is not selected. The future Mac reader/importer must be designed
-and reviewed before implementation, reuse existing Blink Done/Create logic, be
-idempotent, treat duplicate/stale DONE as NO-OP, survive malformed packages,
-and archive/delete only after successful apply.
+`clear=true` is not selected. Phase 2B must reuse existing Blink Done/Create
+logic, be idempotent, treat duplicate/stale DONE as NO-OP, survive malformed
+packages, and delete transport files only after successful apply.
 
-Current verification: `.venv/bin/python -m unittest -q` ran 133 tests and passed;
+Implementation checkpoint: Phase 1 shared agenda locking is complete in commit
+`98753a8`; Phase 2A parser/state foundation is complete but not connected to
+watcher, production iCloud, ntfy, or agenda mutation. The next task is Phase 2B
+canonical event mutation and attachment transaction on temporary roots. See
+`docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
+
+Current verification: `.venv/bin/python -m unittest -q` ran 151 tests and passed;
 Python compile, plist lint, `./status_watcher.command`, Swift test runner, and
 Swift release build passed. The alternate command with `-s tests` is not
 runnable because this checkout has no importable `tests/` directory; root-level
@@ -33,6 +39,7 @@ runnable because this checkout has no importable `tests/` directory; root-level
 1. `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`
 2. `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`
 3. `docs/HANDOFF.md`
+4. `docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`
 
 Это локальное macOS-приложение Blink. Сохраняй границу:
 
@@ -53,6 +60,12 @@ SwiftUI только читает/редактирует JSON и показыв�
 После изменений:
 
 - обнови `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md` и `docs/HANDOFF.md`;
+- если задача меняет или уточняет iPhone/iCloud mailbox contract,
+  DONE/CREATE package format, `.ready` semantics, remote command behavior или
+  ntfy acknowledgement behavior, обязательно обнови также
+  `docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`;
+- если после принятого design меняется текущая точка продолжения проекта,
+  обнови также `CODEX_NEXT_THREAD_PROMPT.md`;
 - запусти релевантные Python/Swift tests, compile/build и `./status_watcher.command`;
 - если менялась SwiftUI-программа, пересобери release executable, замени `Blink.app/Contents/MacOS/Blink`, закрой Blink и запусти его снова;
 - в финале перечисли измененные файлы, проверки, результаты и оставшиеся риски.
