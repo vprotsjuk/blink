@@ -90,6 +90,17 @@ and the existing local attachment contract.
   not receive the action. No `clear=true`, command ID, or `occurrence_id` is
   generated.
 
+### Phase 4B preparation — controlled Shortcut-name override
+
+- Production/default Shortcut name remains `Blink DONE`.
+- For controlled manual acceptance only, `BLINK_NTFY_DONE_SHORTCUT_NAME` may
+  temporarily provide a non-empty printable name such as `Blink DONE Test`.
+  Missing, empty, whitespace-only, control-character, or overlong values fall
+  back to `Blink DONE`.
+- `BLINK_NTFY_DONE_ACTION_ENABLED` remains a separate opt-in flag and still
+  defaults off. The input contract remains `blink-done-v1|<event_id>` and the
+  canonical direct/queued action builder is unchanged.
+
 ## Files changed
 
 - `.gitignore` — ignore agenda lock and mailbox runtime state.
@@ -122,8 +133,8 @@ and the existing local attachment contract.
 
 ## Tests
 
-- `.venv/bin/python -m unittest -q` → 172 tests passed.
-- `.venv/bin/python -m unittest -q test_notification_format test_ntfy_schedule test_watcher` → 84 tests passed.
+- `.venv/bin/python -m unittest -q` → 176 tests passed.
+- `.venv/bin/python -m unittest -q test_notification_format test_ntfy_schedule test_watcher` → 88 tests passed.
 - `swift run BlinkSwiftUITestRunner` → all Swift store/UI tests passed,
   including Python `flock` interoperability.
 - `swift build -c release` → build completed.
@@ -144,6 +155,9 @@ and the existing local attachment contract.
   `blink-done-v1|event-abc_123` →
   `shortcuts://run-shortcut?name=Blink+DONE&input=text&text=blink-done-v1%7Cevent-abc_123` →
   `view, Done, <encoded-shortcut-url>`.
+- Phase 4B manual acceptance will temporarily set
+  `BLINK_NTFY_DONE_SHORTCUT_NAME="Blink DONE Test"`; production default stays
+  `Blink DONE`.
 
 ## Known risks / blockers
 
@@ -177,5 +191,6 @@ and the existing local attachment contract.
 `df50af7 Integrate Blink mailbox worker with watcher`. Additional Phase 2B
 coverage: `5cc53de Add mailbox iteration coverage`. Worker diagnostics:
 `47a381b Expand mailbox worker diagnostics`. Phase 4A:
-`a8c682b Add Blink ntfy DONE action support`. Verification fixture:
+`a8c682b Add Blink ntfy DONE action support`. Phase 4B preparation:
+`cf75720 Prepare configurable Blink DONE shortcut name`. Verification fixture:
 `05c6b3f Stabilize Swift history test fixture`.
