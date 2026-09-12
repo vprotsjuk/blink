@@ -62,6 +62,25 @@ class NtfyScheduleTests(unittest.TestCase):
         item = next(iter(desired.values()))
         self.assertNotIn("calendar", item["payload"]["tags"])
 
+    def test_queue_payload_contains_canonical_done_action_and_hash_varies_by_event(self):
+        config = {"default_priority": "high", "default_tags": ["calendar"], "done_action_enabled": True}
+        first = ntfy_schedule.build_desired_queue(
+            events=[self.event(id="event-one")],
+            now=datetime.fromisoformat("2026-09-12T17:30:00-07:00"),
+            window_hours=24,
+            config=config,
+        )
+        second = ntfy_schedule.build_desired_queue(
+            events=[self.event(id="event-two")],
+            now=datetime.fromisoformat("2026-09-12T17:30:00-07:00"),
+            window_hours=24,
+            config=config,
+        )
+        first_item = next(iter(first.values()))
+        second_item = next(iter(second.values()))
+        self.assertEqual(first_item["payload"]["actions"], second_item["payload"]["actions"].replace("event-two", "event-one"))
+        self.assertNotEqual(first_item["payload_hash"], second_item["payload_hash"])
+
     def test_remote_queue_skips_offsets_that_cannot_still_fire(self):
         desired = ntfy_schedule.build_desired_queue(
             events=[self.event(reminders_minutes_before=[60, 30, 10, 0])],

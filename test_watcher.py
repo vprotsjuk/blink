@@ -90,6 +90,26 @@ class WatcherCoreTests(unittest.TestCase):
             event["attachments"]["has_files"] = True
             self.assertTrue(watcher.remote_reconcile_due([event], now))
 
+    def test_remote_reconcile_signature_changes_when_done_action_changes(self):
+        event = {
+            "id": "event-action",
+            "start": "2026-09-12T11:00:00-07:00",
+            "enabled": True,
+            "done": False,
+            "requires_done": True,
+            "title": "Action",
+            "description": "",
+            "attention_level": "green",
+            "reminders_minutes_before": [0],
+        }
+        now = datetime.fromisoformat("2026-09-10T10:00:00-07:00")
+        with patch.object(watcher, "_last_remote_reconcile_at", None), patch.object(
+            watcher, "_last_remote_reconcile_signature", None
+        ):
+            self.assertTrue(watcher.remote_reconcile_due([event], now, config={"done_action_enabled": False}))
+            self.assertFalse(watcher.remote_reconcile_due([event], now, config={"done_action_enabled": False}))
+            self.assertTrue(watcher.remote_reconcile_due([event], now, config={"done_action_enabled": True}))
+
     def test_legacy_briefing_config_change_uses_contract_file_time(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -133,6 +153,35 @@ class WatcherCoreTests(unittest.TestCase):
         )
         self.assertEqual(config["ntfy_topic"], "blink-private-topic-for-tests")
         self.assertEqual(config["late_delivery_grace_minutes"], 180)
+
+    def test_done_action_is_disabled_in_current_runtime_by_default(self):
+        config = watcher.validate_config(self._notification_config())
+        self.assertFalse(config["done_action_enabled"])
+
+    def test_direct_done_action_is_encoded_in_ntfy_actions_header_when_enabled(self):
+        event = {
+            "id": "event-a&b",
+            "title": "Done me",
+            "description": "",
+            "start": "2026-09-14T15:00:00-07:00",
+            "priority": "default",
+            "tags": ["calendar"],
+            "source": "personal",
+            "requires_done": True,
+            "done": False,
+            "attention_level": "green",
+        }
+        request = watcher.build_ntfy_request(
+            config={"ntfy_server": "https://ntfy.sh", "ntfy_topic": "topic"},
+            title="🟢 Done me",
+            message="body",
+            priority="high",
+            tags=[],
+            actions=watcher.build_done_action(event, enabled=True),
+        )
+        self.assertEqual(request.headers["Actions"].split(", ")[1], "Done")
+        self.assertNotIn("clear=true", request.headers["Actions"])
+        self.assertIn("event-a%26b", request.headers["Actions"])
 
     def test_send_ntfy_notification_supports_cyrillic_title(self):
         event = {

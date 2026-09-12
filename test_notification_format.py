@@ -5,11 +5,67 @@ from app.notification_format import (
     MAX_NTFY_BODY_BYTES,
     MAX_NTFY_TITLE_BYTES,
     build_event_notification,
+    build_done_action,
+    build_event_payload,
     push_tags_for_event,
 )
 
 
 class NotificationFormatTests(unittest.TestCase):
+    def personal_event(self, **overrides):
+        event = {
+            "id": "event-abc_123",
+            "title": "Visit",
+            "description": "Bring papers",
+            "start": "2026-09-14T15:00:00-07:00",
+            "source": "personal",
+            "requires_done": True,
+            "done": False,
+            "priority": "default",
+            "tags": ["calendar"],
+        }
+        event.update(overrides)
+        return event
+
+    def test_done_action_is_versioned_encoded_and_contains_only_real_event_id(self):
+        action = build_done_action(self.personal_event(), enabled=True)
+        self.assertIn("shortcuts://run-shortcut?", action)
+        self.assertIn("Blink+DONE", action)
+        self.assertIn("blink-done-v1%7Cevent-abc_123", action)
+        self.assertNotIn("command_id", action)
+        self.assertNotIn("occurrence_id", action)
+        self.assertNotIn("clear=true", action)
+        self.assertEqual(action.split("&text=", 1)[1], "blink-done-v1%7Cevent-abc_123")
+
+    def test_done_action_encodes_query_injection_characters(self):
+        action = build_done_action(self.personal_event(id="event-a&evil=b|c"), enabled=True)
+        self.assertIn("event-a%26evil%3Db%7Cc", action)
+        self.assertNotIn("&evil=b", action)
+
+    def test_done_action_is_only_for_eligible_personal_events(self):
+        self.assertIsNone(build_done_action(self.personal_event(done=True), enabled=True))
+        self.assertIsNone(build_done_action(self.personal_event(requires_done=False), enabled=True))
+        self.assertIsNone(build_done_action(self.personal_event(source="astronomy"), enabled=True))
+        self.assertIsNone(build_done_action(self.personal_event(id=""), enabled=True))
+
+    def test_weather_and_astronomy_never_receive_done_action(self):
+        self.assertIsNone(
+            build_done_action(self.personal_event(source="weather"), enabled=True)
+        )
+        self.assertIsNone(
+            build_done_action(self.personal_event(source="astronomy"), enabled=True)
+        )
+
+    def test_done_action_is_disabled_by_default(self):
+        self.assertIsNone(build_done_action(self.personal_event()))
+
+    def test_direct_payload_and_queued_payload_share_action_representation(self):
+        payload = build_event_payload(
+            {"default_priority": "high", "default_tags": ["calendar"], "done_action_enabled": True},
+            self.personal_event(),
+            0,
+        )
+        self.assertEqual(payload["actions"], build_done_action(self.personal_event(), enabled=True))
     def test_event_notification_uses_title_and_readable_description(self):
         event = {
             "title": "Визит ко клиенту",

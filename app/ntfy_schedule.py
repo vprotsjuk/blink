@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from app.event_timing import effective_event_start
-from app.notification_format import build_event_notification, push_tags_for_event
+from app.notification_format import build_event_payload
 
 
 def empty_state() -> dict[str, Any]:
@@ -58,14 +58,8 @@ def build_desired_queue(
                 continue
             seq = sequence_id(event, offset)
             reminder_key = f"{event['id']}|{effective_start.isoformat()}|{offset}"
-            title, body, priority, tags = build_payload(config, event, offset)
-            payload = {
-                "title": title,
-                "body": body,
-                "priority": priority,
-                "tags": tags,
-                "delivery_time": reminder_time.isoformat(),
-            }
+            payload = build_event_payload(config, event, offset)
+            payload["delivery_time"] = reminder_time.isoformat()
             desired[seq] = {
                 "sequence_id": seq,
                 "reminder_key": reminder_key,
@@ -173,17 +167,13 @@ def save_state_atomic(path: Path, state: dict[str, Any]) -> None:
 def build_payload(
     config: dict[str, Any], event: dict[str, Any], offset_minutes: int
 ) -> tuple[str, str, str, list[str]]:
-    effective_start = event.get("effective_start_dt") or effective_event_start(event)
-    title, body = build_event_notification(
-        event,
-        offset_minutes,
-        effective_start.isoformat() if effective_start is not None else None,
+    payload = build_event_payload(config, event, offset_minutes)
+    return (
+        str(payload["title"]),
+        str(payload["body"]),
+        str(payload["priority"]),
+        list(payload["tags"]),
     )
-    priority = event.get("priority", "default")
-    if priority == "default":
-        priority = config.get("default_priority", "high")
-    tags = push_tags_for_event(event, config.get("default_tags", ["calendar"]))
-    return title, body, priority, tags
 
 
 def payload_hash(payload: dict[str, Any]) -> str:

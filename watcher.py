@@ -24,7 +24,7 @@ from app import ntfy_schedule
 from app import attachment_store
 from app import mailbox_importer
 from app.event_timing import effective_event_start
-from app.notification_format import build_event_notification, push_tags_for_event
+from app.notification_format import build_done_action, build_event_payload, done_action_enabled
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -219,6 +219,8 @@ def validate_config(raw: Any) -> dict[str, Any]:
         "late_delivery_grace_minutes": grace_minutes,
         "default_priority": default_priority,
         "default_tags": default_tags or ["calendar"],
+        "done_action_enabled": os.environ.get("BLINK_NTFY_DONE_ACTION_ENABLED", "").strip().lower()
+        in {"1", "true", "yes"},
     }
 
 
@@ -1068,6 +1070,7 @@ def build_ntfy_request(
     tags: list[str],
     sequence_id: str | None = None,
     delivery_time: str | None = None,
+    actions: str | None = None,
 ) -> urllib.request.Request:
     # Use ntfy's documented topic endpoint. Metadata stays in headers and the
     # user sees only the plain message body, never a JSON envelope.
@@ -1082,6 +1085,8 @@ def build_ntfy_request(
         headers["X-Sequence-ID"] = _header_value(sequence_id)
     if delivery_time:
         headers["Delay"] = str(int(datetime.fromisoformat(delivery_time).timestamp()))
+    if actions:
+        headers["Actions"] = _header_value(actions)
     return urllib.request.Request(
         f"{config['ntfy_server']}/{config['ntfy_topic']}",
         data=message.encode("utf-8"),
@@ -1104,15 +1109,14 @@ def send_ntfy_notification(
     if effective_start is None:
         LOGGER.error("Notification skipped: event %s has no valid start", event.get("id", "<unknown>"))
         return False
-    title, body = build_event_notification(event, offset_minutes, effective_start.isoformat())
-    priority = event["priority"] if event["priority"] != "default" else config["default_priority"]
-    tags = push_tags_for_event(event, config["default_tags"])
+    payload = build_event_payload(config, event, offset_minutes)
     request = build_ntfy_request(
         config=config,
-        title=title,
-        message=body,
-        priority=priority,
-        tags=tags,
+        title=str(payload["title"]),
+        message=str(payload["body"]),
+        priority=str(payload["priority"]),
+        tags=list(payload["tags"]),
+        actions=payload.get("actions"),
     )
 
     LOGGER.info(
@@ -1210,6 +1214,7 @@ def send_scheduled_ntfy_notification(config: dict[str, Any], item: dict[str, Any
         tags=list(payload["tags"]),
         sequence_id=str(item["sequence_id"]),
         delivery_time=str(item["delivery_time"]),
+        actions=payload.get("actions"),
     )
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
@@ -1313,7 +1318,12 @@ def reconcile_remote_schedule(
     return reconciled
 
 
-def remote_reconcile_due(events: list[dict[str, Any]], now: datetime, interval_minutes: int = 60) -> bool:
+def remote_reconcile_due(
+    events: list[dict[str, Any]],
+    now: datetime,
+    interval_minutes: int = 60,
+    config: dict[str, Any] | None = None,
+) -> bool:
     """Reconcile on startup/config changes and at a slow safety interval."""
     global _last_remote_reconcile_at, _last_remote_reconcile_signature
     signature_payload = [
@@ -1332,6 +1342,9 @@ def remote_reconcile_due(events: list[dict[str, Any]], now: datetime, interval_m
             "has_files": bool(
                 isinstance(event.get("attachments"), dict)
                 and event["attachments"].get("has_files") is True
+            ),
+            "done_action": build_done_action(
+                event, enabled=done_action_enabled(config)
             ),
         }
         for event in events
@@ -1616,7 +1629,7 @@ def main() -> int:
             run_weather_cycle(config, now)
             state = run_astronomy_briefing_cycle(config, state, now)
             save_state_atomic(state_path, state)
-            if remote_reconcile_due(events, now):
+            if remote_reconcile_due(events, now, config=config):
                 remote_schedule_state = reconcile_remote_schedule(config, events, now)
             else:
                 remote_schedule_state = ntfy_schedule.load_state(project_path("ntfy_schedule_state.json"))

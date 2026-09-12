@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from urllib.parse import urlencode
 from datetime import datetime
 from typing import Any
 
@@ -14,6 +16,63 @@ _MONTHS = (
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
 )
+
+DONE_SHORTCUT_NAME = "Blink DONE"
+DONE_ACTION_VERSION = "blink-done-v1"
+
+
+def done_action_enabled(config: dict[str, Any] | None = None) -> bool:
+    if isinstance(config, dict) and isinstance(config.get("done_action_enabled"), bool):
+        return config["done_action_enabled"]
+    return os.environ.get("BLINK_NTFY_DONE_ACTION_ENABLED", "").strip().lower() in {
+        "1", "true", "yes"
+    }
+
+
+def build_done_action(
+    event: dict[str, Any], *, enabled: bool | None = None, shortcut_name: str = DONE_SHORTCUT_NAME
+) -> str | None:
+    """Build the single canonical ntfy view action for an eligible event."""
+    if enabled is None:
+        enabled = done_action_enabled()
+    if not enabled:
+        return None
+    if event.get("source", "personal") != "personal" or event.get("done") is True:
+        return None
+    if event.get("requires_done", True) is False:
+        return None
+    event_id = str(event.get("id", "")).strip()
+    if not event_id:
+        return None
+    shortcut_input = f"{DONE_ACTION_VERSION}|{event_id}"
+    query = urlencode({"name": shortcut_name, "input": "text", "text": shortcut_input})
+    shortcut_url = f"shortcuts://run-shortcut?{query}"
+    return f"view, Done, {shortcut_url}"
+
+
+def build_event_payload(
+    config: dict[str, Any], event: dict[str, Any], offset_minutes: int
+) -> dict[str, Any]:
+    """Return the canonical title/body/metadata representation for ntfy."""
+    effective_start = event.get("effective_start_dt") or event.get("start_dt")
+    title, body = build_event_notification(
+        event,
+        offset_minutes,
+        effective_start.isoformat() if effective_start is not None else None,
+    )
+    priority = event.get("priority", "default")
+    if priority == "default":
+        priority = config.get("default_priority", "high")
+    payload: dict[str, Any] = {
+        "title": title,
+        "body": body,
+        "priority": priority,
+        "tags": push_tags_for_event(event, config.get("default_tags", ["calendar"])),
+    }
+    action = build_done_action(event, enabled=done_action_enabled(config))
+    if action is not None:
+        payload["actions"] = action
+    return payload
 
 
 def _event_date_label(event: dict[str, Any], start_value: str | None = None) -> str:
