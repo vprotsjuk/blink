@@ -59,8 +59,11 @@ class MailboxWorker:
             "worker_started_at": None,
             "worker_finished_at": None,
             "worker_stalled_since": None,
+            "last_scan_at": None,
             "last_success_at": None,
             "last_error": None,
+            "last_error_at": None,
+            "last_command_id": None,
             "last_result": None,
             "pending_count": 0,
         }
@@ -86,6 +89,7 @@ class MailboxWorker:
             self._state.update(
                 {
                     "worker_in_flight": True,
+                    "last_scan_at": datetime.now().astimezone().isoformat(),
                     "worker_started_at": datetime.now().astimezone().isoformat(),
                     "worker_stalled_since": None,
                 }
@@ -103,10 +107,13 @@ class MailboxWorker:
                 self._state["last_success_at"] = datetime.now().astimezone().isoformat()
                 if isinstance(result, dict):
                     self._state["pending_count"] = int(result.get("pending", 0) or 0)
+                    if result.get("last_command_id"):
+                        self._state["last_command_id"] = result["last_command_id"]
                 self._state["last_error"] = None
         except Exception as exc:  # noqa: BLE001 - isolate mailbox failures.
             with self._lock:
                 self._state["last_error"] = str(exc)
+                self._state["last_error_at"] = datetime.now().astimezone().isoformat()
         finally:
             with self._lock:
                 self._state["worker_in_flight"] = False
