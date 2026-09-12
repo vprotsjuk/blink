@@ -224,7 +224,7 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 
 ## 10. Current Verification Snapshot
 
-- Python: 172 tests passing via `.venv/bin/python -m unittest -q`.
+- Python: 180 tests passing via `.venv/bin/python -m unittest -q`.
 - Alternate discovery command `.venv/bin/python -m unittest discover -s tests -p
   'test_*.py' -v` is not runnable here because this checkout has no importable
   `tests/` directory; root-level `test_*.py` modules are covered by the default

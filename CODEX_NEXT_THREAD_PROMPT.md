@@ -14,9 +14,11 @@ Confirmed manual PASS: iPhone → Mac file transport, Mac → iPhone `ToPhone` +
 Quick Look, external Shortcut URL input, real ntfy DONE → `.done.json` +
 `.ready`, CREATE_EVENT direct launch, image and PDF attachments, repeated Viber
 PDF after `Always Allow`, and direct-launch regression after the attachment
-branch fix. The 9-digit Random Number in these tests is feasibility-only, not
-a production identity strategy. The mailbox is transport only; Mac/Blink and
-local JSON remain the source of truth.
+branch fix. Real Apple Shortcuts has no native Generate UUID action, so the
+production phone transport ID is `<yyyyMMddHHmmss>-<9-digit-random>`; UUIDv4
+remains accepted for backward compatibility. The combined value is transport
+identity only, never an event ID or event start time. The mailbox is transport
+only; Mac/Blink and local JSON remain the source of truth.
 
 The originating ntfy DONE notification lifecycle is an OPEN DESIGN QUESTION:
 clear immediately, keep until Mac acknowledgement, or use another UX.
@@ -33,7 +35,7 @@ task is Phase 4B manual iPhone acceptance; production iCloud, ntfy Actions,
 and Shortcuts remain disabled. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
-Current verification: `.venv/bin/python -m unittest -q` ran 172 tests and passed;
+Current verification: `.venv/bin/python -m unittest -q` ran 180 tests and passed;
 Python compile, plist lint, `./status_watcher.command`, Swift test runner, and
 Swift release build passed. The alternate command with `-s tests` is not
 runnable because this checkout has no importable `tests/` directory; root-level
