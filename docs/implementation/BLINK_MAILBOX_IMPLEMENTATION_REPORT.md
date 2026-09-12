@@ -6,7 +6,9 @@ PHASE 1 COMPLETE
 PHASE 2A COMPLETE (parser/state foundation)
 PHASE 2B COMPLETE (temporary-root canonical mutation/recovery)
 PHASE 3 COMPLETE (opt-in in-process watcher worker; production mailbox remains disabled)
-PHASE 4 NOT STARTED
+PHASE 4A COMPLETE (Mac ntfy DONE action support; disabled pending manual iOS acceptance)
+PHASE 4B PENDING (manual iPhone acceptance)
+PHASE 5 NOT STARTED
 
 ## Approved architecture
 
@@ -73,6 +75,21 @@ and the existing local attachment contract.
 - Bounded scans call the Phase 2B transaction path and remove exact transport
   files only after local commit.
 
+### Phase 4A — Mac ntfy DONE action support
+
+- Added one canonical `build_done_action`/`build_event_payload` path reused by
+  direct delivery and rolling queue scheduling.
+- Eligible personal events use the versioned text input
+  `blink-done-v1|<event_id>` and the production Shortcut name `Blink DONE`;
+  URL/query components are encoded with the standard query encoder.
+- The ntfy `Actions` header is emitted only when
+  `BLINK_NTFY_DONE_ACTION_ENABLED=1` (or equivalent true value) is explicitly
+  set. It is independent of mailbox enablement and defaults off.
+- Queue payload hashes and watcher reconciliation signatures include action
+  metadata. Weather, Astronomy, system, completed, and non-personal events do
+  not receive the action. No `clear=true`, command ID, or `occurrence_id` is
+  generated.
+
 ## Files changed
 
 - `.gitignore` — ignore agenda lock and mailbox runtime state.
@@ -89,8 +106,12 @@ and the existing local attachment contract.
 - `app/attachment_store.py` — staged-file finalization helper using the local
   attachment contract.
 - `watcher.py` — opt-in single mailbox worker and non-blocking loop handoff.
+- `app/notification_format.py` — canonical DONE action and notification payload.
+- `app/ntfy_schedule.py` — queued payload reuse with action metadata.
 - `test_mailbox_importer.py` — Phase 2A/2B temporary-root tests.
 - `test_watcher.py` — worker stall, single-flight, exception, and retry tests.
+- `test_notification_format.py`, `test_ntfy_schedule.py` — action, encoding,
+  eligibility, and queue-signature coverage.
 - `docs/design/BLINK_MAILBOX_IMPORTER_DESIGN.md` — approved-baseline wording
   cleanup only.
 - `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md` — this
@@ -101,8 +122,8 @@ and the existing local attachment contract.
 
 ## Tests
 
-- `.venv/bin/python -m unittest -q` → 162 tests passed.
-- `.venv/bin/python -m unittest -q test_mailbox_importer test_watcher` → 79 tests passed.
+- `.venv/bin/python -m unittest -q` → 172 tests passed.
+- `.venv/bin/python -m unittest -q test_notification_format test_ntfy_schedule test_watcher` → 84 tests passed.
 - `swift run BlinkSwiftUITestRunner` → all Swift store/UI tests passed,
   including Python `flock` interoperability.
 - `swift build -c release` → build completed.
@@ -117,14 +138,21 @@ and the existing local attachment contract.
 - Release Swift executable was rebuilt, copied to `Blink.app`, and the app was
   relaunched after the lock change.
 - Phase 2A tests use only temporary mailbox/Blink roots.
+- Manual iPhone acceptance is still required before enabling
+  `BLINK_NTFY_DONE_ACTION_ENABLED` in any real deployment. The expected
+  inspection chain is: `event-abc_123` →
+  `blink-done-v1|event-abc_123` →
+  `shortcuts://run-shortcut?name=Blink+DONE&input=text&text=blink-done-v1%7Cevent-abc_123` →
+  `view, Done, <encoded-shortcut-url>`.
 
 ## Known risks / blockers
 
 - Phase 1 changes are committed, but the existing live watcher/app may need the
   normal LaunchAgent restart cycle after future release deployment.
 - Real iCloud access, ntfy actions, and Shortcut changes remain intentionally
-  disabled. Production mailbox enablement still requires a separate approved
-  manual acceptance pass.
+  disabled. The Mac-side DONE action is implemented but remains opt-in and
+  requires manual iPhone acceptance; production mailbox enablement still
+  requires a separate approved pass.
 
 ## Open owner decisions
 
@@ -136,7 +164,8 @@ and the existing local attachment contract.
 
 ## Next implementation tasks
 
-1. Implement and manually accept the ntfy DONE action (Phase 4).
+1. Manually accept the ntfy DONE action on iPhone (Phase 4B), with the feature
+   flag enabled only in a controlled test.
 2. Then implement the production CREATE Shortcut path (Phase 5) only after
    the remaining transport/acknowledgement decisions are approved.
 
@@ -147,4 +176,5 @@ and the existing local attachment contract.
 `aa50f96 Implement Blink mailbox event transactions`. Phase 3 commit:
 `df50af7 Integrate Blink mailbox worker with watcher`. Additional Phase 2B
 coverage: `5cc53de Add mailbox iteration coverage`. Worker diagnostics:
-`47a381b Expand mailbox worker diagnostics`.
+`47a381b Expand mailbox worker diagnostics`. Phase 4A:
+`a8c682b Add Blink ntfy DONE action support`.

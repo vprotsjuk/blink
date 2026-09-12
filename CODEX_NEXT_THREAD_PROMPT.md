@@ -2,8 +2,9 @@
 
 **Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility is
 complete; Phase 1 shared agenda locking, Phase 2A importer core, Phase 2B
-canonical transactions/recovery, and Phase 3's opt-in watcher worker are
-implemented. Production mailbox integration remains disabled. The verified private Apple
+canonical transactions/recovery, Phase 3's opt-in watcher worker, and Phase 4A
+Mac ntfy DONE action support are implemented. Production mailbox integration
+and DONE action delivery remain disabled pending manual iPhone acceptance. The verified private Apple
 Shortcuts container is
 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents` with
 `Blink_Feasibility/ToMac` and `ToPhone`. Four test Shortcuts were used:
@@ -25,11 +26,12 @@ packages, and delete transport files only after successful apply.
 
 Implementation checkpoint: Phase 1 shared agenda locking is complete in commit
 `98753a8`; Phase 2A is in `421963d`, Phase 2B in `aa50f96`, and Phase 3 in
-`df50af7` plus diagnostics follow-up `47a381b`. The next task is Phase 4 ntfy DONE action design/implementation;
-production iCloud, ntfy Actions, and Shortcuts remain disabled. See
+`df50af7` plus diagnostics follow-up `47a381b`; Phase 4A is `a8c682b`. The next
+task is Phase 4B manual iPhone acceptance; production iCloud, ntfy Actions,
+and Shortcuts remain disabled. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
-Current verification: `.venv/bin/python -m unittest -q` ran 162 tests and passed;
+Current verification: `.venv/bin/python -m unittest -q` ran 172 tests and passed;
 Python compile, plist lint, `./status_watcher.command`, Swift test runner, and
 Swift release build passed. The alternate command with `-s tests` is not
 runnable because this checkout has no importable `tests/` directory; root-level

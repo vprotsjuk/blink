@@ -74,6 +74,14 @@ notification disappears immediately, remains until Mac acknowledgement, or
 uses another acknowledgement UX. `clear=true` is not an approved production
 decision.
 
+Mac-side Phase 4A now has a production-capable but disabled-by-default ntfy
+DONE action. Eligible personal events use `blink-done-v1|<event_id>` as text
+input to the `Blink DONE` Shortcut; the encoded URL is shared by direct and
+queued notification paths and included in queue identity. Enable only for
+controlled acceptance with `BLINK_NTFY_DONE_ACTION_ENABLED=1`. Weather,
+Astronomy, and system messages never receive this action. No `clear=true`
+behavior is implemented.
+
 The completed CREATE_EVENT feasibility flow supports direct launch without a
 file and Share Sheet input limited to Images, PDFs, and Files, with at most one
 attachment. It writes `<transfer_id>.event.json`, then an optional
@@ -664,7 +672,7 @@ The remote queue is limited to the supported rolling horizon and is used only fo
 
 The latest recorded verification state is:
 
-- Python test suite: 162 passing (`.venv/bin/python -m unittest -q`).
+- Python test suite: 172 passing (`.venv/bin/python -m unittest -q`).
 - The alternate discovery command
   `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` is not
   runnable in this checkout because there is no `tests/` directory; root-level

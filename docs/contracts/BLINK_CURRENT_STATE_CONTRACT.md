@@ -45,6 +45,11 @@ Blink business logic, remain idempotent, and preserve the local source of
 truth. The lifecycle of the originating ntfy DONE notification is unresolved;
 do not treat `clear=true` as an approved decision.
 
+Mac-side DONE action support is implemented but disabled by default. When
+`BLINK_NTFY_DONE_ACTION_ENABLED=1` is explicitly set, eligible personal
+notifications expose one encoded `Blink DONE` Shortcut action using
+`blink-done-v1|<event_id>`; queue and direct paths share the same payload.
+
 ## 2. Runtime Boundaries
 
 | Block | Owner | Contract |
@@ -217,7 +222,7 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 
 ## 10. Current Verification Snapshot
 
-- Python: 162 tests passing via `.venv/bin/python -m unittest -q`.
+- Python: 172 tests passing via `.venv/bin/python -m unittest -q`.
 - Alternate discovery command `.venv/bin/python -m unittest discover -s tests -p
   'test_*.py' -v` is not runnable here because this checkout has no importable
   `tests/` directory; root-level `test_*.py` modules are covered by the default
