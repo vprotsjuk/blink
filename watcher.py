@@ -10,6 +10,7 @@ import signal
 import sys
 import time
 import hashlib
+import threading
 import urllib.error
 import urllib.request
 from email.header import Header
@@ -21,6 +22,7 @@ from typing import Any, Callable
 from app import agenda_store, location_store, watcher_lifecycle, weather_store
 from app import ntfy_schedule
 from app import attachment_store
+from app import mailbox_importer
 from app.event_timing import effective_event_start
 from app.notification_format import build_event_notification, push_tags_for_event
 
@@ -30,6 +32,117 @@ SHUTTING_DOWN = False
 LOGGER = logging.getLogger("blink-watcher")
 _last_remote_reconcile_at: datetime | None = None
 _last_remote_reconcile_signature: str | None = None
+
+
+class MailboxWorker:
+    """One non-blocking mailbox iteration running beside the scheduler."""
+
+    def __init__(
+        self,
+        operation: Callable[[], dict[str, Any]],
+        *,
+        enabled: bool = False,
+        stall_after_seconds: float = 60.0,
+        runtime_path: Path | None = None,
+    ) -> None:
+        self.operation = operation
+        self.enabled = bool(enabled)
+        self.stall_after_seconds = max(float(stall_after_seconds), 0.01)
+        self.runtime_path = Path(runtime_path) if runtime_path else None
+        self._thread: threading.Thread | None = None
+        self._started_monotonic: float | None = None
+        self._lock = threading.Lock()
+        self._state: dict[str, Any] = {
+            "version": 1,
+            "enabled": self.enabled,
+            "worker_in_flight": False,
+            "worker_started_at": None,
+            "worker_finished_at": None,
+            "worker_stalled_since": None,
+            "last_success_at": None,
+            "last_error": None,
+            "last_result": None,
+            "pending_count": 0,
+        }
+
+    def _persist(self) -> None:
+        if self.runtime_path is None:
+            return
+        try:
+            from app import watcher_lifecycle
+
+            watcher_lifecycle.save_json_atomic(self.runtime_path, dict(self._state))
+        except Exception as exc:  # noqa: BLE001 - diagnostics must not stop watcher.
+            LOGGER.warning("Mailbox runtime diagnostics failed: %s", exc)
+
+    def start_iteration(self) -> bool:
+        if not self.enabled:
+            return False
+        self.poll()
+        with self._lock:
+            if self._thread is not None and self._thread.is_alive():
+                return False
+            self._started_monotonic = time.monotonic()
+            self._state.update(
+                {
+                    "worker_in_flight": True,
+                    "worker_started_at": datetime.now().astimezone().isoformat(),
+                    "worker_stalled_since": None,
+                }
+            )
+            self._thread = threading.Thread(target=self._run, name="blink-mailbox", daemon=True)
+            self._thread.start()
+            self._persist()
+            return True
+
+    def _run(self) -> None:
+        try:
+            result = self.operation()
+            with self._lock:
+                self._state["last_result"] = result
+                self._state["last_success_at"] = datetime.now().astimezone().isoformat()
+                if isinstance(result, dict):
+                    self._state["pending_count"] = int(result.get("pending", 0) or 0)
+                self._state["last_error"] = None
+        except Exception as exc:  # noqa: BLE001 - isolate mailbox failures.
+            with self._lock:
+                self._state["last_error"] = str(exc)
+        finally:
+            with self._lock:
+                self._state["worker_in_flight"] = False
+                self._state["worker_finished_at"] = datetime.now().astimezone().isoformat()
+            self._persist()
+
+    def poll(self) -> dict[str, Any]:
+        with self._lock:
+            if (
+                self._state["worker_in_flight"]
+                and self._started_monotonic is not None
+                and time.monotonic() - self._started_monotonic >= self.stall_after_seconds
+                and self._state["worker_stalled_since"] is None
+            ):
+                self._state["worker_stalled_since"] = datetime.now().astimezone().isoformat()
+                self._persist()
+            return dict(self._state)
+
+    def snapshot(self) -> dict[str, Any]:
+        return self.poll()
+
+
+def mailbox_worker_from_environment() -> MailboxWorker:
+    enabled = os.environ.get("BLINK_MAILBOX_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+    root_text = os.environ.get("BLINK_MAILBOX_ROOT", "").strip()
+    mailbox_root = Path(root_text).expanduser() if root_text else None
+    if not enabled or mailbox_root is None:
+        return MailboxWorker(lambda: {"scanned": 0, "applied": 0}, enabled=False)
+    blink_root = PROJECT_DIR
+    return MailboxWorker(
+        lambda: mailbox_importer.process_mailbox_iteration(
+            mailbox_root, blink_root, blink_root / "agenda.json"
+        ),
+        enabled=True,
+        runtime_path=blink_root / "mailbox" / "mailbox_runtime.json",
+    )
 
 
 class SetupError(Exception):
@@ -1461,6 +1574,7 @@ def main() -> int:
     )
     state_path = project_path("watcher_state.json")
     runtime_path = project_path("watcher_runtime.json")
+    mailbox_worker = mailbox_worker_from_environment()
     previous_loop_at: datetime | None = None
 
     while not SHUTTING_DOWN:
@@ -1472,6 +1586,8 @@ def main() -> int:
         now = datetime.now(timezone.utc).astimezone()
         try:
             watcher_lifecycle.write_heartbeat(runtime_path, now=now)
+            mailbox_worker.poll()
+            mailbox_worker.start_iteration()
             if previous_loop_at and watcher_lifecycle.detect_sleep_gap(
                 previous_loop_at,
                 now,

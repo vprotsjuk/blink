@@ -1,6 +1,8 @@
 import json
 import os
 import tempfile
+import threading
+import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +13,60 @@ from app import notification_format, weather_store
 
 
 class WatcherCoreTests(unittest.TestCase):
+    def test_mailbox_worker_does_not_spawn_second_iteration_while_stalled(self):
+        started = threading.Event()
+        release = threading.Event()
+        calls = []
+
+        def operation():
+            calls.append("start")
+            started.set()
+            release.wait(2)
+            calls.append("finish")
+            return {"processed": 1}
+
+        worker = watcher.MailboxWorker(operation=operation, enabled=True, stall_after_seconds=0.01)
+        self.assertTrue(worker.start_iteration())
+        self.assertTrue(started.wait(1))
+        self.assertFalse(worker.start_iteration())
+        time.sleep(0.03)
+        self.assertTrue(worker.snapshot()["worker_in_flight"])
+        self.assertIsNotNone(worker.snapshot()["worker_stalled_since"])
+        release.set()
+        for _ in range(50):
+            worker.poll()
+            if not worker.snapshot()["worker_in_flight"]:
+                break
+            time.sleep(0.01)
+        self.assertEqual(calls, ["start", "finish"])
+        self.assertFalse(worker.snapshot()["worker_in_flight"])
+        self.assertTrue(worker.snapshot()["last_success_at"])
+
+    def test_mailbox_worker_isolates_exception_and_retries(self):
+        calls = []
+
+        def operation():
+            calls.append(len(calls))
+            if len(calls) == 1:
+                raise RuntimeError("boom")
+            return {"processed": 0}
+
+        worker = watcher.MailboxWorker(operation=operation, enabled=True)
+        self.assertTrue(worker.start_iteration())
+        for _ in range(50):
+            worker.poll()
+            if not worker.snapshot()["worker_in_flight"]:
+                break
+            time.sleep(0.01)
+        self.assertIn("boom", worker.snapshot()["last_error"])
+        self.assertTrue(worker.start_iteration())
+        for _ in range(50):
+            worker.poll()
+            if not worker.snapshot()["worker_in_flight"]:
+                break
+            time.sleep(0.01)
+        self.assertEqual(calls, [0, 1])
+        self.assertIsNone(worker.snapshot()["last_error"])
     def test_remote_reconcile_signature_changes_when_attachment_presence_changes(self):
         event = {
             "id": "attachment-signature",
