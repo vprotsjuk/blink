@@ -1,6 +1,7 @@
 # Blink — Complete Context for a New ChatGPT Thread
 
 **Status:** current operational context
+**Snapshot:** 2026-09-12
 **Project root:** `/Users/vitaliiprotsiuk/Desktop/Blink`
 **Language note:** technical collaboration and this document are in English;
 communicate with the owner in Russian unless they request otherwise.
@@ -419,6 +420,17 @@ After DONE is tapped and the package is written, it remains undecided whether
 the originating notification is cleared immediately, kept until Mac confirms
 successful application, or handled by another acknowledgement UX. `clear=true`
 is not an approved production decision.
+
+The manual phase used four test Shortcuts: `Blink Test`, `Blink Files`,
+`Blink DONE Test`, and `Blink Create Test`. Their responsibilities are file
+transport, Mac → iPhone viewing, ntfy DONE transport, and CREATE_EVENT transport.
+
+Current verification snapshot: `.venv/bin/python -m unittest -q` ran 133 tests
+and passed. The alternate discovery command with `-s tests` is not runnable in
+this checkout because no importable `tests/` directory exists; root-level
+`test_*.py` modules are covered by the default command. Python compilation,
+plist lint, Swift store/UI runner, Swift release build, and
+`./status_watcher.command` also passed on this checkpoint.
 
 The future `Blink Files` Shortcut may read only `ToPhone`, select by
 `occurrence_id`, ignore manifest/ready markers, directly open one file or show

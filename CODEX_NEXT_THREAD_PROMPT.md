@@ -1,5 +1,33 @@
 # Blink: Short Prompt for the Next Codex Task
 
+**Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility is
+complete; production integration is not implemented. The verified private Apple
+Shortcuts container is
+`~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents` with
+`Blink_Feasibility/ToMac` and `ToPhone`. Four test Shortcuts were used:
+`Blink Test`, `Blink Files`, `Blink DONE Test`, and `Blink Create Test`.
+
+Confirmed manual PASS: iPhone → Mac file transport, Mac → iPhone `ToPhone` +
+Quick Look, external Shortcut URL input, real ntfy DONE → `.done.json` +
+`.ready`, CREATE_EVENT direct launch, image and PDF attachments, repeated Viber
+PDF after `Always Allow`, and direct-launch regression after the attachment
+branch fix. The 9-digit Random Number in these tests is feasibility-only, not
+a production identity strategy. The mailbox is transport only; Mac/Blink and
+local JSON remain the source of truth.
+
+The originating ntfy DONE notification lifecycle is an OPEN DESIGN QUESTION:
+clear immediately, keep until Mac acknowledgement, or use another UX.
+`clear=true` is not selected. The future Mac reader/importer must be designed
+and reviewed before implementation, reuse existing Blink Done/Create logic, be
+idempotent, treat duplicate/stale DONE as NO-OP, survive malformed packages,
+and archive/delete only after successful apply.
+
+Current verification: `.venv/bin/python -m unittest -q` ran 133 tests and passed;
+Python compile, plist lint, `./status_watcher.command`, Swift test runner, and
+Swift release build passed. The alternate command with `-s tests` is not
+runnable because this checkout has no importable `tests/` directory; root-level
+`test_*.py` modules are covered by the default command.
+
 Работаем в существующем проекте `/Users/vitaliiprotsiuk/Desktop/Blink`. Сначала прочитай:
 
 1. `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`

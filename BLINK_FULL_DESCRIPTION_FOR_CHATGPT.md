@@ -660,11 +660,17 @@ The remote queue is limited to the supported rolling horizon and is used only fo
 
 The latest recorded verification state is:
 
-- Python test suite: 128 passing.
+- Python test suite: 133 passing (`.venv/bin/python -m unittest -q`).
+- The alternate discovery command
+  `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` is not
+  runnable in this checkout because there is no `tests/` directory; root-level
+  `test_*.py` modules are covered by the default command.
 - Swift test runner: passes.
 - Swift release build: completed.
-- Python compile checks: pass.
-- plist/JSON validation: pass.
+- Python compile checks: pass (`watcher.py`, `app/*.py`,
+  `astronomy/generate_astronomy.py`).
+- plist validation: pass (`Blink.app/Contents/Info.plist`, `launchd/*.plist`).
+- `./status_watcher.command`: watcher running with fresh heartbeat.
 - Open-Meteo city matrix: 20/20 tested cities returned a selectable city with coordinates/timezone.
 - Astronomy schedule: 732 daily records over the current 24-month horizon.
 - Astronomy schedule contains no Eclipse/advance-offset keys.
@@ -675,6 +681,9 @@ The latest recorded verification state is:
 Recommended commands from the project root:
 
 ```bash
+.venv/bin/python -m unittest -q
+# The following discovery form is retained as a documented alternative, but
+# currently fails because this repository has no importable tests/ directory:
 .venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
 .venv/bin/python -m py_compile watcher.py app/agenda_store.py app/event_timing.py app/location_geocoder.py app/location_store.py app/notification_format.py app/weather_store.py astronomy/generate_astronomy.py
 (cd app/BlinkSwiftUI && swift run BlinkSwiftUITestRunner)

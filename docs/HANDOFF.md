@@ -56,6 +56,9 @@ One design question remains open: after the iPhone DONE button creates a
 package, the originating ntfy notification may disappear immediately, remain
 until Mac acknowledgement, or use another acknowledgement UX. `clear=true` is
 not an approved production decision.
+
+The long historical checkpoint paragraph immediately above contains an older
+`120` test count; it is superseded by the current `133` result recorded below.
 Checkpoint and source prompt saved. The briefing timing regression is covered: saving Weather or Astronomy after today's configured local time records the change instant and defers that newly configured briefing to the next local day instead of sending immediately; saving before the target still sends today, and ordinary missed targets retain late catch-up. Python verification: 120 passing. Swift test runner and release build pass. The live watcher was restarted with the fix and did not emit another Weather/Astronomy briefing for today's already-past saved targets. Astronomy push rise/set labels now use thin arrows after the matching icon (`☀️ ↑/↓`, `🌙 ↑/↓`) in grouped lines and individual titles; large arrows remain phase-only. Disabled past unfinished events now remain in History, new GUI events default the blinker to `At time`, personal push titles include the event attention color icon, editing a completed event into the future reopens it, and stale completed records with future starts are repaired on load. Enabled overdue unfinished events now pulse in the app until `Done`; Blink's app-owned `Today` tab alternates between normal text and the highest active priority color from every tab. It is app-owned because macOS `TabView.tabItem` ignores dynamic label color. This is UI-only and does not change lifecycle or sending. Event toggle labels are `On`/`Off`, with disabled row text dimmed but its priority dot retained. Astronomy now uses `☀️` for all Sun events and never emits `🌅`. Moon-related messages use `Waxing Moon`/`Waning Moon` on ordinary days and reserve `New Moon`/`Full Moon` for the exact event day; one large `⬆️`/`⬇️` phase arrow appears on ordinary days only, with one countdown, no textual `Moon is …` line, and no repeated Sunset or standalone Moon event name in the body. Thin `↑`/`↓` UI arrows now mean only rise/set; large arrows mean only waxing/waning. The watcher owns the shared formatter; SwiftUI mirrors the approved icon language only. Astronomy also presents a scrollable Weather-style settings surface plus today's Sun/Moon summary. Its upper settings and lower summaries share the same two columns, so Sun and Moon remain vertically aligned. Weather now uses day/night icons for compact temperature and humidity lines; the Astronomy briefing respects `Use Weather briefing time` by either appending to Weather or sending a separate ntfy briefing. The app reads live JSON from `/Users/vitaliiprotsiuk/Desktop/Blink`; an empty UI after a build is an app-process restart issue, not a data-loss state. Watcher remains the only sender.
 
 The Blink-local event attachments feature is implemented. It keeps multiline event text, draft/permanent attachment folders under `event_data/`, unified clipboard paste (file URLs first, otherwise image-to-JPEG), paperclip-only personal pushes, frozen History, double-click editing in Today/Upcoming, compact paperclip/count rows with a filename/type popover, folder buttons, and tab-aware context actions. Every occurrence owns an event-ID folder. The final row/editor split is explicit: Today/Upcoming context-menu `Paste` and `Add Files` attach immediately to the persisted event without opening the editor or requiring Save; editor Add Files/Paste/drop remain staged until Save/Cancel. Immediate multi-file operations validate and copy transactionally, roll back on failure, and update counts only from finalized physical files. The Today header owns a round blue `+` action for New Event, and every navigation tab has a subtle pointer-hover state. The editor modal now uses a window-safe height with a top-aligned scroll view, so Title/Description, attachments, reminders, Blinker, and Cancel/Save remain reachable on shorter windows. Event reloads preserve the last-good shared snapshot on read/JSON failure and expose Loaded vs Error/Stale diagnostics in Health. The historical design/plan files are retained for traceability and marked `HISTORICAL / SUPERSEDED`; the current contract and full description are authoritative.
@@ -85,7 +88,8 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - Row `Paste`/`Add Files` use a short-lived immediate transaction; editor attachments retain the longer Save/Cancel draft lifecycle.
 
 ## Tried & results (bullets)
-- Python verification -> `Ran 118 tests ... OK`.
+- Python verification -> `Ran 133 tests in 0.024s; OK` (`.venv/bin/python -m unittest -q`).
+- Alternate discovery -> not runnable: `ImportError: Start directory is not importable: 'tests'` because this checkout has no importable `tests/` directory; root-level `test_*.py` modules are covered by the default command.
 - Swift verification -> `Swift Blink store tests passed.` and release build completed, including briefing-change persistence coverage.
 - Astronomy regeneration -> 732 day records generated.
 - Open-Meteo geocoding matrix -> 20/20 cities returned coordinates and IANA timezone.
@@ -114,16 +118,21 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - Should a drop show staged attachment count before Save? **Recommended:** yes, reusing the existing paperclip/count presentation; Cancel removes only the draft staging folder.
 
 ## Next actions (3-7 concrete steps)
-1. Run the final Python/Swift/release/runtime/visual verification gate for immediate row attachments and resilient event loading.
-2. Verify Git privacy and inspect the final diff for stale current-contract language.
-3. Commit and push the reconciled implementation and current documentation.
+1. Documentation/manual feasibility cleanup is complete; verify consistency of the current documents.
+2. Design the production Mac-side `ToMac` mailbox reader/importer, including package validation, idempotency, malformed-package handling, and reuse of existing Blink business logic.
+3. Resolve the ntfy DONE acknowledgement/notification lifecycle: immediate clear, retention until Mac confirmation, or another UX. `clear=true` is not selected.
+4. After design/review approval, implement production integration; Remote DONE and Remote CREATE must use the existing Blink Done/Create paths, not parallel business logic.
 
 ## Files touched (paths)
 `watcher.py`, `app/attachment_store.py`, `app/weather_store.py`, `test_watcher.py`, `test_weather_store.py`, `app/agenda_store.py`, `app/notification_format.py`, `test_agenda_store.py`, `test_notification_format.py`, `test_attachment_store.py`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/Models.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AttachmentStore.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift`, `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`, `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `CODEX_NEXT_THREAD_PROMPT.md`, `docs/superpowers/plans/2026-09-09-astronomy-push-format.md`, `docs/superpowers/plans/2026-09-09-event-attachments-and-history-freeze.md`.
 
 ## Commands run (command -> outcome)
-- `.venv/bin/python -m unittest -q` -> 128 tests passed.
+- `.venv/bin/python -m unittest -q` -> 133 tests passed.
+- `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` -> not runnable (`ImportError: Start directory is not importable: 'tests'`; no `tests/` directory in this checkout).
 - `.venv/bin/python -m py_compile watcher.py app/attachment_store.py app/agenda_store.py app/notification_format.py` -> passed.
+- `.venv/bin/python -m py_compile watcher.py app/*.py astronomy/generate_astronomy.py` -> passed.
+- `plutil -lint Blink.app/Contents/Info.plist launchd/*.plist` -> all plist files OK.
+- `./status_watcher.command` -> watcher running; PID 57317, fresh heartbeat.
 - `swift run BlinkSwiftUITestRunner` -> all Swift store/UI contract tests passed, including attachment/history/UI contracts.
 - `swift build -c release` -> release build passed and was installed in `Blink.app/Contents/MacOS/Blink`.
 - `.venv/bin/python -m py_compile watcher.py app/*.py astronomy/generate_astronomy.py` -> passed.

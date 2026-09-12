@@ -98,7 +98,7 @@ needed.
 
 ## Part 3 — Shortcut design and confirmed manual results
 
-The manual phase used three test Shortcuts: `Blink Test` for file transport,
+The manual phase used four test Shortcuts: `Blink Test` for file transport,
 `Blink Files` for Mac → iPhone viewing, `Blink DONE Test` for the ntfy action,
 and `Blink Create Test` for CREATE_EVENT. All use the fixed private Shortcuts
 container and `Ask Where To Save = OFF`.

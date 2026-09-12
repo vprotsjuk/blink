@@ -209,10 +209,16 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 
 ## 10. Current Verification Snapshot
 
-- Python: 120 tests passing.
+- Python: 133 tests passing via `.venv/bin/python -m unittest -q`.
+- Alternate discovery command `.venv/bin/python -m unittest discover -s tests -p
+  'test_*.py' -v` is not runnable here because this checkout has no importable
+  `tests/` directory; root-level `test_*.py` modules are covered by the default
+  command.
 - Swift UI/store contract runner: passing.
 - Swift release build: passing.
-- JSON and plist validation: passing.
+- Python compile checks: passing.
+- Plist validation: passing.
+- `./status_watcher.command`: watcher running with a fresh heartbeat.
 - Open-Meteo international city matrix: 20/20 returned coordinates and IANA timezones.
 - Astronomy schedule: 732 daily records, no active Eclipse or advance-offset keys.
 - Watcher: running with a fresh heartbeat.
