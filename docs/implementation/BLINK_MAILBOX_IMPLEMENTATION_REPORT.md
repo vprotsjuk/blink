@@ -146,4 +146,5 @@ and the existing local attachment contract.
 2A commit: `421963d Add Blink mailbox importer core`. Phase 2B commit:
 `aa50f96 Implement Blink mailbox event transactions`. Phase 3 commit:
 `df50af7 Integrate Blink mailbox worker with watcher`. Additional Phase 2B
-coverage: `5cc53de Add mailbox iteration coverage`.
+coverage: `5cc53de Add mailbox iteration coverage`. Worker diagnostics:
+`47a381b Expand mailbox worker diagnostics`.

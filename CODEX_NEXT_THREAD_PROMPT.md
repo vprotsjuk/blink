@@ -25,7 +25,7 @@ packages, and delete transport files only after successful apply.
 
 Implementation checkpoint: Phase 1 shared agenda locking is complete in commit
 `98753a8`; Phase 2A is in `421963d`, Phase 2B in `aa50f96`, and Phase 3 in
-`df50af7`. The next task is Phase 4 ntfy DONE action design/implementation;
+`df50af7` plus diagnostics follow-up `47a381b`. The next task is Phase 4 ntfy DONE action design/implementation;
 production iCloud, ntfy Actions, and Shortcuts remain disabled. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
