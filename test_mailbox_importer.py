@@ -297,6 +297,20 @@ class MailboxImporterTests(unittest.TestCase):
                 busy = mailbox_importer.apply_command(busy_command, agenda, root, blocking=False)
             self.assertEqual(busy["result"], "busy")
 
+    def test_done_from_different_command_against_done_event_is_noop(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agenda = self._agenda(
+                root,
+                [{"id": "done", "title": "Done", "start": "2026-09-10T09:00:00-07:00", "done": True}],
+            )
+            command = mailbox_importer.ParsedCommand(
+                kind="DONE", transport_id=str(uuid.uuid4()), event_id="done"
+            )
+            result = mailbox_importer.apply_command(command, agenda, root)
+            self.assertEqual(result["result"], "noop_done")
+            self.assertEqual(len(json.loads(agenda.read_text())["events"]), 1)
+
     def test_create_generates_mac_id_persists_provenance_and_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -355,3 +369,15 @@ class MailboxImporterTests(unittest.TestCase):
             )
             mailbox_importer.recover_pending_transactions(root)
             self.assertFalse(staging.exists())
+
+    def test_bounded_mailbox_iteration_applies_and_cleans_exact_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mailbox = root / "to_mac"
+            mailbox.mkdir()
+            agenda = self._agenda(root, [])
+            transfer_id = str(uuid.uuid4())
+            write_ready_package(mailbox, transfer_id, create_payload(transfer_id))
+            stats = mailbox_importer.process_mailbox_iteration(mailbox, root, agenda, max_packages=1)
+            self.assertEqual(stats["applied"], 1)
+            self.assertEqual(list(mailbox.iterdir()), [])
