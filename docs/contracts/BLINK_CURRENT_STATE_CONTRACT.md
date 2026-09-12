@@ -35,8 +35,9 @@ coverage is complete for file transport, Quick Look, external Shortcut input,
 DONE, and CREATE_EVENT with no attachment, image, and PDF. Phase 2B canonical
 transactions and Phase 3's single opt-in watcher worker are implemented, but
 production iCloud processing remains disabled by default; no real
-`Blink_Production/ToMac` root is configured. No public links, HTTP, ntfy
-Actions, Shortcut changes, or Photos/Documents access is enabled. See
+`Blink_Production/ToMac` root is configured. No public links, HTTP, production
+ntfy Actions, production Shortcut changes, or Photos/Documents access is
+enabled. See
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](../feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
 Real Apple Shortcuts has no native Generate UUID action. Production phone
@@ -51,6 +52,11 @@ Mac-side DONE action support is implemented but disabled by default. When
 `BLINK_NTFY_DONE_ACTION_ENABLED=1` is explicitly set, eligible personal
 notifications expose one encoded `Blink DONE` Shortcut action using
 `blink-done-v1|<event_id>`; queue and direct paths share the same payload.
+Controlled Phase 4B acceptance passed with `Blink DONE Test`, input
+`blink-done-v1|EVENT123`, and the exact feasibility package pair
+`20260912163022-101411924.done.json` + `20260912163022-101411924.ready`.
+The importer remained disabled; this does not enable production mailbox
+processing.
 
 ## 2. Runtime Boundaries
 

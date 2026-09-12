@@ -1,10 +1,10 @@
 # Blink: Short Prompt for the Next Codex Task
 
-**Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility is
-complete; Phase 1 shared agenda locking, Phase 2A importer core, Phase 2B
+**Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility and Phase
+4B real iPhone DONE-action acceptance are complete; Phase 1 shared agenda locking, Phase 2A importer core, Phase 2B
 canonical transactions/recovery, Phase 3's opt-in watcher worker, and Phase 4A
 Mac ntfy DONE action support are implemented. Production mailbox integration
-and DONE action delivery remain disabled pending manual iPhone acceptance. The verified private Apple
+and DONE action delivery remain disabled by default after controlled acceptance. The verified private Apple
 Shortcuts container is
 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents` with
 `Blink_Feasibility/ToMac` and `ToPhone`. Four test Shortcuts were used:
@@ -30,9 +30,10 @@ packages, and delete transport files only after successful apply.
 
 Implementation checkpoint: Phase 1 shared agenda locking is complete in commit
 `98753a8`; Phase 2A is in `421963d`, Phase 2B in `aa50f96`, and Phase 3 in
-`df50af7` plus diagnostics follow-up `47a381b`; Phase 4A is `a8c682b`. The next
-task is Phase 4B manual iPhone acceptance; production iCloud, ntfy Actions,
-and Shortcuts remain disabled. See
+`df50af7` plus diagnostics follow-up `47a381b`; Phase 4A is `a8c682b`; Phase
+4B acceptance is recorded in `49eaf30`. The next task is the Phase 5 CREATE
+Shortcut migration checklist; production iCloud, ntfy Actions, and Shortcuts
+remain unchanged. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
 Current verification: `.venv/bin/python -m unittest -q` ran 180 tests and passed;

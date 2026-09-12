@@ -9,8 +9,8 @@ Keep Blink's independent runtime architecture stable while fixing personal-event
 
 The canonical current-state contract for future agents is [`docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`](contracts/BLINK_CURRENT_STATE_CONTRACT.md). Update it together with this handoff whenever a boundary or user-visible contract changes.
 
-The iPhone ↔ private iCloud exchange remains separate from production, but its
-manual feasibility phase is now complete. Its safety boundary, private
+The iPhone ↔ private iCloud exchange remains separate from production, and its
+manual feasibility plus Phase 4B DONE-action acceptance are complete. Its safety boundary, private
 container, mailbox format, observed results, and open design question are
 recorded in
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
@@ -62,8 +62,11 @@ until Mac acknowledgement, or use another acknowledgement UX. `clear=true` is
 not an approved production decision.
 
 Mac-side Phase 4A DONE action generation is implemented but disabled by
-default via `BLINK_NTFY_DONE_ACTION_ENABLED`. Manual iPhone acceptance remains
-pending; this does not enable the real mailbox or modify Shortcuts.
+default via `BLINK_NTFY_DONE_ACTION_ENABLED`. Phase 4B manual iPhone acceptance
+passed with the controlled `Blink DONE Test` action and `EVENT123`; this does
+not enable the real mailbox or modify Shortcuts. The resulting feasibility
+pair was `20260912163022-101411924.done.json` +
+`20260912163022-101411924.ready`.
 
 The long historical checkpoint paragraph immediately above contains older
 `120`/`133`/`160`/`162`/`163` test counts; they are superseded by the current `180` result
@@ -127,7 +130,8 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - Should a drop show staged attachment count before Save? **Recommended:** yes, reusing the existing paperclip/count presentation; Cancel removes only the draft staging folder.
 
 ## Next actions (3-7 concrete steps)
-1. Implement and manually accept the ntfy DONE action (Phase 4).
+1. Keep the production mailbox disabled while preparing the Phase 5 CREATE
+   Shortcut migration checklist.
 2. Resolve the DONE acknowledgement/notification lifecycle: immediate clear, retention until Mac confirmation, or another UX. `clear=true` is not selected.
 3. Implement the production CREATE Shortcut path (Phase 5) only after the remaining transport decisions are approved.
 

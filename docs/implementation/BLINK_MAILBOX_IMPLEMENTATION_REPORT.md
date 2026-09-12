@@ -6,8 +6,8 @@ PHASE 1 COMPLETE
 PHASE 2A COMPLETE (parser/state foundation)
 PHASE 2B COMPLETE (temporary-root canonical mutation/recovery)
 PHASE 3 COMPLETE (opt-in in-process watcher worker; production mailbox remains disabled)
-PHASE 4A COMPLETE (Mac ntfy DONE action support; disabled pending manual iOS acceptance)
-PHASE 4B PENDING (manual iPhone acceptance)
+PHASE 4A COMPLETE (Mac ntfy DONE action support; disabled by default)
+PHASE 4B COMPLETE (real iPhone ntfy DONE action accepted)
 PHASE 5 NOT STARTED
 
 ## Approved architecture
@@ -113,6 +113,23 @@ and the existing local attachment contract.
   concatenated unescaped. Direct and queued payloads continue to share this
   builder, and `clear=true` remains absent.
 
+### Phase 4B completion — real iPhone acceptance
+
+- One controlled Mac notification was sent with temporary
+  `BLINK_NTFY_DONE_ACTION_ENABLED=1` and
+  `BLINK_NTFY_DONE_SHORTCUT_NAME="Blink DONE Test"`.
+- The real iPhone displayed the green `Done` button. The user tapped it, and
+  the existing `Blink DONE Test` Shortcut ran successfully with
+  `blink-done-v1|EVENT123`.
+- The feasibility inbox received the exact pair
+  `20260912163022-101411924.done.json` and
+  `20260912163022-101411924.ready`. The JSON contained version `1`, type
+  `DONE`, command ID `20260912163022-101411924`, and event ID `EVENT123`.
+- This proves the controlled chain Mac ntfy action → iPhone tap →
+  `shortcuts://` URL → Shortcut → native timestamp-random command ID → DONE
+  package + `.ready`. The importer was not enabled and no feasibility files
+  were consumed or deleted.
+
 ### Phase 4B preparation — Shortcuts-native transport IDs
 
 - Real Apple Shortcuts does not provide a native Generate UUID action, so the
@@ -178,24 +195,21 @@ and the existing local attachment contract.
 - Release Swift executable was rebuilt, copied to `Blink.app`, and the app was
   relaunched after the lock change.
 - Phase 2A tests use only temporary mailbox/Blink roots.
-- Manual iPhone acceptance is still required before enabling
-  `BLINK_NTFY_DONE_ACTION_ENABLED` in any real deployment. The expected
-  inspection chain is: `event-abc_123` →
-  `blink-done-v1|event-abc_123` →
-  `shortcuts://run-shortcut?name=Blink+DONE&input=text&text=blink-done-v1%7Cevent-abc_123` →
-  `view, Done, <encoded-shortcut-url>`.
-- Phase 4B manual acceptance will temporarily set
-  `BLINK_NTFY_DONE_SHORTCUT_NAME="Blink DONE Test"`; production default stays
-  `Blink DONE`.
+- Phase 4B manual iPhone acceptance passed. The verified chain is:
+  `EVENT123` → `blink-done-v1|EVENT123` →
+  `shortcuts://run-shortcut?name=Blink%20DONE%20Test&input=text&text=blink-done-v1%7CEVENT123` →
+  `view, Done, <encoded-shortcut-url>` →
+  `20260912163022-101411924.done.json` + `.ready`.
+- The controlled flags were one-shot only; production default remains
+  `Blink DONE`, and `BLINK_NTFY_DONE_ACTION_ENABLED` remains off by default.
 
 ## Known risks / blockers
 
 - Phase 1 changes are committed, but the existing live watcher/app may need the
   normal LaunchAgent restart cycle after future release deployment.
-- Real iCloud access, ntfy actions, and Shortcut changes remain intentionally
-  disabled. The Mac-side DONE action is implemented but remains opt-in and
-  requires manual iPhone acceptance; production mailbox enablement still
-  requires a separate approved pass.
+- Real production iCloud access and mailbox processing remain intentionally
+  disabled. The Mac-side DONE action remains opt-in by default; no Shortcut
+  or feasibility package was modified by the Mac test.
 
 ## Open owner decisions
 
@@ -207,10 +221,10 @@ and the existing local attachment contract.
 
 ## Next implementation tasks
 
-1. Manually accept the ntfy DONE action on iPhone (Phase 4B), with the feature
-   flag enabled only in a controlled test.
-2. Then implement the production CREATE Shortcut path (Phase 5) only after
-   the remaining transport/acknowledgement decisions are approved.
+1. Prepare the exact Phase 5 `Blink Create Test` migration checklist without
+   changing the Shortcut or enabling production mailbox processing.
+2. Perform controlled Phase 6 mailbox acceptance only in a clean inbox, never
+   by pointing the importer at the historical feasibility inbox.
 
 ## Last checkpoint
 
@@ -222,4 +236,6 @@ coverage: `5cc53de Add mailbox iteration coverage`. Worker diagnostics:
 `47a381b Expand mailbox worker diagnostics`. Phase 4A:
 `a8c682b Add Blink ntfy DONE action support`. Phase 4B preparation:
 `cf75720 Prepare configurable Blink DONE shortcut name`. Verification fixture:
-`05c6b3f Stabilize Swift history test fixture`.
+`05c6b3f Stabilize Swift history test fixture`. Phase 4B URL fix:
+`49eaf30 Fix Shortcuts action URL space encoding`. Phase 4B manual acceptance
+passed with native DONE package `20260912163022-101411924`.

@@ -57,7 +57,7 @@ notification transport only. Phase 2B canonical transactions and Phase 3's
 single opt-in watcher worker are implemented, but the production mailbox stays
 disabled unless explicitly enabled with local environment settings; no real
 iCloud root is configured. No public links, HTTP, Photos/Documents access,
-ntfy Actions, or Shortcut changes are enabled. Confirmed results, package
+production ntfy Actions, or production Shortcut changes are enabled. Confirmed results, package
 formats, and the remaining design question are in
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
@@ -66,7 +66,12 @@ iPhone `ToPhone` + Quick Look, external Shortcut URL input, the real ntfy DONE
 button producing `.done.json` + `.ready`, CREATE_EVENT direct launch without an
 attachment, CREATE_EVENT with an image, CREATE_EVENT with a PDF, repeated PDF
 sharing after `Always Allow`, and a direct-launch regression after attachment
-logic changes all passed. These results do not authorize production integration.
+logic changes all passed. Phase 4B real iPhone acceptance also passed: the
+controlled `Blink DONE Test` action carried `blink-done-v1|EVENT123`, the user
+tapped `Done`, and the Shortcut created
+`20260912163022-101411924.done.json` plus
+`20260912163022-101411924.ready` in feasibility `ToMac`. These results do not
+authorize production mailbox integration.
 
 The iPhone DONE notification lifecycle remains an open design question. After
 the button creates a DONE package, it is not yet decided whether the ntfy
