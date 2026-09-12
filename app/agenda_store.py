@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import fcntl
 import os
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -17,7 +19,26 @@ from app.event_timing import effective_event_start
 LOCAL_TIMEZONE = "America/Los_Angeles"
 
 
-def load_agenda_document(path: Path) -> dict[str, Any]:
+@contextmanager
+def agenda_lock(lock_path: Path, *, blocking: bool = True):
+    """Hold the shared POSIX agenda lock used by Python and Swift writers."""
+    path = Path(lock_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+") as handle:
+        operation = fcntl.LOCK_EX
+        if not blocking:
+            operation |= fcntl.LOCK_NB
+        fcntl.flock(handle.fileno(), operation)
+        try:
+            yield handle
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def load_agenda_document(path: Path, *, assume_locked: bool = False) -> dict[str, Any]:
+    if not assume_locked:
+        with agenda_lock(Path(path).with_name("agenda.lock")):
+            return load_agenda_document(path, assume_locked=True)
     path = Path(path)
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
@@ -34,7 +55,7 @@ def load_agenda_document(path: Path) -> dict[str, Any]:
             except ValueError:
                 continue
     if migrated != raw:
-        save_agenda_document_atomic(path, migrated)
+        save_agenda_document_atomic(path, migrated, assume_locked=True)
     return migrated
 
 
@@ -66,7 +87,13 @@ def repair_completed_future_events(document: dict[str, Any], now: datetime | Non
     return result
 
 
-def save_agenda_document_atomic(path: Path, document: dict[str, Any]) -> None:
+def save_agenda_document_atomic(
+    path: Path, document: dict[str, Any], *, assume_locked: bool = False
+) -> None:
+    if not assume_locked:
+        with agenda_lock(Path(path).with_name("agenda.lock")):
+            save_agenda_document_atomic(path, document, assume_locked=True)
+        return
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_name(f"{path.name}.{os.getpid()}.tmp")

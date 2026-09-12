@@ -26,6 +26,47 @@ func readJSONObject(_ url: URL) throws -> [String: Any] {
     return object
 }
 
+func testAgendaLockNonblockingReportsContention() throws {
+    let root = try temporaryRoot()
+    let held = try AgendaFileLock(root: root)
+    do {
+        _ = try AgendaFileLock(root: root, blocking: false)
+        throw TestFailure(description: "Expected non-blocking agenda lock contention")
+    } catch let error as POSIXError {
+        try expect(error.code == .EWOULDBLOCK || error.code == .EAGAIN, "Unexpected lock error: \(error)")
+    }
+    _ = held
+}
+
+func testAgendaLockInteroperatesWithPythonFlock() throws {
+    let root = try temporaryRoot()
+    let lockURL = root.appendingPathComponent("agenda.lock")
+    let markerURL = root.appendingPathComponent("python-ready")
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+    process.arguments = [
+        "-c",
+        "import fcntl,sys,time; handle=open(sys.argv[1],'a+'); fcntl.flock(handle,fcntl.LOCK_EX); open(sys.argv[2],'w').close(); time.sleep(1)",
+        lockURL.path,
+        markerURL.path
+    ]
+    try process.run()
+    defer {
+        if process.isRunning { process.terminate() }
+        process.waitUntilExit()
+    }
+    for _ in 0..<100 where !FileManager.default.fileExists(atPath: markerURL.path) {
+        usleep(10_000)
+    }
+    try expect(FileManager.default.fileExists(atPath: markerURL.path), "Python did not acquire test lock")
+    do {
+        _ = try AgendaFileLock(root: root, blocking: false)
+        throw TestFailure(description: "Swift lock did not observe Python flock")
+    } catch let error as POSIXError {
+        try expect(error.code == .EWOULDBLOCK || error.code == .EAGAIN, "Unexpected lock error: \(error)")
+    }
+}
+
 func testUpsertPreservesUnknownFields() throws {
     let root = try temporaryRoot()
     let agenda = root.appendingPathComponent("agenda.json")
@@ -1281,6 +1322,8 @@ func testRecurringDeleteUsesIndependentAttachmentOwners() throws {
 }
 
 let tests: [(String, () throws -> Void)] = [
+    ("agenda lock nonblocking contention", testAgendaLockNonblockingReportsContention),
+    ("agenda lock interoperates with Python flock", testAgendaLockInteroperatesWithPythonFlock),
     ("upsert preserves unknown fields", testUpsertPreservesUnknownFields),
     ("Los Angeles DST offset", testBuildEventUsesLosAngelesDstOffset),
     ("disable and delete events", testDisableAndDeleteEvents),

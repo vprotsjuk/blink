@@ -749,6 +749,7 @@ public struct BlinkStore {
     public func loadEventResult(now: Date = Date()) -> EventLoadResult {
         let sourcePath = agendaURL.path
         do {
+            let agendaLock = try AgendaFileLock(root: root)
             var object = try loadAgendaObject()
             guard var rawEvents = object["events"] as? [[String: Any]] else {
                 throw NSError(domain: "BlinkEvents", code: 1, userInfo: [NSLocalizedDescriptionKey: "agenda.json does not contain an events array."])
@@ -785,7 +786,9 @@ public struct BlinkStore {
                   let document = try? JSONDecoder().decode(AgendaDocument.self, from: data) else {
                 throw NSError(domain: "BlinkEvents", code: 2, userInfo: [NSLocalizedDescriptionKey: "agenda.json contains invalid event data."])
             }
-            return .loaded(events: document.events.filter { ($0.source ?? "personal") == "personal" }, sourcePath: sourcePath)
+            return withExtendedLifetime(agendaLock) {
+                .loaded(events: document.events.filter { ($0.source ?? "personal") == "personal" }, sourcePath: sourcePath)
+            }
         } catch {
             return .error(error.localizedDescription, sourcePath: sourcePath)
         }
@@ -951,7 +954,8 @@ public struct BlinkStore {
         attachmentWorkspace: AttachmentWorkspace? = nil,
         draftID: String? = nil
     ) throws {
-        var document = try loadAgendaObject()
+        try withAgendaLock {
+            var document = try loadAgendaObject()
         var events = document["events"] as? [[String: Any]] ?? []
         var newValues = event.toDictionary()
         let existingIndex = events.firstIndex(where: { ($0["id"] as? String) == event.id })
@@ -980,8 +984,9 @@ public struct BlinkStore {
         }
         document["events"] = events
         try saveAgendaObject(document)
-        if let attachmentWorkspace, let draftID {
-            try? attachmentWorkspace.discard(draftID: draftID)
+            if let attachmentWorkspace, let draftID {
+                try? attachmentWorkspace.discard(draftID: draftID)
+            }
         }
     }
 
@@ -999,7 +1004,8 @@ public struct BlinkStore {
     }
 
     public func complete(eventID: String, now: Date = Date()) throws {
-        var document = try loadAgendaObject()
+        try withAgendaLock {
+            var document = try loadAgendaObject()
         var events = document["events"] as? [[String: Any]] ?? []
         guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else { return }
         events[index]["requires_done"] = true
@@ -1014,40 +1020,48 @@ public struct BlinkStore {
             events.append(next)
         }
         document["events"] = events
-        try saveAgendaObject(document)
+            try saveAgendaObject(document)
+        }
     }
 
     public func setAttentionLevel(eventID: String, level: AttentionState) throws {
-        var document = try loadAgendaObject()
+        try withAgendaLock {
+            var document = try loadAgendaObject()
         var events = document["events"] as? [[String: Any]] ?? []
         guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else { return }
         events[index]["attention_level"] = level.rawValue
         document["events"] = events
-        try saveAgendaObject(document)
+            try saveAgendaObject(document)
+        }
     }
 
     public func setEnabled(eventID: String, enabled: Bool) throws {
-        var document = try loadAgendaObject()
+        try withAgendaLock {
+            var document = try loadAgendaObject()
         var events = document["events"] as? [[String: Any]] ?? []
         guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else { return }
         events[index]["enabled"] = enabled
         document["events"] = events
-        try saveAgendaObject(document)
+            try saveAgendaObject(document)
+        }
     }
 
     public func delete(eventID: String) throws {
-        var document = try loadAgendaObject()
+        try withAgendaLock {
+            var document = try loadAgendaObject()
         let events = document["events"] as? [[String: Any]] ?? []
         let ownerID = eventID
         let remainingEvents = events.filter { ($0["id"] as? String) != eventID }
         document["events"] = remainingEvents
         try saveAgendaObject(document)
-        try? AttachmentWorkspace(root: root).moveOwnerToTrash(ownerID: ownerID)
+            try? AttachmentWorkspace(root: root).moveOwnerToTrash(ownerID: ownerID)
+        }
     }
 
     public func addFiles(eventID: String, urls: [URL]) throws {
         guard !urls.isEmpty else { return }
-        var document = try loadAgendaObject()
+        try withAgendaLock {
+            var document = try loadAgendaObject()
         var events = document["events"] as? [[String: Any]] ?? []
         guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else {
             throw NSError(domain: "BlinkEvents", code: 4, userInfo: [NSLocalizedDescriptionKey: "Event no longer exists."])
@@ -1057,22 +1071,24 @@ public struct BlinkStore {
         let workspace = AttachmentWorkspace(root: root)
         let existingPaths = Set((try? workspace.files(ownerID: ownerID))?.map(\.path) ?? [])
         let draftID = try workspace.createDraft()
-        do {
-            try workspace.addFiles(urls, to: draftID)
-            let manifest = try workspace.finalize(draftID: draftID, ownerID: ownerID)
-            events[index]["attachments"] = manifest.toDictionary()
-            document["events"] = events
-            try saveAgendaObject(document)
-            try? workspace.discard(draftID: draftID)
-        } catch {
-            workspace.rollbackNewFiles(ownerID: ownerID, preserving: existingPaths)
-            try? workspace.discard(draftID: draftID)
-            throw error
+            do {
+                try workspace.addFiles(urls, to: draftID)
+                let manifest = try workspace.finalize(draftID: draftID, ownerID: ownerID)
+                events[index]["attachments"] = manifest.toDictionary()
+                document["events"] = events
+                try saveAgendaObject(document)
+                try? workspace.discard(draftID: draftID)
+            } catch {
+                workspace.rollbackNewFiles(ownerID: ownerID, preserving: existingPaths)
+                try? workspace.discard(draftID: draftID)
+                throw error
+            }
         }
     }
 
     public func addJPEG(eventID: String, data: Data) throws {
-        var document = try loadAgendaObject()
+        try withAgendaLock {
+            var document = try loadAgendaObject()
         var events = document["events"] as? [[String: Any]] ?? []
         guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else {
             throw NSError(domain: "BlinkEvents", code: 4, userInfo: [NSLocalizedDescriptionKey: "Event no longer exists."])
@@ -1082,17 +1098,18 @@ public struct BlinkStore {
         let workspace = AttachmentWorkspace(root: root)
         let existingPaths = Set((try? workspace.files(ownerID: ownerID))?.map(\.path) ?? [])
         let draftID = try workspace.createDraft()
-        do {
-            try workspace.addJPEG(data, to: draftID)
-            let manifest = try workspace.finalize(draftID: draftID, ownerID: ownerID)
-            events[index]["attachments"] = manifest.toDictionary()
-            document["events"] = events
-            try saveAgendaObject(document)
-            try? workspace.discard(draftID: draftID)
-        } catch {
-            workspace.rollbackNewFiles(ownerID: ownerID, preserving: existingPaths)
-            try? workspace.discard(draftID: draftID)
-            throw error
+            do {
+                try workspace.addJPEG(data, to: draftID)
+                let manifest = try workspace.finalize(draftID: draftID, ownerID: ownerID)
+                events[index]["attachments"] = manifest.toDictionary()
+                document["events"] = events
+                try saveAgendaObject(document)
+                try? workspace.discard(draftID: draftID)
+            } catch {
+                workspace.rollbackNewFiles(ownerID: ownerID, preserving: existingPaths)
+                try? workspace.discard(draftID: draftID)
+                throw error
+            }
         }
     }
 
@@ -1102,6 +1119,11 @@ public struct BlinkStore {
 
     private var agendaURL: URL {
         root.appendingPathComponent("agenda.json")
+    }
+
+    private func withAgendaLock<T>(_ body: () throws -> T) throws -> T {
+        let lock = try AgendaFileLock(root: root)
+        return try withExtendedLifetime(lock, body)
     }
 
     private func loadAgendaObject() throws -> [String: Any] {

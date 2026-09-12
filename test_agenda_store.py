@@ -1,4 +1,6 @@
 import json
+import multiprocessing
+import time
 import tempfile
 import unittest
 from datetime import datetime
@@ -7,7 +9,60 @@ from pathlib import Path
 from app import agenda_store
 
 
+def _hold_agenda_lock(path: str, ready: multiprocessing.Queue, release: multiprocessing.Event) -> None:
+    with agenda_store.agenda_lock(Path(path)):
+        ready.put(True)
+        release.wait(5)
+
+
+def _append_event_with_lock(root_path: str, event_id: str) -> None:
+    root = Path(root_path)
+    agenda_path = root / "agenda.json"
+    with agenda_store.agenda_lock(root / "agenda.lock"):
+        document = json.loads(agenda_path.read_text(encoding="utf-8"))
+        document["events"].append({"id": event_id, "title": event_id})
+        time.sleep(0.02)
+        agenda_store.save_agenda_document_atomic(agenda_path, document, assume_locked=True)
+
+
 class AgendaStoreTests(unittest.TestCase):
+    def test_agenda_lock_nonblocking_reports_contention(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lock_path = Path(tmp) / "agenda.lock"
+            ready: multiprocessing.Queue = multiprocessing.Queue()
+            release = multiprocessing.Event()
+            process = multiprocessing.Process(
+                target=_hold_agenda_lock,
+                args=(str(lock_path), ready, release),
+            )
+            process.start()
+            self.assertTrue(ready.get(timeout=5))
+            try:
+                with self.assertRaises(BlockingIOError):
+                    with agenda_store.agenda_lock(lock_path, blocking=False):
+                        pass
+            finally:
+                release.set()
+                process.join(timeout=5)
+                self.assertEqual(process.exitcode, 0)
+
+    def test_agenda_lock_serializes_concurrent_read_modify_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agenda_path = root / "agenda.json"
+            agenda_store.save_agenda_document_atomic(agenda_path, {"version": 1, "events": []})
+
+            first = multiprocessing.Process(target=_append_event_with_lock, args=(str(root), "first"))
+            second = multiprocessing.Process(target=_append_event_with_lock, args=(str(root), "second"))
+            first.start()
+            second.start()
+            first.join(timeout=5)
+            second.join(timeout=5)
+            self.assertEqual(first.exitcode, 0)
+            self.assertEqual(second.exitcode, 0)
+            events = agenda_store.load_agenda_document(agenda_path)["events"]
+            self.assertEqual({event["id"] for event in events}, {"first", "second"})
+
     def test_upsert_preserves_unknown_document_and_event_fields(self):
         document = {
             "version": 1,

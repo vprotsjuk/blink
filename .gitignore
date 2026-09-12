@@ -1,5 +1,6 @@
 config.json
 agenda.json
+agenda.lock
 location.json
 watcher_state.json
 watcher_runtime.json
