@@ -1,5 +1,7 @@
+import os
 import unittest
 from datetime import datetime
+from unittest.mock import patch
 
 from app import ntfy_schedule
 
@@ -80,6 +82,22 @@ class NtfyScheduleTests(unittest.TestCase):
         second_item = next(iter(second.values()))
         self.assertEqual(first_item["payload"]["actions"], second_item["payload"]["actions"].replace("event-two", "event-one"))
         self.assertNotEqual(first_item["payload_hash"], second_item["payload_hash"])
+
+    def test_queue_signature_changes_when_shortcut_name_changes(self):
+        event = self.event(reminders_minutes_before=[0], requires_done=True)
+        now = datetime.fromisoformat("2026-09-12T17:30:00-07:00")
+        with patch.dict(os.environ, {"BLINK_NTFY_DONE_SHORTCUT_NAME": "Blink DONE"}):
+            first = next(iter(ntfy_schedule.build_desired_queue(
+                events=[event], now=now, window_hours=24,
+                config={"default_priority": "high", "default_tags": ["calendar"], "done_action_enabled": True},
+            ).values()))
+        with patch.dict(os.environ, {"BLINK_NTFY_DONE_SHORTCUT_NAME": "Blink DONE Test"}):
+            second = next(iter(ntfy_schedule.build_desired_queue(
+                events=[event], now=now, window_hours=24,
+                config={"default_priority": "high", "default_tags": ["calendar"], "done_action_enabled": True},
+            ).values()))
+        self.assertNotEqual(first["payload"]["actions"], second["payload"]["actions"])
+        self.assertNotEqual(first["payload_hash"], second["payload_hash"])
 
     def test_remote_queue_skips_offsets_that_cannot_still_fire(self):
         desired = ntfy_schedule.build_desired_queue(

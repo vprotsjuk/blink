@@ -1,5 +1,7 @@
+import os
 import unittest
 from datetime import datetime
+from unittest.mock import patch
 
 from app.notification_format import (
     MAX_NTFY_BODY_BYTES,
@@ -28,7 +30,9 @@ class NotificationFormatTests(unittest.TestCase):
         return event
 
     def test_done_action_is_versioned_encoded_and_contains_only_real_event_id(self):
-        action = build_done_action(self.personal_event(), enabled=True)
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("BLINK_NTFY_DONE_SHORTCUT_NAME", None)
+            action = build_done_action(self.personal_event(), enabled=True)
         self.assertIn("shortcuts://run-shortcut?", action)
         self.assertIn("Blink+DONE", action)
         self.assertIn("blink-done-v1%7Cevent-abc_123", action)
@@ -36,6 +40,18 @@ class NotificationFormatTests(unittest.TestCase):
         self.assertNotIn("occurrence_id", action)
         self.assertNotIn("clear=true", action)
         self.assertEqual(action.split("&text=", 1)[1], "blink-done-v1%7Cevent-abc_123")
+
+    def test_done_action_uses_url_encoded_optional_shortcut_override(self):
+        with patch.dict(os.environ, {"BLINK_NTFY_DONE_SHORTCUT_NAME": "Blink DONE Test"}):
+            action = build_done_action(self.personal_event(), enabled=True)
+        self.assertIn("name=Blink+DONE+Test", action)
+
+    def test_empty_or_invalid_shortcut_override_uses_production_default(self):
+        for value in ("", "   ", "Blink\nDONE"):
+            with self.subTest(value=value), patch.dict(os.environ, {"BLINK_NTFY_DONE_SHORTCUT_NAME": value}):
+                action = build_done_action(self.personal_event(), enabled=True)
+                self.assertIn("name=Blink+DONE", action)
+                self.assertNotIn("name=Blink+DONE+Test", action)
 
     def test_done_action_encodes_query_injection_characters(self):
         action = build_done_action(self.personal_event(id="event-a&evil=b|c"), enabled=True)
@@ -58,6 +74,14 @@ class NotificationFormatTests(unittest.TestCase):
 
     def test_done_action_is_disabled_by_default(self):
         self.assertIsNone(build_done_action(self.personal_event()))
+
+    def test_feature_off_payload_has_no_done_action(self):
+        payload = build_event_payload(
+            {"default_priority": "high", "default_tags": ["calendar"], "done_action_enabled": False},
+            self.personal_event(),
+            0,
+        )
+        self.assertNotIn("actions", payload)
 
     def test_direct_payload_and_queued_payload_share_action_representation(self):
         payload = build_event_payload(

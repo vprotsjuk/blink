@@ -21,6 +21,15 @@ _MONTHS = (
 
 DONE_SHORTCUT_NAME = "Blink DONE"
 DONE_ACTION_VERSION = "blink-done-v1"
+DONE_SHORTCUT_NAME_ENV = "BLINK_NTFY_DONE_SHORTCUT_NAME"
+
+
+def done_shortcut_name() -> str:
+    """Return a safe optional manual-test override or the production default."""
+    candidate = os.environ.get(DONE_SHORTCUT_NAME_ENV, "").strip()
+    if not candidate or len(candidate) > 128 or any(ord(char) < 32 or ord(char) == 127 for char in candidate):
+        return DONE_SHORTCUT_NAME
+    return candidate
 
 
 def done_action_enabled(config: dict[str, Any] | None = None) -> bool:
@@ -32,7 +41,7 @@ def done_action_enabled(config: dict[str, Any] | None = None) -> bool:
 
 
 def build_done_action(
-    event: dict[str, Any], *, enabled: bool | None = None, shortcut_name: str = DONE_SHORTCUT_NAME
+    event: dict[str, Any], *, enabled: bool | None = None, shortcut_name: str | None = None
 ) -> str | None:
     """Build the single canonical ntfy view action for an eligible event."""
     if enabled is None:
@@ -47,7 +56,11 @@ def build_done_action(
     if not event_id:
         return None
     shortcut_input = f"{DONE_ACTION_VERSION}|{event_id}"
-    query = urlencode({"name": shortcut_name, "input": "text", "text": shortcut_input})
+    query = urlencode({
+        "name": shortcut_name if shortcut_name is not None else done_shortcut_name(),
+        "input": "text",
+        "text": shortcut_input,
+    })
     shortcut_url = f"shortcuts://run-shortcut?{query}"
     return f"view, Done, {shortcut_url}"
 
