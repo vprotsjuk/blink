@@ -32,9 +32,11 @@ A private Apple Shortcuts container has been manually verified at
 source of truth: `agenda.json` and Blink-local attachment folders remain
 Mac-only, and ntfy remains Mac → iPhone push transport. Manual feasibility
 coverage is complete for file transport, Quick Look, external Shortcut input,
-DONE, and CREATE_EVENT with no attachment, image, and PDF. No production
-watcher/UI/agenda integration, public links, HTTP, or Photos/Documents access
-is permitted until a separate integration design is accepted. See
+DONE, and CREATE_EVENT with no attachment, image, and PDF. Phase 2B canonical
+transactions and Phase 3's single opt-in watcher worker are implemented, but
+production iCloud processing remains disabled by default; no real
+`Blink_Production/ToMac` root is configured. No public links, HTTP, ntfy
+Actions, Shortcut changes, or Photos/Documents access is enabled. See
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](../feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
 The 9-digit Random Number used by the test Shortcuts is feasibility-only and is
@@ -56,8 +58,14 @@ do not treat `clear=true` as an approved decision.
 | Location | `app/location_store.py`, `app/location_geocoder.py` | canonical coordinates + IANA timezone |
 | GUI | `app/BlinkSwiftUI/` | reads/writes local contracts; no sender symbols |
 | Health | SwiftUI diagnostics + runtime files | status only; never exposes private ntfy topic |
+| Mailbox transport | `app/mailbox_importer.py`, optional worker in `watcher.py` | temporary/test roots by default; agenda remains source of truth |
 
 Important runtime files include `agenda.json`, `location.json`, `config.json`, `watcher_state.json`, `watcher_runtime.json`, `ntfy_schedule_state.json`, `event_data/attachments/`, `event_data/drafts/`, `weather/weather_config.json`, `weather/weather_cache.json`, `weather/weather_state.json`, `astronomy/astronomy_config.json`, and `astronomy/astronomy_schedule.json`. All Blink-owned runtime data stays below the Blink project root; `event_data/` is private and ignored by Git.
+
+Mailbox operational state, when the opt-in worker is enabled, stays below
+`mailbox/journal/`, `mailbox/quarantine/`, `mailbox/mailbox_runtime.json`, and
+`mailbox/processed_commands.json`; it is transport diagnostics only and never
+replaces `agenda.json` as the event source of truth.
 
 ## 3. Personal Event Contract
 
@@ -209,7 +217,7 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 
 ## 10. Current Verification Snapshot
 
-- Python: 133 tests passing via `.venv/bin/python -m unittest -q`.
+- Python: 160 tests passing via `.venv/bin/python -m unittest -q`.
 - Alternate discovery command `.venv/bin/python -m unittest discover -s tests -p
   'test_*.py' -v` is not runnable here because this checkout has no importable
   `tests/` directory; root-level `test_*.py` modules are covered by the default

@@ -28,6 +28,9 @@ astronomy/ephemeris/
 # Blink-local event attachments and unsaved drafts
 event_data/
 
+# Mailbox transaction journal, quarantine, runtime, and dedupe state
+mailbox/
+
 # Local applications, virtual environments, backups, and experiments
 Blink.app/
 .venv/

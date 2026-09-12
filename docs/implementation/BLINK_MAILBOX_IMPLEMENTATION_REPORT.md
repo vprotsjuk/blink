@@ -3,9 +3,10 @@
 ## Current status
 
 PHASE 1 COMPLETE  
-PHASE 2A COMPLETE (parser/state foundation; no agenda mutation or production
-mailbox wiring)  
-PHASE 2B NOT STARTED
+PHASE 2A COMPLETE (parser/state foundation)
+PHASE 2B COMPLETE (temporary-root canonical mutation/recovery)
+PHASE 3 COMPLETE (opt-in in-process watcher worker; production mailbox remains disabled)
+PHASE 4 NOT STARTED
 
 ## Approved architecture
 
@@ -47,9 +48,34 @@ and the existing local attachment contract.
 - No watcher call, iCloud production root, agenda mutation, ntfy action, or
   Shortcut change was added.
 
+### Phase 2B — canonical event transactions
+
+- DONE applies `agenda_store.complete_event` under the shared lock, with safe
+  `noop_done` and `stale_event` results and the existing successor guard.
+- CREATE reuses `build_personal_event`/`upsert_event`, generates a Mac
+  `event-<UUID>` ID, persists `mailbox_transfer_id`, and keeps recurrence
+  disabled for v1.
+- Attachments are staged and fsynced outside the lock, copied into the
+  event-ID owner folder inside the lock, and represented by the physical-file
+  manifest. Journal recovery repairs a missing ledger and removes safe orphan
+  staging/finalization folders.
+- Processed UUID tombstones retain durable result/event metadata indefinitely.
+
+### Phase 3 — watcher worker integration
+
+- Added one daemon mailbox worker thread to the existing watcher loop. The
+  scheduler never joins or waits for it; an in-flight worker prevents a second
+  iteration and reports stalled state.
+- Worker exceptions are isolated, diagnostics are best-effort, and later
+  iterations retry. Production remains disabled unless both explicit
+  `BLINK_MAILBOX_ENABLED` and `BLINK_MAILBOX_ROOT` environment settings are
+  supplied; no real iCloud root is configured.
+- Bounded scans call the Phase 2B transaction path and remove exact transport
+  files only after local commit.
+
 ## Files changed
 
-- `.gitignore` — ignore the runtime agenda lock file.
+- `.gitignore` — ignore agenda lock and mailbox runtime state.
 - `app/agenda_store.py` — shared Python lock and lock-aware agenda persistence.
 - `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AgendaFileLock.swift` — Darwin
   implementation interoperable with Python `flock`.
@@ -59,17 +85,24 @@ and the existing local attachment contract.
   Python interoperability tests.
 - `test_agenda_store.py` — Python contention and lost-update regression tests.
 - `app/mailbox_importer.py` — Phase 2A parser and local transport state
-  primitives.
-- `test_mailbox_importer.py` — Phase 2A temporary-root tests.
+  primitives plus Phase 2B transactions/recovery and bounded scans.
+- `app/attachment_store.py` — staged-file finalization helper using the local
+  attachment contract.
+- `watcher.py` — opt-in single mailbox worker and non-blocking loop handoff.
+- `test_mailbox_importer.py` — Phase 2A/2B temporary-root tests.
+- `test_watcher.py` — worker stall, single-flight, exception, and retry tests.
 - `docs/design/BLINK_MAILBOX_IMPORTER_DESIGN.md` — approved-baseline wording
   cleanup only.
 - `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md` — this
   persistent checkpoint.
+- `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`,
+  `docs/HANDOFF.md`, `CODEX_NEXT_THREAD_PROMPT.md` — synchronized implementation
+  status; feasibility contracts unchanged.
 
 ## Tests
 
-- `.venv/bin/python -m unittest -q` → 153 tests passed.
-- `.venv/bin/python -m unittest -q test_mailbox_importer` → 18 tests passed.
+- `.venv/bin/python -m unittest -q` → 160 tests passed.
+- `.venv/bin/python -m unittest -q test_mailbox_importer test_watcher` → 77 tests passed.
 - `swift run BlinkSwiftUITestRunner` → all Swift store/UI tests passed,
   including Python `flock` interoperability.
 - `swift build -c release` → build completed.
@@ -89,10 +122,9 @@ and the existing local attachment contract.
 
 - Phase 1 changes are committed, but the existing live watcher/app may need the
   normal LaunchAgent restart cycle after future release deployment.
-- Phase 2A intentionally has no canonical event mutation, attachment finalizer
-  integration, worker thread, ntfy action, or real iCloud access yet.
-- Agenda lock is mandatory for Phase 2B; any newly discovered agenda writer
-  must adopt it before importer writes are enabled.
+- Real iCloud access, ntfy actions, and Shortcut changes remain intentionally
+  disabled. Production mailbox enablement still requires a separate approved
+  manual acceptance pass.
 
 ## Open owner decisions
 
@@ -104,13 +136,13 @@ and the existing local attachment contract.
 
 ## Next implementation tasks
 
-1. Review/accept Phase 2A parser/state behavior and begin Phase 2B canonical
-   event mutation plus attachment transaction.
-2. Keep all mutation tests on temporary roots; do not connect watcher or the
-   real iCloud inbox until Phase 2B and recovery tests pass.
+1. Implement and manually accept the ntfy DONE action (Phase 4).
+2. Then implement the production CREATE Shortcut path (Phase 5) only after
+   the remaining transport/acknowledgement decisions are approved.
 
 ## Last checkpoint
 
 2026-09-12. Phase 1 commit: `98753a8 Add shared Blink agenda locking`. Phase
-2A commit: `Add Blink mailbox importer core` (current HEAD at checkpoint; see
-`git log`).
+2A commit: `421963d Add Blink mailbox importer core`. Phase 2B commit:
+`aa50f96 Implement Blink mailbox event transactions`. Phase 3 commit:
+`df50af7 Integrate Blink mailbox worker with watcher`.

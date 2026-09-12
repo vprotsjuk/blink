@@ -53,8 +53,11 @@ Apple Shortcuts container at
 `Blink_Feasibility/ToMac` and `ToPhone`. The mailbox is transport only:
 `agenda.json`, event folders, and Mac JSON contracts remain the source of truth;
 iPhone commands never edit them directly. ntfy remains Mac → iPhone
-notification transport only. No public links, HTTP, Photos/Documents access,
-or production `watcher.py` changes are allowed. Confirmed results, package
+notification transport only. Phase 2B canonical transactions and Phase 3's
+single opt-in watcher worker are implemented, but the production mailbox stays
+disabled unless explicitly enabled with local environment settings; no real
+iCloud root is configured. No public links, HTTP, Photos/Documents access,
+ntfy Actions, or Shortcut changes are enabled. Confirmed results, package
 formats, and the remaining design question are in
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
@@ -90,6 +93,7 @@ Important files and directories:
 ```text
 /Users/vitaliiprotsiuk/Desktop/Blink/
   watcher.py                         production scheduler/sender/blinker process
+  app/mailbox_importer.py            validated mailbox transactions/recovery
   requirements.txt                   Skyfield, NumPy, timezonefinder
   location.json                      active location and timezone
   agenda.json                         personal events
@@ -660,7 +664,7 @@ The remote queue is limited to the supported rolling horizon and is used only fo
 
 The latest recorded verification state is:
 
-- Python test suite: 133 passing (`.venv/bin/python -m unittest -q`).
+- Python test suite: 160 passing (`.venv/bin/python -m unittest -q`).
 - The alternate discovery command
   `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` is not
   runnable in this checkout because there is no `tests/` directory; root-level
