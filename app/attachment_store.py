@@ -68,6 +68,29 @@ def _visible_files(folder: Path) -> list[Path]:
     )
 
 
+def import_staged_file(
+    blink_root: Path, owner_id: str, staged_path: Path, filename: str
+) -> Path:
+    """Copy one verified staged file into a canonical event owner folder."""
+    owner = _validated_owner_id(owner_id)
+    source = Path(staged_path)
+    if source.is_symlink() or not source.is_file():
+        raise ValueError("staged attachment must be a regular file")
+    name = str(filename or source.name).strip()
+    if not name or name in {".", ".."} or "/" in name or "\\" in name or "\x00" in name:
+        raise ValueError("attachment filename must be a display name")
+    folder = attachments_root(Path(blink_root)) / owner
+    folder.mkdir(parents=True, exist_ok=True)
+    destination = _collision_free_path(folder, name)
+    with source.open("rb") as source_handle, destination.open("wb") as target:
+        shutil.copyfileobj(source_handle, target)
+        target.flush()
+        import os
+
+        os.fsync(target.fileno())
+    return destination
+
+
 def _collision_free_path(folder: Path, name: str) -> Path:
     candidate = folder / Path(name).name
     stem = candidate.stem

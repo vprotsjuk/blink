@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app import mailbox_importer
@@ -35,7 +36,21 @@ def create_payload(package_id: str, *, attachment: bool = False) -> dict:
     return payload
 
 
+def done_payload(command_id: str, event_id: str) -> dict:
+    return {
+        "version": 1,
+        "type": "DONE",
+        "command_id": command_id,
+        "event_id": event_id,
+    }
+
+
 class MailboxImporterTests(unittest.TestCase):
+    def _agenda(self, root: Path, events: list[dict]) -> Path:
+        path = root / "agenda.json"
+        path.write_text(json.dumps({"version": 1, "events": events}), encoding="utf-8")
+        return path
+
     def test_valid_done_requires_ready_and_matching_command_id(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -230,3 +245,113 @@ class MailboxImporterTests(unittest.TestCase):
             staged = mailbox_importer.stage_attachment(parsed, blink_root)
             self.assertEqual(staged.read_bytes(), b"pdf")
             self.assertTrue(staged.is_relative_to(blink_root / "mailbox" / "journal"))
+
+    def test_done_apply_is_idempotent_and_uses_canonical_recurrence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            event = {
+                "id": "event-recurring",
+                "title": "Weekly",
+                "start": "2026-09-10T09:00:00-07:00",
+                "reminders_minutes_before": [0],
+                "enabled": True,
+                "requires_done": True,
+                "done": False,
+                "done_at": None,
+                "recurrence": {"mode": "weekly_fixed", "weekday": 4, "time": "09:00"},
+            }
+            agenda = self._agenda(root, [event])
+            command_id = str(uuid.uuid4())
+            candidate_root = root / "mailbox"
+            candidate_root.mkdir()
+            (candidate_root / f"{command_id}.done.json").write_text(
+                json.dumps(done_payload(command_id, event["id"])), encoding="utf-8"
+            )
+            (candidate_root / f"{command_id}.ready").write_text("ready\n", encoding="utf-8")
+            command = mailbox_importer.parse_package(mailbox_importer.discover_packages(candidate_root)[0])
+            now = datetime(2026, 9, 12, 10, tzinfo=timezone.utc)
+            first = mailbox_importer.apply_command(command, agenda, root, now=now)
+            second = mailbox_importer.apply_command(command, agenda, root, now=now)
+            document = json.loads(agenda.read_text(encoding="utf-8"))
+            self.assertEqual(first["result"], "applied")
+            self.assertEqual(second["result"], "applied")
+            self.assertEqual(len(document["events"]), 2)
+            self.assertEqual(sum(event.get("done") is True for event in document["events"]), 1)
+            self.assertEqual(len(mailbox_importer.ProcessedLedger(root).records()), 1)
+
+    def test_done_stale_is_successful_noop_and_busy_does_not_mutate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agenda = self._agenda(root, [])
+            command_id = str(uuid.uuid4())
+            command = mailbox_importer.ParsedCommand(
+                kind="DONE", transport_id=command_id, event_id="missing"
+            )
+            result = mailbox_importer.apply_command(command, agenda, root)
+            self.assertEqual(result["result"], "stale_event")
+            busy_command = mailbox_importer.ParsedCommand(
+                kind="DONE", transport_id=str(uuid.uuid4()), event_id="missing"
+            )
+            lock = root / "agenda.lock"
+            with mailbox_importer.agenda_lock(lock):
+                busy = mailbox_importer.apply_command(busy_command, agenda, root, blocking=False)
+            self.assertEqual(busy["result"], "busy")
+
+    def test_create_generates_mac_id_persists_provenance_and_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agenda = self._agenda(root, [{"id": "keep", "title": "Keep"}])
+            mailbox = root / "mailbox"
+            mailbox.mkdir()
+            transfer_id = str(uuid.uuid4())
+            write_ready_package(mailbox, transfer_id, create_payload(transfer_id, attachment=True), b"pdf")
+            command = mailbox_importer.parse_package(mailbox_importer.discover_packages(mailbox)[0])
+            result = mailbox_importer.apply_command(command, agenda, root)
+            self.assertEqual(result["result"], "applied")
+            event_id = result["event_id"]
+            self.assertTrue(event_id.startswith("event-"))
+            self.assertNotEqual(event_id, transfer_id)
+            document = json.loads(agenda.read_text(encoding="utf-8"))
+            created = next(event for event in document["events"] if event["id"] == event_id)
+            self.assertEqual(created["mailbox_transfer_id"], transfer_id)
+            self.assertTrue(created["enabled"])
+            self.assertTrue(created["requires_done"])
+            self.assertFalse(created["done"])
+            self.assertIsNone(created["recurrence"])
+            self.assertEqual(created["attachments"]["count"], 1)
+            owner = root / "event_data" / "attachments" / event_id
+            self.assertEqual([path.name for path in owner.iterdir()], ["contract.pdf"])
+            duplicate = mailbox_importer.apply_command(command, agenda, root)
+            self.assertEqual(duplicate["result"], "applied")
+            self.assertEqual(len(json.loads(agenda.read_text())["events"]), 2)
+
+    def test_create_commit_before_ledger_repairs_from_provenance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            agenda = self._agenda(root, [])
+            transfer_id = str(uuid.uuid4())
+            command = mailbox_importer.ParsedCommand(
+                kind="CREATE_EVENT", transport_id=transfer_id, transfer_id=transfer_id,
+                title="Recovered", description="", start="2026-09-13T09:00:00-07:00",
+                reminder_offsets=(0,), attention_level="green", blinker_minutes_before=0,
+            )
+            first = mailbox_importer.apply_command(command, agenda, root, record_ledger=False)
+            self.assertEqual(first["result"], "applied")
+            self.assertFalse(mailbox_importer.ProcessedLedger(root).contains(transfer_id))
+            second = mailbox_importer.apply_command(command, agenda, root)
+            self.assertEqual(second["event_id"], first["event_id"])
+            self.assertTrue(mailbox_importer.ProcessedLedger(root).contains(transfer_id))
+            self.assertEqual(len(json.loads(agenda.read_text())["events"]), 1)
+
+    def test_recover_pending_journal_cleans_orphan_staging(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            transfer_id = str(uuid.uuid4())
+            staging = root / "mailbox" / "journal" / "staging" / transfer_id
+            staging.mkdir(parents=True)
+            (staging / "file.pdf").write_bytes(b"orphan")
+            mailbox_importer.JournalStore(root).write(
+                transfer_id, {"phase": "attachment_staged", "kind": "CREATE_EVENT"}
+            )
+            mailbox_importer.recover_pending_transactions(root)
+            self.assertFalse(staging.exists())

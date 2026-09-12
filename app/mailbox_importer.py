@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from app.agenda_store import agenda_lock
 
@@ -61,7 +62,16 @@ class PackageCandidate:
 
     @property
     def package_paths(self) -> tuple[Path, ...]:
-        paths = [path for path in (self.json_path, *self.attachment_paths, self.ready_path) if path]
+        paths = [
+            path
+            for path in (
+                self.json_path,
+                *self.attachment_paths,
+                *self.unexpected_attachment_paths,
+                self.ready_path,
+            )
+            if path
+        ]
         return tuple(paths)
 
 
@@ -396,18 +406,38 @@ class ProcessedLedger:
         _validate_uuid4(transport_id, "transport_id")
         return any(record.get("transport_id") == transport_id for record in self.records())
 
-    def record(self, transport_id: str, kind: str, result: str) -> None:
+    def lookup(self, transport_id: str) -> dict[str, Any] | None:
+        _validate_uuid4(transport_id, "transport_id")
+        return next(
+            (dict(record) for record in self.records() if record.get("transport_id") == transport_id),
+            None,
+        )
+
+    def record(
+        self,
+        transport_id: str,
+        kind: str,
+        result: str,
+        *,
+        event_id: str | None = None,
+        result_code: str | None = None,
+    ) -> None:
         _validate_uuid4(transport_id, "transport_id")
         with agenda_lock(self.lock_path):
             records = self.records()
             if any(item.get("transport_id") == transport_id for item in records):
                 return
-            records.append({
+            record: dict[str, Any] = {
                 "transport_id": transport_id,
                 "type": kind,
                 "result": result,
                 "recorded_at": datetime.now().astimezone().isoformat(),
-            })
+            }
+            if event_id:
+                record["event_id"] = event_id
+            if result_code:
+                record["result_code"] = result_code
+            records.append(record)
             _atomic_write_json(self.path, {"version": 1, "records": records})
 
 
@@ -452,3 +482,260 @@ def quarantine_package(candidate: PackageCandidate, blink_root: Path, reason: st
         except FileNotFoundError:
             pass
     return target
+
+
+def _event_from_create(command: ParsedCommand, event_id: str) -> dict[str, Any]:
+    """Build a remote event through the canonical personal-event transform."""
+    from app import agenda_store
+
+    if not command.title or not command.start or command.blinker_minutes_before is None:
+        raise ValueError("CREATE_EVENT command is incomplete")
+    start = datetime.fromisoformat(command.start)
+    local_start = start.astimezone(ZoneInfo(agenda_store.LOCAL_TIMEZONE))
+    event = agenda_store.build_personal_event(
+        event_id,
+        command.title,
+        local_start.date().isoformat(),
+        local_start.strftime("%H:%M"),
+        list(command.reminder_offsets),
+        description=command.description or "",
+        enabled=True,
+        attention_level=command.attention_level or "green",
+    )
+    # Preserve the explicit transport offset exactly; local build rules still
+    # provide defaults/normalization for every other field.
+    event["start"] = command.start
+    event["blinker_minutes_before"] = max(int(command.blinker_minutes_before), 0)
+    event["recurrence"] = None
+    event["mailbox_transfer_id"] = command.transfer_id
+    return event
+
+
+def _ledger_result(record: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "result": record.get("result", "applied"),
+        "transport_id": record.get("transport_id"),
+        "type": record.get("type"),
+        "event_id": record.get("event_id"),
+        "result_code": record.get("result_code"),
+        "replayed": True,
+    }
+
+
+def _find_provenance(document: dict[str, Any], transfer_id: str) -> dict[str, Any] | None:
+    return next(
+        (
+            event
+            for event in document.get("events", [])
+            if isinstance(event, dict) and event.get("mailbox_transfer_id") == transfer_id
+        ),
+        None,
+    )
+
+
+def _remove_staging(blink_root: Path, transport_id: str) -> None:
+    folder = Path(blink_root) / "mailbox" / "journal" / "staging" / transport_id
+    if folder.exists():
+        shutil.rmtree(folder)
+
+
+def _apply_done_locked(
+    command: ParsedCommand,
+    agenda_path: Path,
+    blink_root: Path,
+    now: datetime,
+) -> dict[str, Any]:
+    from app import agenda_store
+
+    journal = JournalStore(blink_root)
+    journal.write(command.transport_id, {"phase": "validated", "kind": "DONE", "event_id": command.event_id})
+    document = agenda_store.load_agenda_document(agenda_path, assume_locked=True)
+    event = next(
+        (item for item in document.get("events", []) if isinstance(item, dict) and item.get("id") == command.event_id),
+        None,
+    )
+    if event is None:
+        result = {"result": "stale_event", "transport_id": command.transport_id, "type": "DONE", "event_id": command.event_id}
+    elif event.get("done") is True:
+        result = {"result": "noop_done", "transport_id": command.transport_id, "type": "DONE", "event_id": command.event_id}
+    else:
+        updated = agenda_store.complete_event(document, command.event_id, now)
+        agenda_store.save_agenda_document_atomic(agenda_path, updated, assume_locked=True)
+        successor = next(
+            (item for item in updated.get("events", []) if item.get("recurrence_parent_id") == command.event_id),
+            None,
+        )
+        result = {"result": "applied", "transport_id": command.transport_id, "type": "DONE", "event_id": command.event_id}
+        if successor:
+            result["successor_id"] = successor.get("id")
+    journal.write(command.transport_id, {"phase": "agenda_committed", "kind": "DONE", **result})
+    return result
+
+
+def _apply_create_locked(
+    command: ParsedCommand,
+    agenda_path: Path,
+    blink_root: Path,
+    staged: Path | None,
+) -> dict[str, Any]:
+    from app import agenda_store, attachment_store
+
+    journal = JournalStore(blink_root)
+    document = agenda_store.load_agenda_document(agenda_path, assume_locked=True)
+    existing = _find_provenance(document, command.transfer_id or command.transport_id)
+    if existing is not None:
+        result = {
+            "result": "applied",
+            "transport_id": command.transport_id,
+            "type": "CREATE_EVENT",
+            "event_id": existing.get("id"),
+            "replayed": True,
+        }
+        journal.write(command.transport_id, {"phase": "agenda_committed", "kind": "CREATE_EVENT", **result})
+        return result
+    event_id = f"event-{uuid.uuid4()}".lower()
+    if staged is not None:
+        attachment_store.import_staged_file(
+            blink_root,
+            event_id,
+            staged,
+            command.original_filename or staged.name,
+        )
+        journal.write(
+            command.transport_id,
+            {
+                "phase": "attachment_finalized",
+                "kind": "CREATE_EVENT",
+                "event_id": event_id,
+            },
+        )
+    event = _event_from_create(command, event_id)
+    event["attachments"] = attachment_store.manifest_for_event(blink_root, event)
+    updated = agenda_store.upsert_event(document, event)
+    agenda_store.save_agenda_document_atomic(agenda_path, updated, assume_locked=True)
+    result = {
+        "result": "applied",
+        "transport_id": command.transport_id,
+        "type": "CREATE_EVENT",
+        "event_id": event_id,
+    }
+    journal.write(command.transport_id, {"phase": "agenda_committed", "kind": "CREATE_EVENT", **result})
+    return result
+
+
+def apply_command(
+    command: ParsedCommand,
+    agenda_path: Path,
+    blink_root: Path,
+    *,
+    now: datetime | None = None,
+    blocking: bool = True,
+    record_ledger: bool = True,
+) -> dict[str, Any]:
+    """Apply one validated command using the canonical agenda transforms."""
+    agenda_path = Path(agenda_path)
+    blink_root = Path(blink_root)
+    ledger = ProcessedLedger(blink_root)
+    prior = ledger.lookup(command.transport_id)
+    if prior is not None:
+        return _ledger_result(prior)
+    staged: Path | None = None
+    if command.kind == "CREATE_EVENT" and command.attachment_path is not None:
+        staged = stage_attachment(command, blink_root)
+        JournalStore(blink_root).write(command.transport_id, {"phase": "attachment_staged", "kind": "CREATE_EVENT"})
+    lock_path = agenda_path.with_name("agenda.lock")
+    try:
+        with agenda_lock(lock_path, blocking=blocking):
+            prior = ledger.lookup(command.transport_id)
+            if prior is not None:
+                result = _ledger_result(prior)
+            elif command.kind == "DONE":
+                result = _apply_done_locked(command, agenda_path, blink_root, now or datetime.now().astimezone())
+            elif command.kind == "CREATE_EVENT":
+                result = _apply_create_locked(command, agenda_path, blink_root, staged)
+            else:
+                raise MalformedPackage(f"unsupported command type: {command.kind}")
+    except BlockingIOError:
+        return {"result": "busy", "transport_id": command.transport_id, "type": command.kind}
+    if record_ledger:
+        ledger.record(
+            command.transport_id,
+            command.kind,
+            str(result.get("result", "applied")),
+            event_id=result.get("event_id"),
+        )
+        if staged is not None:
+            _remove_staging(blink_root, command.transport_id)
+    return result
+
+
+def recover_pending_transactions(blink_root: Path, agenda_path: Path | None = None) -> list[dict[str, Any]]:
+    """Repair ledger records and remove only safe orphan staging on restart."""
+    root = Path(blink_root)
+    ledger = ProcessedLedger(root)
+    agenda_path = Path(agenda_path or root / "agenda.json")
+    try:
+        document = __import__("app.agenda_store", fromlist=["load_agenda_document"]).load_agenda_document(agenda_path)
+    except (OSError, ValueError, json.JSONDecodeError):
+        document = {"events": []}
+    repaired: list[dict[str, Any]] = []
+    for record in JournalStore(root).pending():
+        transport_id = record.get("transport_id")
+        phase = record.get("phase")
+        if not isinstance(transport_id, str):
+            continue
+        if phase == "agenda_committed":
+            if not ledger.contains(transport_id):
+                ledger.record(
+                    transport_id,
+                    str(record.get("type", "UNKNOWN")),
+                    str(record.get("result", "applied")),
+                    event_id=record.get("event_id"),
+                )
+            _remove_staging(root, transport_id)
+            repaired.append(record)
+        elif phase in {"attachment_staged", "attachment_finalized"}:
+            provenance = _find_provenance(document, transport_id)
+            if provenance is None:
+                _remove_staging(root, transport_id)
+                if phase == "attachment_finalized" and isinstance(record.get("event_id"), str):
+                    owner = root / "event_data" / "attachments" / record["event_id"]
+                    if owner.exists():
+                        shutil.rmtree(owner)
+                repaired.append(record)
+    return repaired
+
+
+def process_mailbox_iteration(
+    mailbox_root: Path,
+    blink_root: Path,
+    agenda_path: Path,
+    *,
+    max_packages: int = 8,
+) -> dict[str, int]:
+    """Process one bounded mailbox scan; transport cleanup is last."""
+    stats = {"scanned": 0, "applied": 0, "pending": 0, "malformed": 0, "busy": 0}
+    recover_pending_transactions(blink_root, agenda_path)
+    for candidate in discover_packages(mailbox_root)[: max(0, int(max_packages))]:
+        stats["scanned"] += 1
+        try:
+            command = parse_package(candidate)
+        except PendingSync:
+            stats["pending"] += 1
+            continue
+        except MalformedPackage as exc:
+            quarantine_package(candidate, blink_root, str(exc))
+            stats["malformed"] += 1
+            continue
+        result = apply_command(command, agenda_path, blink_root, blocking=False)
+        outcome = result.get("result")
+        if outcome == "busy":
+            stats["busy"] += 1
+            continue
+        stats["applied"] += 1
+        for path in candidate.package_paths:
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+    return stats
