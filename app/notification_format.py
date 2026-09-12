@@ -7,6 +7,8 @@ from urllib.parse import urlencode
 from datetime import datetime
 from typing import Any
 
+from app.event_timing import effective_event_start
+
 
 MAX_NTFY_BODY_BYTES = 4096
 MAX_NTFY_TITLE_BYTES = 1024
@@ -54,7 +56,11 @@ def build_event_payload(
     config: dict[str, Any], event: dict[str, Any], offset_minutes: int
 ) -> dict[str, Any]:
     """Return the canonical title/body/metadata representation for ntfy."""
-    effective_start = event.get("effective_start_dt") or event.get("start_dt")
+    effective_start = (
+        event.get("effective_start_dt")
+        or event.get("start_dt")
+        or effective_event_start(event)
+    )
     title, body = build_event_notification(
         event,
         offset_minutes,

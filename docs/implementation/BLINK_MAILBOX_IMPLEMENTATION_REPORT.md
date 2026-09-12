@@ -177,4 +177,5 @@ and the existing local attachment contract.
 `df50af7 Integrate Blink mailbox worker with watcher`. Additional Phase 2B
 coverage: `5cc53de Add mailbox iteration coverage`. Worker diagnostics:
 `47a381b Expand mailbox worker diagnostics`. Phase 4A:
-`a8c682b Add Blink ntfy DONE action support`.
+`a8c682b Add Blink ntfy DONE action support`. Verification fixture:
+`05c6b3f Stabilize Swift history test fixture`.
