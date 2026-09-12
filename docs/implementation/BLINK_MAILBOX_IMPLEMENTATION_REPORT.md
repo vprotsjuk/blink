@@ -101,8 +101,8 @@ and the existing local attachment contract.
 
 ## Tests
 
-- `.venv/bin/python -m unittest -q` → 160 tests passed.
-- `.venv/bin/python -m unittest -q test_mailbox_importer test_watcher` → 77 tests passed.
+- `.venv/bin/python -m unittest -q` → 162 tests passed.
+- `.venv/bin/python -m unittest -q test_mailbox_importer test_watcher` → 79 tests passed.
 - `swift run BlinkSwiftUITestRunner` → all Swift store/UI tests passed,
   including Python `flock` interoperability.
 - `swift build -c release` → build completed.
@@ -145,4 +145,5 @@ and the existing local attachment contract.
 2026-09-12. Phase 1 commit: `98753a8 Add shared Blink agenda locking`. Phase
 2A commit: `421963d Add Blink mailbox importer core`. Phase 2B commit:
 `aa50f96 Implement Blink mailbox event transactions`. Phase 3 commit:
-`df50af7 Integrate Blink mailbox worker with watcher`.
+`df50af7 Integrate Blink mailbox worker with watcher`. Additional Phase 2B
+coverage: `5cc53de Add mailbox iteration coverage`.

@@ -29,7 +29,7 @@ Implementation checkpoint: Phase 1 shared agenda locking is complete in commit
 production iCloud, ntfy Actions, and Shortcuts remain disabled. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
-Current verification: `.venv/bin/python -m unittest -q` ran 160 tests and passed;
+Current verification: `.venv/bin/python -m unittest -q` ran 162 tests and passed;
 Python compile, plist lint, `./status_watcher.command`, Swift test runner, and
 Swift release build passed. The alternate command with `-s tests` is not
 runnable because this checkout has no importable `tests/` directory; root-level

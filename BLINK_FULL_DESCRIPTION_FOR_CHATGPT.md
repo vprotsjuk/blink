@@ -664,7 +664,7 @@ The remote queue is limited to the supported rolling horizon and is used only fo
 
 The latest recorded verification state is:
 
-- Python test suite: 160 passing (`.venv/bin/python -m unittest -q`).
+- Python test suite: 162 passing (`.venv/bin/python -m unittest -q`).
 - The alternate discovery command
   `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` is not
   runnable in this checkout because there is no `tests/` directory; root-level
