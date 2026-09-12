@@ -101,6 +101,18 @@ and the existing local attachment contract.
   defaults off. The input contract remains `blink-done-v1|<event_id>` and the
   canonical direct/queued action builder is unchanged.
 
+### Phase 4B manual acceptance finding — Shortcuts URL encoding
+
+- Real iPhone acceptance showed that form-style query encoding is incorrect for
+  the custom `shortcuts://` scheme: `Blink+DONE+Test` was treated literally as
+  a shortcut name, so iOS could not find `Blink DONE Test`.
+- The canonical builder now uses standards-compliant percent encoding with
+  spaces as `%20`, producing `name=Blink%20DONE%20Test` (and
+  `name=Blink%20DONE` for the production default). Reserved characters in the
+  `blink-done-v1|<event_id>` input remain percent-encoded; no values are
+  concatenated unescaped. Direct and queued payloads continue to share this
+  builder, and `clear=true` remains absent.
+
 ### Phase 4B preparation — Shortcuts-native transport IDs
 
 - Real Apple Shortcuts does not provide a native Generate UUID action, so the
@@ -146,8 +158,10 @@ and the existing local attachment contract.
 
 ## Tests
 
-- `.venv/bin/python -m unittest -q` → 180 tests passed.
+- `.venv/bin/python -m unittest -q` → 181 tests passed.
 - `.venv/bin/python -m unittest -q test_mailbox_importer` → 29 tests passed.
+- `.venv/bin/python -m unittest -q test_notification_format test_ntfy_schedule test_watcher`
+  → 89 tests passed.
 - Previous Phase 4 notification/watcher focused suite remains covered by the
   full run; its prior checkpoint was 88 passing tests.
 - `swift run BlinkSwiftUITestRunner` → all Swift store/UI tests passed,

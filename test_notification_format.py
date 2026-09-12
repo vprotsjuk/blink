@@ -34,7 +34,8 @@ class NotificationFormatTests(unittest.TestCase):
             os.environ.pop("BLINK_NTFY_DONE_SHORTCUT_NAME", None)
             action = build_done_action(self.personal_event(), enabled=True)
         self.assertIn("shortcuts://run-shortcut?", action)
-        self.assertIn("Blink+DONE", action)
+        self.assertIn("name=Blink%20DONE", action)
+        self.assertNotIn("Blink+DONE", action)
         self.assertIn("blink-done-v1%7Cevent-abc_123", action)
         self.assertNotIn("command_id", action)
         self.assertNotIn("occurrence_id", action)
@@ -44,14 +45,21 @@ class NotificationFormatTests(unittest.TestCase):
     def test_done_action_uses_url_encoded_optional_shortcut_override(self):
         with patch.dict(os.environ, {"BLINK_NTFY_DONE_SHORTCUT_NAME": "Blink DONE Test"}):
             action = build_done_action(self.personal_event(), enabled=True)
-        self.assertIn("name=Blink+DONE+Test", action)
+        self.assertIn("name=Blink%20DONE%20Test", action)
+        self.assertNotIn("Blink+DONE", action)
 
     def test_empty_or_invalid_shortcut_override_uses_production_default(self):
         for value in ("", "   ", "Blink\nDONE"):
             with self.subTest(value=value), patch.dict(os.environ, {"BLINK_NTFY_DONE_SHORTCUT_NAME": value}):
                 action = build_done_action(self.personal_event(), enabled=True)
-                self.assertIn("name=Blink+DONE", action)
-                self.assertNotIn("name=Blink+DONE+Test", action)
+                self.assertIn("name=Blink%20DONE", action)
+                self.assertNotIn("Blink+DONE", action)
+
+    def test_done_action_encodes_reserved_input_for_unusual_valid_event_id(self):
+        action = build_done_action(self.personal_event(id="event:abc/123?x=1&y=2"), enabled=True)
+        self.assertIn("blink-done-v1%7Cevent%3Aabc%2F123%3Fx%3D1%26y%3D2", action)
+        self.assertNotIn("?x=1", action)
+        self.assertNotIn("&y=2", action)
 
     def test_done_action_encodes_query_injection_characters(self):
         action = build_done_action(self.personal_event(id="event-a&evil=b|c"), enabled=True)

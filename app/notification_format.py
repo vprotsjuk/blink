@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 from datetime import datetime
 from typing import Any
 
@@ -56,11 +56,14 @@ def build_done_action(
     if not event_id:
         return None
     shortcut_input = f"{DONE_ACTION_VERSION}|{event_id}"
-    query = urlencode({
-        "name": shortcut_name if shortcut_name is not None else done_shortcut_name(),
-        "input": "text",
-        "text": shortcut_input,
-    })
+    query = urlencode(
+        {
+            "name": shortcut_name if shortcut_name is not None else done_shortcut_name(),
+            "input": "text",
+            "text": shortcut_input,
+        },
+        quote_via=quote,
+    )
     shortcut_url = f"shortcuts://run-shortcut?{query}"
     return f"view, Done, {shortcut_url}"
 
