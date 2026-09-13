@@ -99,9 +99,11 @@ ntfy (HTTP 200), but tapping the action on iPhone opened the Shortcuts library
 instead of Quick Look. The Mac candidate and URL were verified, and a later
 iPhone screenshot confirmed that the full candidate and escaped-pipe regex are
 present there, and the Shortcut showed a completion checkmark after the tap.
-No Quick Look preview appeared. Physical acceptance therefore remains gated on
-isolating iPhone file availability or Quick Look presentation behavior. No
-production mailbox was enabled.
+The PDF opened manually from Files, proving package availability, while the
+iOS Quick Look action produced no preview. The WORK candidate now uses
+`Open Item in Default App` for the single-item and chooser-selected branches;
+the original and backup Shortcuts remain unchanged. No production mailbox was
+enabled.
 
 SwiftUI also has the approved Phase 7 fast refresh: `ContentView` observes the
 parent directory containing `agenda.json`, filters/debounces atomic-replace
