@@ -114,12 +114,16 @@ repaired to the proven `Get file from Shortcuts at path
 Blink_Acceptance/ToPhone` → `Get Contents of File` pattern, with `AllFiles`
 bound to `Folder Contents`. The WORK candidate still uses
 `Choose from Attachments` followed by `Show Selected Item in Quick Look` in
-both count branches; the original and backup Shortcuts remain unchanged. A
-new phone push is required to test this repaired acquisition boundary.
-SQLite/editor inspection confirms the filtered values are File
-items/references. No production mailbox was enabled. The unresolved gate is
-the physical iPhone result: the run must visibly present the PDF rather than
-only finish with a checkmark.
+both count branches; the original and backup Shortcuts remain unchanged. One
+new controlled push was sent after the repair and again finished on iPhone
+with a checkmark but no chooser or PDF. Immediately before that push, the Mac
+package evaluation was `AllFiles = 3`, ready = 1, manifest = 1, and
+attachments = 1, so no fail-closed count branch should have stopped the
+Shortcut. The Mac database contains the repaired 46-action WORK tree; the
+iPhone's actually synced tree remains unverified, and no additional push is
+allowed until that version boundary is checked. SQLite/editor inspection
+confirms the filtered values are File items/references. No production mailbox
+was enabled. The unresolved gate is still physical iPhone viewing.
 
 SwiftUI also has the approved Phase 7 fast refresh: `ContentView` observes the
 parent directory containing `agenda.json`, filters/debounces atomic-replace

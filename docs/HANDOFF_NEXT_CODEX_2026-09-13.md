@@ -258,8 +258,21 @@ the Files app, so iCloud/package availability is proven. The owner screenshots
 also confirm that `Blink Files Stage2 WORK` exists and runs. The Mac WORK tree
 was then repaired so its acquisition prefix matches the proven old pattern:
 `Get file from Shortcuts at path Blink_Acceptance/ToPhone` followed by
-`Get Contents of File`, with `AllFiles` bound to `Folder Contents`. This
-repaired tree has not yet been tested by a new phone notification.
+`Get Contents of File`, with `AllFiles` bound to `Folder Contents`. One new
+Files-only push was then sent explicitly to this WORK target. The owner
+reported the same result: Shortcuts opens, WORK shows a checkmark, no chooser
+appears, and no PDF remains visible.
+
+The controlled Mac-side evidence immediately before that push was:
+`AllFiles = 3` (manifest, `.ready`, and one PDF), `.ready matches = 1`,
+`manifest matches = 1`, and `Attachments = 1`. The WORK plist has 46 actions,
+and its successful-count path is `Choose from Attachments` → `Show Selected
+Item in Quick Look`; no fail-closed branch should be selected for this
+package. The pre-repair WORK copy had 42 actions, so the iPhone's actually
+synced Shortcut version is now an explicit unresolved boundary: the Mac
+database contains the repaired 46-action tree, but the iPhone editor has not
+yet been independently verified after the repair. No further push should be
+sent until that version boundary is checked.
 
 Do not add another contents action after `Attachments` unless the independent
 review proves its input is the folder and its output is a file list. The old

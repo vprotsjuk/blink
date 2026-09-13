@@ -642,8 +642,13 @@ from the proven old chain. The WORK tree was repaired to use `Get file from
 Shortcuts at path Blink_Acceptance/ToPhone` followed by `Get Contents of File`,
 with `AllFiles` bound to `Folder Contents`; its validation and final Quick Look
 branches were preserved. The original and backup Shortcuts remain unchanged.
-A new physical push is required to test this repaired tree. No production
-mailbox was enabled.
+One new controlled physical push then tested this repaired tree, but the
+owner again saw only the Shortcuts checkmark and no chooser or PDF preview.
+Mac-side evaluation immediately before the push produced `AllFiles = 3`,
+ready = 1, manifest = 1, and attachments = 1. The Mac database contains the
+repaired 46-action tree; the iPhone's actually synced tree remains an
+unverified boundary. No production mailbox was enabled, and no further push
+should be sent before that version boundary is checked.
 
 The existing `Blink Files` Shortcut still points at the historical
 `Blink_Feasibility/ToPhone` contract and must be evolved before the physical

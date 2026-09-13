@@ -89,12 +89,15 @@ timing model, fractional minutes, seconds, or a universal timing control.
 
 ### Simplified remaining roadmap
 
-**[CURRENT] Finish Stage 2 Files acceptance.** The first one-file Files-only
-retest explicitly targeted `Blink Files Stage2 WORK` and completed with a
-checkmark but no chooser/PDF. The WORK acquisition prefix has since been
-repaired to the proven `Get file from Shortcuts at path
-Blink_Acceptance/ToPhone` → `Get Contents of File` pattern. Production
-mailbox stays disabled; a new one-file physical retest is pending.
+**[CURRENT] Localize Stage 2 Files failure.** A second one-file Files-only
+push explicitly targeted `Blink Files Stage2 WORK` after repairing its
+acquisition prefix to the proven `Get file from Shortcuts at path
+Blink_Acceptance/ToPhone` → `Get Contents of File` pattern. It again completed
+with a checkmark but no chooser/PDF. Mac-side evaluation of the same package
+gave `AllFiles = 3`, ready = 1, manifest = 1, and attachments = 1, so the
+package and fail-closed counts do not explain the observed iPhone result. The
+iPhone's synced WORK version must be checked before any further push; the
+production mailbox stays disabled.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.

@@ -126,8 +126,14 @@ introduced. The isolated `Blink Files Stage2 WORK` candidate currently uses
 the proven acquisition prefix `Get file from Shortcuts at path
 Blink_Acceptance/ToPhone` → `Get Contents of File` → `Set Variable AllFiles`,
 then `Choose from Attachments` → `Show Selected Item in Quick Look` in both
-the one-file and multiple-file branches. This repaired tree is still pending
-real-device acceptance.
+the one-file and multiple-file branches. A new controlled push after this
+repair still finished on iPhone with a checkmark but no chooser or PDF. The
+Mac-side package evaluation immediately before the push was `AllFiles = 3`,
+ready = 1, manifest = 1, and attachments = 1; therefore the Mac package and
+fail-closed count branches do not explain the failure. The Mac database has
+the repaired 46-action tree, while the iPhone's actually synced WORK version
+has not yet been independently verified. No further push should be sent
+before checking that version boundary.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.

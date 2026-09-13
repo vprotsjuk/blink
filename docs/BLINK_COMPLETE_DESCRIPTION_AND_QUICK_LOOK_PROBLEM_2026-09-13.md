@@ -515,6 +515,14 @@ Observed iPhone behavior:
    using the same validated one-file package. The owner tapped the action;
    the Shortcut completed with a checkmark, but no chooser or PDF preview
    appeared. This is not acceptance.
+9. Immediately before that push, Mac-side evaluation of the actual package
+   produced `AllFiles = 3`, `.ready = 1`, manifest = 1, and `Attachments = 1`.
+   The WORK plist contains 46 actions and its successful branch ends in
+   `Choose from Attachments` → `Show Selected Item in Quick Look`. The
+   pre-repair WORK copy had 42 actions. Therefore the remaining diagnostic
+   boundary is the iPhone's actually synced WORK version versus the repaired
+   Mac version, followed by iOS presentation only if the iPhone tree is
+   confirmed current. No further push should be sent before that check.
 
 Therefore package availability and basic iCloud synchronization are proven.
 The unresolved area is the binding/presentation between the filtered Shortcut
@@ -540,9 +548,10 @@ acquisition repair, the candidate was adjusted only in its final branches:
 - multiple files: chooser -> Show Selected Item in Quick Look.
 
 The SQLite action blob and macOS editor confirm that both chooser inputs are
-the filtered `Attachments` File items/references. The repaired tree has not
-yet been tested by a new phone notification; the previous WORK notification
-was sent before this repair and cannot validate it.
+the filtered `Attachments` File items/references. The repaired tree was
+tested by one new phone notification after the repair, but the result was
+again only a checkmark with no chooser or preview. The iPhone's actual synced
+action tree still needs independent verification.
 
 ## 12. Exact questions for independent GPT diagnosis
 
