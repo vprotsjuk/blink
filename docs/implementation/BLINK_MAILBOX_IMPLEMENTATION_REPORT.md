@@ -40,6 +40,27 @@ future `start: 2026-09-15T12:00:00-07:00`. The result remained correct after
 reload, confirming the contract and ruling out a stale-snapshot persistence
 bug. The temporary Codex-created acceptance records are not production data.
 
+### Stage 1 remote DONE acceptance — controlled result
+
+After the Mac retest, Codex sent exactly one real ntfy notification with
+`BLINK_NTFY_DONE_ACTION_ENABLED=1` and the temporary target
+`BLINK_NTFY_DONE_SHORTCUT_NAME="Blink DONE Test"`. The action carried
+`blink-done-v1|event-3b6bfc08-f47a-43e8-9d1a-fd7a7dee1c35`; ntfy accepted the
+request with HTTP 200 and no `clear=true`. The owner tapped the iPhone action
+once, producing
+`20260912234913-449637111.done.json` plus its matching `.ready` in the
+acceptance inbox. Codex processed that package once against
+`Blink_Acceptance/ToMac` without enabling the watcher mailbox flags: result
+`applied`, one confirmation delivery succeeded, and the exact package was
+removed only after the agenda commit. The event now persists
+`done: true` with `done_at: 2026-09-12T23:49:47.778110-07:00`; its original
+scheduled start remains unchanged. The acceptance inbox is empty, production
+mailbox flags remain OFF, and `Blink_Production/ToMac` remains unused.
+
+The original ntfy notification was not cleared or modified. Duplicate/no-op
+silence and the one-confirmation rule remain covered by the existing focused
+mailbox/notification tests; no second iPhone action was generated.
+
 ## Approved architecture
 
 The approved baseline is recorded in
