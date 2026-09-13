@@ -145,6 +145,10 @@ The former temporary acquisition shortcut is now `Blink Files Runtime
 Diagnostic`; it reports on-device `AllFiles` plus literal-vs-dynamic counts
 for the ready marker, manifest, and attachment prefix, without Quick Look or
 stop branches. It must be run before any further WORK edit or ntfy push.
+Its first iPhone run showed a blank `Cancel`/`Done` sheet because the
+aggregate result used an unsupported variable handoff. The diagnostic was
+corrected to pass direct `Count` action outputs to `Show Result`; no WORK or
+production behavior was changed.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.

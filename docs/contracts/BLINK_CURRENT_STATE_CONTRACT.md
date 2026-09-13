@@ -132,6 +132,10 @@ The temporary `Blink Files Acquisition Test` is now renamed `Blink Files
 Runtime Diagnostic`; it reports `AllFiles` and paired literal/dynamic filter
 counts on-device, with no presentation or fail-closed branch. Run it once
 before any new WORK edit or ntfy push.
+Its first run showed only a blank `Cancel`/`Done` sheet, so it did not yet
+measure runtime values. The aggregate output was corrected to direct
+`ActionOutput` references from the seven `Count` actions; the next run is the
+valid diagnostic observation.
 SQLite/editor inspection confirms the filtered values are File items/
 references. No production mailbox was enabled. The unresolved gate is still
 physical iPhone viewing.

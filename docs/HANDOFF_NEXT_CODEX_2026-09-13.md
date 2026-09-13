@@ -284,6 +284,10 @@ Runtime Diagnostic`. It reads the fixed known acceptance package and displays
 filters. It deliberately has no chooser, Quick Look, or fail-closed stop. The
 next owner action is one manual run on the iPhone; production, canonical,
 backup, WORK, and ntfy state remain untouched.
+The first run showed only a blank `Cancel`/`Done` sheet, so it was not a
+runtime measurement. Its aggregate result was corrected to direct
+`ActionOutput` references from the seven `Count` actions; the next manual run
+is the valid observation.
 
 Do not add another contents action after `Attachments` unless the independent
 review proves its input is the folder and its output is a file list. The old

@@ -662,6 +662,9 @@ Diagnostic`. It reports `AllFiles` and paired literal/dynamic counts for the
 ready marker, manifest, and attachment prefix on-device, without Quick Look
 or fail-closed stops. This is the next manual diagnostic; production remains
 disabled.
+The first diagnostic run showed a blank `Cancel`/`Done` sheet due to an
+unsupported aggregate variable handoff. Its `Show Result` now receives direct
+`Count` action outputs; no production or WORK behavior was changed.
 
 The existing `Blink Files` Shortcut still points at the historical
 `Blink_Feasibility/ToPhone` contract and must be evolved before the physical

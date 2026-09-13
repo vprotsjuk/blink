@@ -109,6 +109,10 @@ the fixed known package and displays `AllFiles` plus literal-vs-dynamic counts
 for ready, manifest, and attachment filters, without Quick Look or
 fail-closed stops. The next owner action is one manual run of that diagnostic
 on the iPhone; no new ntfy push is needed.
+The first diagnostic run produced only a blank `Cancel`/`Done` sheet because
+its aggregate result used an unsupported variable handoff. That output was
+repaired to use direct `Count` action outputs; the next run is the valid
+runtime measurement.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.

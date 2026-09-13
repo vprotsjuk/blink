@@ -716,6 +716,13 @@ bad `AllFiles` value from a filter predicate problem and from dynamic-token
 expansion. The only next owner action is one manual run on the iPhone and a
 report of the displayed result. No ntfy push is needed.
 
+The first run of this diagnostic did not display its report: the iPhone
+remained on a blank `Cancel`/`Done` sheet. The final aggregate `Get Text` /
+variable handoff was removed and the diagnostic now gives `Show Result`
+direct `ActionOutput` references to the seven `Count` actions, matching the
+established Shortcuts token format. This is a narrow diagnostic-output
+correction, not a WORK behavior change.
+
 ## 12. Exact questions for independent GPT diagnosis
 
 Please independently diagnose the issue from the facts above. Do not assume
