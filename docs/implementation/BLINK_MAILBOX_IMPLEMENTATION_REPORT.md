@@ -15,7 +15,8 @@ PHASE 7 COMPLETE (debounced external agenda refresh; 30-second polling retained)
 The authoritative post-Phase-7 roadmap is
 [`BLINK_REMAINING_ROADMAP.md`](BLINK_REMAINING_ROADMAP.md). Stage 0
 documentation/contract reconciliation is complete; Stage 1 manual acceptance
-of the latest Done work is current. Production attachment viewing, personal
+of the latest Done work is complete. Production attachment viewing is now the
+current gated stage; personal
 Today Morning Briefing, the physical USB adapter, numeric limits, production
 cutover, and production soak remain future gates.
 
@@ -60,6 +61,20 @@ mailbox flags remain OFF, and `Blink_Production/ToMac` remains unused.
 The original ntfy notification was not cleared or modified. Duplicate/no-op
 silence and the one-confirmation rule remain covered by the existing focused
 mailbox/notification tests; no second iPhone action was generated.
+
+### Stage 1 Dock / Attention visual acceptance — PASS
+
+Codex created three temporary past-start active events with green, yellow, and
+red attention levels and inspected the installed Blink UI. The Today tab and
+active rows showed the highest-priority state (red, then yellow after red was
+completed, then green after yellow was completed). Completing each event via
+the real row `Done` control removed its contribution immediately; after the
+last completion Today showed no active events and the tab/Dock attention
+presentation returned to neutral. Persisted `done_at` values were recorded for
+all three, and the completed future-event retest confirmed that a future
+completion does not reactivate attention after reload. The temporary
+Codex-created records were removed after verification; no production UI or
+device protocol was changed.
 
 ## Approved architecture
 

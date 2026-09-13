@@ -2,7 +2,7 @@
 
 **Status:** authoritative post-Phase-7 roadmap
 **Snapshot:** 2026-09-12
-**Current stage:** **Stage 1 — manual acceptance of the latest Done work**
+**Current stage:** **Stage 2 — production iPhone attachment viewing**
 
 This file is the single persistent roadmap for work after the completed
 original Phase 7. Running code and
@@ -64,13 +64,13 @@ Synchronize current-state documents with running code and the final DONE
 acknowledgement decision; preserve historical chronology; establish this
 roadmap and compaction recovery pointer.
 
-### Stage 1 — manual acceptance of latest Done work — CURRENT
+### Stage 1 — manual acceptance of latest Done work — COMPLETE
 
-Owner-controlled manual verification of Early Done, remote DONE confirmation,
-unchanged original notification, duplicate/no-op silence, and Dock/Attention
-visual behavior. Codex must stop before owner-dependent physical actions.
+Early Done, remote DONE confirmation, unchanged original notification,
+duplicate/no-op silence, and Dock/Attention visual behavior were accepted on
+the real installed Mac/iPhone path. Production mailbox remains disabled.
 
-### Stage 2 — production iPhone attachment viewing
+### Stage 2 — production iPhone attachment viewing — CURRENT
 
 Implement and test event-specific `ToPhone` packages, the Files/Open
 attachments action, one-file direct open, multi-file chooser, Quick Look,

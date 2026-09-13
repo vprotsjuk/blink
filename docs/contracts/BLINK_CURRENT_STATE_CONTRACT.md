@@ -11,7 +11,8 @@ The complete technical description for ChatGPT is [`BLINK_FULL_DESCRIPTION_FOR_C
 
 The authoritative post-Phase-7 remaining roadmap is
 [`docs/implementation/BLINK_REMAINING_ROADMAP.md`](../implementation/BLINK_REMAINING_ROADMAP.md).
-Stage 0 reconciliation is complete; Stage 1 manual acceptance is current.
+Stage 0 reconciliation and Stage 1 manual acceptance are complete; Stage 2
+production iPhone attachment viewing is current.
 
 This is the current implementation contract for future agents. The older master prompt is historical requirements context. This file describes what is currently true and what must not be broken.
 

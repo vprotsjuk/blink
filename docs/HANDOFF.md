@@ -8,7 +8,8 @@
 ## Goal (current)
 Keep Blink's independent runtime architecture stable while completing the
 post-Phase-7 roadmap. Stage 1 manual acceptance of Early Done, remote DONE
-confirmation, and Dock/Attention is current; production cutover remains gated.
+confirmation, and Dock/Attention is complete; Stage 2 production attachment
+viewing is current and production cutover remains gated.
 
 The canonical current-state contract for future agents is [`docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`](contracts/BLINK_CURRENT_STATE_CONTRACT.md). Update it together with this handoff whenever a boundary or user-visible contract changes.
 
@@ -186,8 +187,9 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
    emits one separate confirmation, without an action button or `clear=true`.
 3. Keep production mailbox disabled; never consume historical feasibility
    packages without a separately approved acceptance run.
-4. Stage 1 of `docs/implementation/BLINK_REMAINING_ROADMAP.md` is current:
-   perform owner-controlled manual acceptance, then stop before Stage 2.
+4. Stage 1 of `docs/implementation/BLINK_REMAINING_ROADMAP.md` is complete.
+   Stage 2 is current, but it still requires a separate explicit owner task;
+   do not begin production attachment viewing implicitly.
 
 ## Files touched (paths)
 `watcher.py`, `app/attachment_store.py`, `app/weather_store.py`, `test_watcher.py`, `test_weather_store.py`, `app/agenda_store.py`, `app/notification_format.py`, `test_agenda_store.py`, `test_notification_format.py`, `test_attachment_store.py`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/Models.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AttachmentStore.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift`, `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`, `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `CODEX_NEXT_THREAD_PROMPT.md`, `docs/superpowers/plans/2026-09-09-astronomy-push-format.md`, `docs/superpowers/plans/2026-09-09-event-attachments-and-history-freeze.md`.

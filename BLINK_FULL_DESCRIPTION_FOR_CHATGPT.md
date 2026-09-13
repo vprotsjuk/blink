@@ -37,8 +37,9 @@ All planned work through Phase 7 is complete and verified:
 
 The authoritative post-Phase-7 roadmap is
 [`docs/implementation/BLINK_REMAINING_ROADMAP.md`](docs/implementation/BLINK_REMAINING_ROADMAP.md).
-Stage 0 documentation reconciliation is complete; Stage 1 manual acceptance
-of the latest Done work is current. Production attachment viewing, personal
+Stage 0 documentation reconciliation and Stage 1 manual acceptance of Early
+Done, remote DONE confirmation, and Dock/Attention are complete. Stage 2
+production attachment viewing is now current; personal
 Today Morning Briefing, the physical USB adapter, numeric limits, production
 cutover, and production soak remain explicitly gated future work.
 

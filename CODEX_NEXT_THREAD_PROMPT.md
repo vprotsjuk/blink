@@ -2,7 +2,8 @@
 
 The authoritative remaining roadmap/checkpoint is
 `docs/implementation/BLINK_REMAINING_ROADMAP.md`; Stage 1 manual acceptance
-is current. Do not implement Stage 2–7 without a new explicit owner task.
+is complete and Stage 2 production attachment viewing is current. Do not
+implement Stage 2–7 without a new explicit owner task.
 
 **Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility, Phase 4B
 real iPhone DONE-action acceptance, Phase 5 CREATE acceptance, and Phase 7 fast agenda refresh are complete; Phase 1 shared agenda locking, Phase 2A importer core, Phase 2B
