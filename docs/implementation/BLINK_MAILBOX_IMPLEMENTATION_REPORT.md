@@ -632,10 +632,11 @@ The 2026-09-13 controlled push instead targeted the hardened candidate
 no `clear=true`, but tapping `Files` on iPhone opened the Shortcuts library
 instead of Quick Look. Mac inspection confirmed the candidate, input contract,
 regex, and attachment decision tree. A later iPhone screenshot confirmed that
-the full candidate and escaped-pipe regex are present there. The remaining
-failure is therefore the runtime handoff from the ntfy action into Shortcut
-execution (or package visibility at execution time), not an absent Shortcut
-name. No second push has been sent.
+the full candidate and escaped-pipe regex are present there, and the Shortcut
+showed a completion checkmark after the tap. No Quick Look preview appeared.
+The remaining failure is therefore iPhone file-availability or Quick Look
+presentation behavior after successful Shortcut execution, not URL handoff or
+an absent Shortcut name. No second push has been sent.
 
 The existing `Blink Files` Shortcut still points at the historical
 `Blink_Feasibility/ToPhone` contract and must be evolved before the physical
