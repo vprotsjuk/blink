@@ -657,6 +657,12 @@ unverified boundary is the WORK runtime output after `AllFiles` and its
 parsing/filter/count path. No production mailbox was enabled, and no further
 push should be sent before that boundary is diagnosed.
 
+The former temporary acquisition shortcut is now `Blink Files Runtime
+Diagnostic`. It reports `AllFiles` and paired literal/dynamic counts for the
+ready marker, manifest, and attachment prefix on-device, without Quick Look
+or fail-closed stops. This is the next manual diagnostic; production remains
+disabled.
+
 The existing `Blink Files` Shortcut still points at the historical
 `Blink_Feasibility/ToPhone` contract and must be evolved before the physical
 acceptance tap: read `blink-files-v1|<package-id>`, use

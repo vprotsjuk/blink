@@ -702,6 +702,20 @@ needed for that manual diagnostic, and no production or canonical Shortcut
 may be changed. Only if all four counts are correct should the final WORK
 presentation path be tested again.
 
+### Runtime diagnostic prepared
+
+The temporary `Blink Files Acquisition Test` is now renamed and repurposed
+as `Blink Files Runtime Diagnostic`. It reads the fixed known acceptance
+package and ends with `Show Result`; it contains no chooser, Quick Look, or
+fail-closed stop and does not touch WORK, the canonical Shortcut, the backup,
+the production mailbox, or package contents.
+
+It reports `AllFiles` plus paired literal-name and dynamic-variable counts
+for the `.ready` marker, manifest, and attachment prefix. This separates a
+bad `AllFiles` value from a filter predicate problem and from dynamic-token
+expansion. The only next owner action is one manual run on the iPhone and a
+report of the displayed result. No ntfy push is needed.
+
 ## 12. Exact questions for independent GPT diagnosis
 
 Please independently diagnose the issue from the facts above. Do not assume

@@ -103,7 +103,12 @@ is removed. The unchanged canonical `Blink Files` control and the temporary
 current iPhone. General iOS Quick Look, the acceptance folder acquisition,
 and the basic folder-contents path are therefore working. The remaining
 diagnostic boundary is the WORK parsing/filter/count path after acquisition.
-The production mailbox stays disabled.
+The production mailbox stays disabled. The temporary `Blink Files
+Acquisition Test` is now renamed `Blink Files Runtime Diagnostic`; it reads
+the fixed known package and displays `AllFiles` plus literal-vs-dynamic counts
+for ready, manifest, and attachment filters, without Quick Look or
+fail-closed stops. The next owner action is one manual run of that diagnostic
+on the iPhone; no new ntfy push is needed.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.

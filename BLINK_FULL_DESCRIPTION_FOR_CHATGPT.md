@@ -141,6 +141,10 @@ iOS Quick Look, acceptance-folder acquisition, and the basic folder-contents
 path work; the remaining diagnostic boundary is the WORK parsing/filter/count
 path after acquisition. No further push should be sent before that boundary
 is diagnosed.
+The former temporary acquisition shortcut is now `Blink Files Runtime
+Diagnostic`; it reports on-device `AllFiles` plus literal-vs-dynamic counts
+for the ready marker, manifest, and attachment prefix, without Quick Look or
+stop branches. It must be run before any further WORK edit or ntfy push.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.
