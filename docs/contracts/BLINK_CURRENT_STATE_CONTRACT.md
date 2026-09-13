@@ -100,10 +100,12 @@ instead of Quick Look. The Mac candidate and URL were verified, and a later
 iPhone screenshot confirmed that the full candidate and escaped-pipe regex are
 present there, and the Shortcut showed a completion checkmark after the tap.
 The PDF opened manually from Files, proving package availability, while the
-iOS Quick Look action produced no preview. The WORK candidate now uses
-`Open Item in Default App` for the single-item and chooser-selected branches;
-the original and backup Shortcuts remain unchanged. No production mailbox was
-enabled.
+iOS Quick Look action produced no preview. The WORK candidate currently uses
+`Show Item from List in Quick Look` after `Get First Item` and
+`Show Selected Item in Quick Look` after the chooser; the original and backup
+Shortcuts remain unchanged. No production mailbox was enabled. The unresolved
+gate is to determine why the iPhone run completes with a checkmark without
+presenting the PDF, despite the same PDF opening manually in Files.
 
 SwiftUI also has the approved Phase 7 fast refresh: `ContentView` observes the
 parent directory containing `agenda.json`, filters/debounces atomic-replace

@@ -636,7 +636,11 @@ the full candidate and escaped-pipe regex are present there, and the Shortcut
 showed a completion checkmark after the tap. The PDF opened manually from
 Files, proving package availability, but the iOS Quick Look action produced no
 preview. The WORK candidate was therefore adjusted only in its final branches
-to use `Open Item in Default App` for the first item and chooser-selected item.
+to use `Show Item from List in Quick Look` for the first item and
+`Show Selected Item in Quick Look` for the chooser-selected item. The original
+and backup Shortcuts remain unchanged. The iPhone run still completes with a
+checkmark without presenting the PDF; the PDF opens manually in Files, so the
+remaining issue is the Quick Look/file-type binding or presentation context.
 No second push has been sent.
 
 The existing `Blink Files` Shortcut still points at the historical

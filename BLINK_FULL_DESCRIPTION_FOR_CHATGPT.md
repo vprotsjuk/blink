@@ -4,6 +4,9 @@
 **Project root:** `/Users/vitaliiprotsiuk/Desktop/Blink`  
 **Document purpose:** one standalone current specification for the owner, ChatGPT analysis, and future Codex threads. It describes what is implemented now; it is not a wish-list.
 
+For the next Codex continuation and the unresolved Files-preview diagnosis,
+see [`docs/HANDOFF_NEXT_CODEX_2026-09-13.md`](docs/HANDOFF_NEXT_CODEX_2026-09-13.md).
+
 This document is the canonical human/ChatGPT/Codex description of the current implementation, not a future product proposal. The linked contract and continuation files are shorter operational records; when they appear to differ, this complete specification and the running code are the reference to reconcile.
 
 ## Current program status (2026-09-12)

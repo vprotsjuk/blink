@@ -1,5 +1,9 @@
 # Blink: Short Prompt for the Next Codex Task
 
+For the complete current-state handoff and the exact request to send to a new
+ChatGPT analysis thread, read
+`docs/HANDOFF_NEXT_CODEX_2026-09-13.md`.
+
 The authoritative remaining roadmap/checkpoint is
 `docs/implementation/BLINK_REMAINING_ROADMAP.md`; Stage 1 manual acceptance
 is complete and Stage 2 production attachment viewing is current. Do not
@@ -62,7 +66,10 @@ cleanup. The canonical ntfy action is `Files` with input
 no `clear=true` is added. The existing `Blink Files` Shortcut must read only
 the matching package, open one file directly, and chooser-select multiple
 files. Physical iPhone acceptance is the remaining Stage 2 gate; production
-mailbox and `Blink_Production/ToMac` remain disabled/unused.
+mailbox and `Blink_Production/ToMac` remain disabled/unused. The current
+`Blink Files Stage2 WORK` candidate completes on iPhone with a checkmark but
+shows no PDF preview; compare it with the old `Blink Files` tree and diagnose
+the actual Quick Look/file-type binding before any further edit.
 
 Phase 6A/6B CREATE acceptance has since passed against `Blink_Acceptance/ToMac`;
 iCloud `dataless` package bytes are treated as `PENDING_SYNC` and retried. The
