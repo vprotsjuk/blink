@@ -129,6 +129,68 @@ class MailboxImporterTests(unittest.TestCase):
             self.assertEqual(first["event_id"], second["event_id"])
             self.assertEqual(len(json.loads(agenda.read_text())["events"]), 1)
 
+    def test_create_accepts_arbitrary_integer_reminders_and_blinker_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_id = "20260912194513-228316619"
+            payload = create_payload(package_id)
+            payload["reminder_intent"] = {"offsets_minutes_before": [17, 240, 3, 0, 17]}
+            payload["blinker_intent"] = {"minutes_before": 240}
+            write_ready_package(root, package_id, payload)
+            parsed = mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+            self.assertEqual(parsed.reminder_offsets, (240, 17, 3, 0))
+            self.assertEqual(parsed.blinker_minutes_before, 240)
+
+    def test_create_accepts_zero_blinker_and_empty_description(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_id = "20260912194754-657491603"
+            payload = create_payload(package_id)
+            payload["description"] = ""
+            payload["reminder_intent"] = {"offsets_minutes_before": [3, 0]}
+            payload["blinker_intent"] = {"minutes_before": 0}
+            write_ready_package(root, package_id, payload)
+            parsed = mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+            self.assertEqual(parsed.reminder_offsets, (3, 0))
+            self.assertEqual(parsed.blinker_minutes_before, 0)
+            self.assertEqual(parsed.description, "")
+
+    def test_create_rejects_invalid_minute_values_and_empty_title(self):
+        invalid_values = [-1, 3.5, True, "3"]
+        for field, values in (("reminder_intent", invalid_values), ("blinker_intent", invalid_values)):
+            for value in values:
+                with self.subTest(field=field, value=value), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    package_id = "20260912195000-123456789"
+                    payload = create_payload(package_id)
+                    if field == "reminder_intent":
+                        payload[field] = {"offsets_minutes_before": [value]}
+                    else:
+                        payload[field] = {"minutes_before": value}
+                    write_ready_package(root, package_id, payload)
+                    with self.assertRaises(mailbox_importer.MalformedPackage):
+                        mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_id = "20260912195001-123456789"
+            payload = create_payload(package_id)
+            payload["title"] = "   "
+            write_ready_package(root, package_id, payload)
+            with self.assertRaises(mailbox_importer.MalformedPackage):
+                mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+
+    def test_create_rejects_phone_owned_lifecycle_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_id = "20260912195002-123456789"
+            payload = create_payload(package_id)
+            payload["done"] = False
+            payload["done_at"] = None
+            payload["blinker_minutes_before"] = 3
+            write_ready_package(root, package_id, payload)
+            with self.assertRaises(mailbox_importer.MalformedPackage):
+                mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+
     def test_ready_missing_json_is_pending_sync(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

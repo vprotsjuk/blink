@@ -466,7 +466,10 @@ public struct EditableEvent: Identifiable, Equatable {
 
     public func toDictionary(now: Date = Date()) -> [String: Any] {
         let start = startDate()
-        let reminders = availableReminderOffsets(reminderOffsets, eventStart: start, now: now)
+        // Persist every valid non-negative offset, including custom values that
+        // may not match a preset. Availability only controls the preset UI;
+        // saving must never silently discard a value received from the phone.
+        let reminders = normalizedReminderOffsets(reminderOffsets)
         var output: [String: Any] = [
             "id": id,
             "title": title.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -1397,8 +1400,13 @@ public func matchesEventSearch(_ event: BlinkEvent, query: String, attachmentNam
 }
 
 public func availableReminderOffsets(_ offsets: [Int], eventStart: Date, now: Date = Date()) -> [Int] {
-    Array(Set(offsets))
+    normalizedReminderOffsets(offsets)
         .filter { $0 >= 0 && isReminderOffsetAvailable($0, eventStart: eventStart, now: now) }
+}
+
+public func normalizedReminderOffsets(_ offsets: [Int]) -> [Int] {
+    Array(Set(offsets))
+        .filter { $0 >= 0 }
         .sorted(by: >)
 }
 

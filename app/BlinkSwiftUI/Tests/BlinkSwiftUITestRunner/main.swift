@@ -310,6 +310,43 @@ func testBlinkerIsIndependentFromReminderSelection() throws {
     try expect(dictionary["blinker_minutes_before"] as? Int == 60, "Blinker should keep its independent offset")
 }
 
+func testCustomMinuteValuesRoundTripThroughEditableEvent() throws {
+    let imported = BlinkEvent(
+        id: "remote-custom",
+        title: "Remote custom",
+        description: "",
+        start: "2099-09-12T12:00:00-07:00",
+        reminders_minutes_before: [3, 0],
+        enabled: true,
+        source: nil,
+        requires_done: true,
+        done: false,
+        done_at: nil,
+        attention_level: "yellow",
+        blinker_minutes_before: 3
+    )
+    let draft = EditableEvent(event: imported)
+    let saved = draft.toDictionary(now: parseISODate("2026-09-12T10:00:00-07:00")!)
+    try expect(draft.reminderOffsets == [3, 0], "Imported custom reminder values should load unchanged")
+    try expect(saved["reminders_minutes_before"] as? [Int] == [3, 0], "Custom reminder values should survive save")
+    try expect(saved["blinker_minutes_before"] as? Int == 3, "Custom blinker value should survive save")
+
+    let custom240 = EditableEvent(
+        id: "remote-custom-240",
+        title: "Remote custom 240",
+        date: DateComponents(calendar: Calendar(identifier: .gregorian), year: 2099, month: 9, day: 12).date!,
+        hour: 12,
+        minute: 0,
+        description: "",
+        reminderOffsets: [17, 0],
+        enabled: true,
+        blinkerMinutesBefore: 240
+    )
+    let saved240 = custom240.toDictionary(now: parseISODate("2026-09-12T10:00:00-07:00")!)
+    try expect(saved240["reminders_minutes_before"] as? [Int] == [17, 0], "Arbitrary reminder 17 should round-trip")
+    try expect(saved240["blinker_minutes_before"] as? Int == 240, "Arbitrary blinker 240 should round-trip")
+}
+
 func testDoneAndAttentionWritesPreserveUnknownFields() throws {
     let root = try temporaryRoot()
     let agenda = root.appendingPathComponent("agenda.json")
@@ -514,7 +551,7 @@ func testReminderOffsetsRespectEventLeadTime() throws {
     try expect(!isReminderOffsetAvailable(300, eventStart: start, now: now), "5 hour reminder should be unavailable")
 }
 
-func testEditableEventDropsUnavailableReminderOffsets() throws {
+func testEditableEventPreservesUnavailableReminderOffsets() throws {
     let event = EditableEvent(
         id: "soon",
         title: "Soon",
@@ -527,7 +564,7 @@ func testEditableEventDropsUnavailableReminderOffsets() throws {
     )
     let now = parseISODate("2026-09-07T13:00:00-07:00")!
     let object = event.toDictionary(now: now)
-    try expect(object["reminders_minutes_before"] as? [Int] == [30, 10, 0], "Unavailable reminders should be removed before saving")
+    try expect(object["reminders_minutes_before"] as? [Int] == [1440, 60, 30, 10, 0], "Valid reminder values should be preserved before saving")
 }
 
 func testLoadsReminderConfigWithFallback() throws {
@@ -783,6 +820,8 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains("isInitializing"), "Editor should suppress dirty callbacks during initial setup")
     try expect(source.contains("canDiscardDateOnlyChange"), "Calendar navigation should distinguish a date-only tap from real edits")
     try expect(source.contains("hasUnsavedChangesOtherThanDate"), "Calendar double-click should preserve dirty-edit safety")
+    try expect(source.contains("Custom minutes"), "Editor should expose custom minute controls")
+    try expect(source.contains("normalizedReminderOffsets"), "Editor should normalize and preserve custom minute values")
 }
 
 func testSelectedDayFilteringUsesLocalDateAndDeterministicSort() throws {
@@ -1476,6 +1515,7 @@ let tests: [(String, () throws -> Void)] = [
     ("event search matches title description date and status", testEventSearchMatchesTitleDescriptionDateAndStatus),
     ("new editable event writes done schema and attention level", testNewEditableEventWritesDoneSchemaAndAttentionLevel),
     ("blinker is independent from reminders", testBlinkerIsIndependentFromReminderSelection),
+    ("custom minute values round-trip through editable event", testCustomMinuteValuesRoundTripThroughEditableEvent),
     ("done and attention writes preserve unknown fields", testDoneAndAttentionWritesPreserveUnknownFields),
     ("complete after done days recurring appends next event", testCompleteAfterDoneDaysRecurringAppendsNextEvent),
     ("complete weekly fixed recurring appends next weekday", testCompleteWeeklyFixedRecurringAppendsNextWeekday),
@@ -1487,7 +1527,7 @@ let tests: [(String, () throws -> Void)] = [
     ("loads astronomy schedule status", testLoadsAstronomyScheduleStatus),
     ("event date time label includes date and time", testEventDateTimeLabelIncludesDateAndTime),
     ("reminder offsets respect event lead time", testReminderOffsetsRespectEventLeadTime),
-    ("editable event drops unavailable reminder offsets", testEditableEventDropsUnavailableReminderOffsets),
+    ("editable event preserves unavailable reminder offsets", testEditableEventPreservesUnavailableReminderOffsets),
     ("loads reminder config with fallback", testLoadsReminderConfigWithFallback),
     ("save weather config toggle preserves morning time", testSaveWeatherConfigTogglePreservesMorningTime),
     ("save weather settings preserves unknown fields", testSaveWeatherSettingsPreservesUnknownFields),

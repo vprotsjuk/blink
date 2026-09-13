@@ -1600,6 +1600,8 @@ struct EventEditorView: View {
     @State private var stagedAttachmentCount: Int
     @State private var isInitializing = true
     @State private var pendingRemovedAttachmentNames: Set<String> = []
+    @State private var customReminderText = ""
+    @State private var customBlinkerText = ""
     private let original: EditableEvent
     let reminderConfig: ReminderConfig
     let calendarEvents: [BlinkEvent]
@@ -1672,11 +1674,22 @@ struct EventEditorView: View {
                     recurrenceSection
                     remindersSection
                     Picker("Start blinking", selection: blinkerSelectionBinding) {
+                        if !reminderConfig.presets.contains(where: { $0.minutes_before == (draft.blinkerMinutesBefore ?? 0) }) {
+                            Text("Custom — \(reminderLabel(draft.blinkerMinutesBefore ?? 0))")
+                                .tag(draft.blinkerMinutesBefore ?? 0)
+                        }
                         ForEach(reminderConfig.presets) { preset in
                             Text(preset.label).tag(preset.minutes_before)
                         }
                     }
                     .disabled(!isReminderAvailable(draft.blinkerMinutesBefore ?? 0))
+                    HStack(spacing: 8) {
+                        TextField("Custom minutes", text: $customBlinkerText)
+                            .frame(width: 120)
+                        Button("Set") { setCustomBlinker() }
+                            .disabled(!isNonNegativeInteger(customBlinkerText))
+                    }
+                    .help("Set any whole number of minutes before the event")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -1825,6 +1838,16 @@ struct EventEditorView: View {
                         .disabled(!isReminderAvailable(preset.minutes_before))
                         .foregroundStyle(isReminderAvailable(preset.minutes_before) ? .primary : .secondary)
                 }
+                ForEach(customReminderOffsets, id: \.self) { offset in
+                    Toggle("Custom — \(reminderLabel(offset))", isOn: customReminderBinding(offset))
+                }
+                HStack(spacing: 8) {
+                    TextField("Custom minutes", text: $customReminderText)
+                        .frame(width: 120)
+                    Button("Add") { addCustomReminder() }
+                        .disabled(!isNonNegativeInteger(customReminderText))
+                }
+                .help("Add any whole number of minutes before the event")
             }
         } header: {
             RequiredLabel("Reminders")
@@ -1944,10 +1967,45 @@ struct EventEditorView: View {
         )
     }
 
+    private var customReminderOffsets: [Int] {
+        let presetValues = Set(reminderConfig.presets.map(\.minutes_before))
+        return normalizedReminderOffsets(draft.reminderOffsets).filter { !presetValues.contains($0) }
+    }
+
+    private func customReminderBinding(_ offset: Int) -> Binding<Bool> {
+        Binding(
+            get: { draft.reminderOffsets.contains(offset) },
+            set: { selected in
+                if selected {
+                    draft.reminderOffsets.append(offset)
+                } else {
+                    draft.reminderOffsets.removeAll { $0 == offset }
+                }
+                draft.reminderOffsets = normalizedReminderOffsets(draft.reminderOffsets)
+            }
+        )
+    }
+
+    private func isNonNegativeInteger(_ value: String) -> Bool {
+        !value.isEmpty && value.allSatisfy(\.isNumber) && Int(value) != nil
+    }
+
+    private func addCustomReminder() {
+        guard isNonNegativeInteger(customReminderText), let value = Int(customReminderText) else { return }
+        draft.reminderOffsets = normalizedReminderOffsets(draft.reminderOffsets + [value])
+        customReminderText = ""
+    }
+
+    private func setCustomBlinker() {
+        guard isNonNegativeInteger(customBlinkerText), let value = Int(customBlinkerText) else { return }
+        draft.blinkerMinutesBefore = value
+        customBlinkerText = ""
+    }
+
     private var canSave: Bool {
         hasUnsavedChanges
         && !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        && !availableReminderOffsets(draft.reminderOffsets, eventStart: draft.startDate()).isEmpty
+        && !normalizedReminderOffsets(draft.reminderOffsets).isEmpty
         && parseClockTime(timeText) != nil
         && (draft.blinkerMinutesBefore == nil || isReminderAvailable(draft.blinkerMinutesBefore ?? 0))
         && (draft.recurrence?.mode != "after_done_days" || (draft.recurrence?.days ?? 0) > 0)
@@ -1992,7 +2050,7 @@ struct EventEditorView: View {
     }
 
     private func pruneUnavailableReminders() {
-        draft.reminderOffsets = availableReminderOffsets(draft.reminderOffsets, eventStart: draft.startDate())
+        draft.reminderOffsets = normalizedReminderOffsets(draft.reminderOffsets)
     }
 
     private func applyTimeText() {
