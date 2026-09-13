@@ -470,11 +470,11 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
 
 ## Tests
 
-- `.venv/bin/python -m unittest -q` → 188 tests passed.
-- `.venv/bin/python -m unittest -q test_mailbox_importer` → 36 tests passed,
-  including iCloud placeholder `PENDING_SYNC` boundary regressions.
-- `.venv/bin/python -m unittest -q test_mailbox_importer test_notification_format
-  test_ntfy_schedule test_watcher` → 125 tests passed.
+- `.venv/bin/python -m unittest -q` → 195 tests passed.
+- `.venv/bin/python -m unittest -q test_agenda_store test_mailbox_importer
+  test_notification_format test_watcher test_ntfy_schedule` → 152 tests passed,
+  including iCloud placeholder `PENDING_SYNC` and remote confirmation
+  regressions.
 - Previous Phase 4 notification/watcher focused suite remains covered by the
   full run; its prior checkpoint was 88 passing tests.
 - `swift run BlinkSwiftUITestRunner` → all Swift store/UI tests passed,
@@ -549,3 +549,6 @@ support and contract tests: `0935e73 Preserve arbitrary mailbox minute values`.
 Phase 5 acceptance closeout and Phase 6 inbox preparation:
 `04ce992 Close Phase 5 and prepare acceptance inbox`.
 Manual custom-minute UI acceptance: `02e1013 Record custom minute UI acceptance`.
+Early Done and remote confirmation implementation: `92606d2 Implement Early
+Done and remote confirmation`. Documentation sync: `b1b50d3 Document Early Done
+confirmation contract`.
