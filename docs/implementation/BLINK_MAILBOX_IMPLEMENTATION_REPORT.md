@@ -9,7 +9,7 @@ PHASE 3 COMPLETE (opt-in in-process watcher worker; production mailbox remains d
 PHASE 4A COMPLETE (Mac ntfy DONE action support; disabled by default)
 PHASE 4B COMPLETE (real iPhone ntfy DONE action accepted)
 PHASE 5 COMPLETE (manual `Blink Create Test` migration and acceptance passed)
-PHASE 6 PREPARATION COMPLETE (acceptance inbox archived and left empty)
+PHASE 6 COMPLETE (controlled acceptance passed; production mailbox remains disabled)
 PHASE 7 COMPLETE (debounced external agenda refresh; 30-second polling retained)
 
 ## Approved architecture
@@ -227,7 +227,7 @@ and the existing local attachment contract.
 This procedure is documented for the future controlled test only; none of its
 enable commands were run in this checkpoint.
 
-## Phase 6 controlled acceptance — partial result
+## Phase 6 controlled acceptance — result
 
 - **Phase 6A CREATE without attachment — PASS.** With the one-shot worker
   pointed only at `Blink_Acceptance/ToMac`, the native package
@@ -253,27 +253,24 @@ enable commands were run in this checkpoint.
   `Today → Active` (not History), retained yellow Attention, and kept the
   configured 5-minute blinker lead. This is the current lifecycle behavior;
   no redesign was introduced.
-- **Real DONE acceptance — BLOCKED at transport boundary.** The controlled
-  ntfy request for event `event-8acec3e8-352e-4300-813c-5a31efdaa0d7` was
-  accepted with the encoded `Blink DONE Test` action and no `clear=true`.
-  After the owner tapped `Done`, the acceptance inbox remained empty and the
-  event stayed `done=false`. The newly produced files appeared instead under
-  the historical path `Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.json`
-  and `.ready` (the prior attempt also produced
-  `20260912215237-901727503.done.json` + `.ready` there). These feasibility
-  files remain untouched; the DONE importer was never pointed at that path.
-  A future controlled run requires a verified Shortcut destination that writes
-  directly into `Blink_Acceptance/ToMac`.
+- **Real DONE acceptance — PASS.** The controlled ntfy request for event
+  `event-8acec3e8-352e-4300-813c-5a31efdaa0d7` was accepted with the encoded
+  `Blink DONE Test` action and no `clear=true`. After the owner tapped `Done`,
+  package `20260912221340-109486748.done.json` plus `.ready` arrived in the
+  acceptance inbox. The worker applied it under the agenda lock, recorded
+  `result=applied` in the journal/processed ledger, removed the exact package
+  after commit, and persisted the event as `done=true`. The acceptance inbox
+  is empty again; historical feasibility files remain untouched.
 - **Early Done audit — code change still pending.** `BlinkStore.complete` and
   `EventSnapshot`/Python sectioning already support future-start completion
   and History by `done=true`, but the Upcoming `EventListView` currently
   leaves `showsDone` at its default `false`; its rows/context menu therefore
   still need a small owner-approved change to expose `Done` for future
   Upcoming events. No parallel completion path was added, and Early-Done
-  implementation tests remain pending the unblocked real DONE acceptance.
+  implementation tests remain pending a separately authorized follow-up.
 - The controlled mailbox was returned to **OFF** immediately after the DONE
-  blocker. `Blink_Production/ToMac` remains unused and the acceptance inbox is
-  empty.
+  acceptance. `Blink_Production/ToMac` remains unused and the acceptance inbox
+  is empty.
 
 ## Phase 5 — historical iPhone `Blink Create Test` migration checklist
 
@@ -516,14 +513,12 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
 
 ## Next implementation tasks
 
-1. Resolve the DONE acceptance target: provide an owner-approved Shortcut
-   writing to `Blink_Acceptance/ToMac` without modifying the historical
-   feasibility inbox.
-2. Perform the controlled real DONE acceptance only after that target is
-   approved and the worker is explicitly enabled against the empty acceptance
-   inbox.
-3. Keep the Phase 6 enable/disable procedure one-shot and reversible; never
-   point the importer at the archived or historical feasibility inbox.
+1. Keep the production mailbox disabled and never point the importer at the
+   archived or historical feasibility inbox.
+2. Resolve the DONE acknowledgement/notification lifecycle separately;
+   `clear=true` remains unselected.
+3. Do not implement Early Done or begin Phase 5/6 follow-on work until
+   explicitly requested.
 
 ## Last checkpoint
 

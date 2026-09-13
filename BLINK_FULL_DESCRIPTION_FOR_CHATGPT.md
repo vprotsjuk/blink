@@ -86,10 +86,10 @@ reading JSON or attachment bytes as `PENDING_SYNC`, leaves the exact package in
 place, and retries once bytes become local. The accepted PDF was committed to
 an event-ID owner folder with `count=1/has_files=true` and the acceptance inbox
 was then cleaned only after commit. A past-start unfinished event was observed
-in Today/Active with Attention enabled. Phase 6 DONE remains blocked: after
-the owner tapped the accepted ntfy action, the acceptance inbox stayed empty
-and the event remained `done=false`; the new files appeared under the
-historical `Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.*` path. Those files
+in Today/Active with Attention enabled. Phase 6 DONE then passed: after the
+owner tapped the accepted ntfy action, package
+`20260912221340-109486748.done.json` + `.ready` arrived in the acceptance inbox,
+was applied, and the event became `done=true`. Historical feasibility files
 remain untouched and the controlled mailbox was returned to OFF.
 
 The iPhone DONE notification lifecycle remains an open design question. After

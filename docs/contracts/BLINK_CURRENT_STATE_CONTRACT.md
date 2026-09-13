@@ -49,9 +49,9 @@ classifies macOS `Errno 11 (Resource deadlock avoided)` during package or
 attachment reads as `PENDING_SYNC`, preserving the exact package for retry.
 The accepted PDF was committed to a Mac-generated event-ID owner folder only
 after its bytes became local. A past-start event was observed in Today/Active
-until completion. Phase 6 DONE remains blocked: after the accepted ntfy action
-was tapped, the acceptance inbox stayed empty and files appeared under the
-historical `Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.*` path. That
+until completion. Phase 6 DONE passed: after the accepted ntfy action was
+tapped, package `20260912221340-109486748.done.json` + `.ready` arrived in the
+acceptance inbox, was applied, and the event became `done=true`. The historical
 feasibility tree is never used by the production/acceptance importer. The
 controlled mailbox is currently disabled.
 

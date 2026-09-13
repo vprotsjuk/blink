@@ -254,13 +254,10 @@ agenda/attachment commit. The past-start PDF event was observed in Today/Active
 with Attention still enabled, matching the current `requires_done` lifecycle.
 
 The controlled real DONE request was accepted by ntfy and the owner tapped the
-button, but the acceptance inbox remained empty and the event stayed
-`done=false`. The newly produced files appeared under the historical
-`Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.*` path (the prior attempt also
-produced `20260912215237-901727503.done.json` + `.ready` there). Those
-feasibility files remain untouched; the DONE importer was not pointed at that
-path. A future DONE acceptance requires a verified Shortcut destination that
-writes directly to `Blink_Acceptance/ToMac`.
+button. Package `20260912221340-109486748.done.json` + `.ready` arrived in the
+acceptance inbox, was applied by the worker, and the event became `done=true`.
+The acceptance inbox was empty after commit; historical feasibility files
+remain untouched and the importer was never pointed at that path.
 
 ## Reproducibility evidence
 

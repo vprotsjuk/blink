@@ -43,12 +43,11 @@ Production iCloud, ntfy Actions, and Shortcuts remain unchanged. See
 Phase 6A/6B CREATE acceptance has since passed against `Blink_Acceptance/ToMac`;
 iCloud `dataless` package bytes are treated as `PENDING_SYNC` and retried. The
 past-start event was observed in Today/Active with Attention enabled. Phase 6
-DONE remains blocked: after the accepted ntfy action was tapped, the
-acceptance inbox stayed empty and files appeared under the historical
-`Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.*` path. Those files must remain
-untouched. The controlled mailbox is OFF and production remains unused. Next
-human action is to verify a Shortcut destination that writes directly to
-`Blink_Acceptance/ToMac`, then rerun only the controlled DONE acceptance.
+DONE acceptance has now passed: after the accepted ntfy action was tapped,
+package `20260912221340-109486748.done.json` + `.ready` arrived in
+`Blink_Acceptance/ToMac`, was applied, and the event became `done=true`.
+Historical feasibility files remain untouched. The controlled mailbox is OFF
+and production remains unused.
 
 Current verification: `.venv/bin/python -m unittest -q` passes the current suite;
 Python compile, plist lint, `./status_watcher.command`, Swift test runner, and

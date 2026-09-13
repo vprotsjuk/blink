@@ -93,13 +93,11 @@ Controlled Phase 6A/6B CREATE acceptance subsequently passed against the empty
 acceptance inbox. The reader handled iCloud `dataless` files as `PENDING_SYNC`
 when macOS returned `Errno 11 (Resource deadlock avoided)`, then committed the
 PDF package after its bytes became local. The past-start event was observed in
-Today/Active with Attention enabled. Phase 6 DONE remains blocked: after the
-one-shot ntfy request was accepted and the owner tapped `Done`, the acceptance
-inbox stayed empty and the event remained `done=false`. The newly produced
-files appeared under the historical
-`Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.*` path instead. All such
-feasibility files remain untouched, and the acceptance worker was returned to
-OFF.
+Today/Active with Attention enabled. Phase 6 DONE then passed: after the
+one-shot ntfy request was accepted and the owner tapped `Done`, package
+`20260912221340-109486748.done.json` + `.ready` arrived in the acceptance
+inbox, was applied, and the event became `done=true`. The acceptance worker was
+returned to OFF; historical feasibility files remain untouched.
 
 The long historical checkpoint paragraph immediately above contains older
 `120`/`133`/`160`/`162`/`163` test counts; they are superseded by the current `188` result
@@ -169,11 +167,10 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 1. Keep the production mailbox disabled after the completed Phase 5 CREATE
    acceptance and empty-inbox preparation.
 2. Resolve the DONE acknowledgement/notification lifecycle: immediate clear, retention until Mac confirmation, or another UX. `clear=true` is not selected.
-3. Obtain an owner-approved DONE Shortcut target that writes to
-   `Blink_Acceptance/ToMac`; never consume historical feasibility packages.
-4. When that target is approved, rerun only the controlled Phase 6 DONE
-   acceptance with reversible one-shot `BLINK_MAILBOX_ENABLED`/
-   `BLINK_MAILBOX_ROOT` settings, then return the worker to OFF.
+3. Keep production mailbox disabled; never consume historical feasibility
+   packages.
+4. Leave Early Done implementation and Phase 5/6 follow-on work untouched
+   until explicitly requested.
 
 ## Files touched (paths)
 `watcher.py`, `app/attachment_store.py`, `app/weather_store.py`, `test_watcher.py`, `test_weather_store.py`, `app/agenda_store.py`, `app/notification_format.py`, `test_agenda_store.py`, `test_notification_format.py`, `test_attachment_store.py`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/Models.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AttachmentStore.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift`, `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`, `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `CODEX_NEXT_THREAD_PROMPT.md`, `docs/superpowers/plans/2026-09-09-astronomy-push-format.md`, `docs/superpowers/plans/2026-09-09-event-attachments-and-history-freeze.md`.
