@@ -254,6 +254,16 @@ def _parse_reminders(payload: dict[str, Any]) -> tuple[int, ...]:
     return tuple(sorted(set(values), reverse=True))
 
 
+def _parse_flat_reminders(payload: dict[str, Any]) -> tuple[int, ...]:
+    raw = payload.get("reminder_offsets")
+    if not isinstance(raw, str) or not raw.strip():
+        raise MalformedPackage("reminder_offsets must be a non-empty string")
+    tokens = [token.strip() for token in raw.split(",")]
+    if not tokens or any(not token or not token.isdigit() for token in tokens):
+        raise MalformedPackage("reminder_offsets must contain comma-separated non-negative integers")
+    return tuple(sorted({int(token) for token in tokens}, reverse=True))
+
+
 def _parse_blinker(payload: dict[str, Any]) -> int:
     intent = payload.get("blinker_intent")
     if not isinstance(intent, dict):
@@ -262,6 +272,31 @@ def _parse_blinker(payload: dict[str, Any]) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise MalformedPackage("blinker_intent.minutes_before must be a non-negative integer")
     return value
+
+
+def _parse_flat_blinker(payload: dict[str, Any]) -> int:
+    value = payload.get("blinker_minutes_before")
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise MalformedPackage("blinker_minutes_before must be a non-negative integer")
+    return value
+
+
+def _validate_flat_attachment(candidate: PackageCandidate, payload: dict[str, Any]) -> tuple[Path | None, str | None]:
+    basename = payload.get("attachment_basename")
+    original = payload.get("attachment_original_filename")
+    if (basename is None) != (original is None):
+        raise MalformedPackage("v2 attachment fields must be provided as a pair")
+    if basename is None:
+        if candidate.attachment_paths:
+            raise MalformedPackage("undeclared attachment file")
+        return None, None
+    if not isinstance(basename, str) or basename != (candidate.attachment_paths[0].name if candidate.attachment_paths else ""):
+        if not candidate.attachment_paths:
+            raise PendingSync("ready marker is present but attachment is not locally available")
+        raise MalformedPackage("attachment_basename does not match package file")
+    if len(candidate.attachment_paths) != 1 or not _regular_local(candidate.attachment_paths[0]):
+        raise MalformedPackage("v2 permits exactly one regular attachment")
+    return candidate.attachment_paths[0], _safe_display_name(original)
 
 
 def _parse_done(candidate: PackageCandidate, payload: dict[str, Any]) -> ParsedCommand:
@@ -286,12 +321,17 @@ def _parse_done(candidate: PackageCandidate, payload: dict[str, Any]) -> ParsedC
 
 
 def _parse_create(candidate: PackageCandidate, payload: dict[str, Any]) -> ParsedCommand:
-    if payload.get("version") != 1 or payload.get("type") != "CREATE_EVENT":
+    version = payload.get("version")
+    if isinstance(version, bool) or payload.get("type") != "CREATE_EVENT" or version not in {1, 2}:
         raise MalformedPackage("invalid CREATE_EVENT version/type")
     transfer_id = _validate_transport_id(payload.get("transfer_id"), "transfer_id")
     if transfer_id != candidate.transport_id:
         raise MalformedPackage("transfer_id does not match filename")
     forbidden = _INTERNAL_CREATE_FIELDS.intersection(payload)
+    if version == 2:
+        forbidden.discard("blinker_minutes_before")
+        if any(field in payload for field in ("reminder_intent", "blinker_intent", "attachment")):
+            raise MalformedPackage("v2 CREATE must use flat transport fields")
     if forbidden:
         raise MalformedPackage(f"internal fields are not CREATE v1 input: {sorted(forbidden)}")
     title = str(payload.get("title") or "").strip()
@@ -304,12 +344,17 @@ def _parse_create(candidate: PackageCandidate, payload: dict[str, Any]) -> Parse
     attention = str(payload.get("attention_level") or "").strip().lower()
     if attention not in {"green", "yellow", "red"}:
         raise MalformedPackage("attention_level must be green, yellow, or red")
-    reminders = _parse_reminders(payload)
-    blinker = _parse_blinker(payload)
+    if version == 1:
+        reminders = _parse_reminders(payload)
+        blinker = _parse_blinker(payload)
+        attachment_path, original = _validate_attachment(candidate, payload)
+    else:
+        reminders = _parse_flat_reminders(payload)
+        blinker = _parse_flat_blinker(payload)
+        attachment_path, original = _validate_flat_attachment(candidate, payload)
     created_at = payload.get("created_at")
     if created_at is not None:
         created_at = _parse_aware_timestamp(created_at, "created_at")
-    attachment_path, original = _validate_attachment(candidate, payload)
     return ParsedCommand(
         kind="CREATE_EVENT",
         transport_id=transfer_id,

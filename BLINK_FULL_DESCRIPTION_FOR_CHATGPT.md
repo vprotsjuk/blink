@@ -194,6 +194,13 @@ the fix produced no attachment. Photos and Viber required observed
 prompt again. These are observed behaviors, not an inferred iOS permission
 model.
 
+For the next Shortcut-hardening iteration, the mailbox boundary also accepts
+CREATE transport v2: a flat Dictionary with `version: 2`, string
+`reminder_offsets`, integer `blinker_minutes_before`, and optional flat
+attachment fields. Version 1 remains backward-compatible. The Mac importer
+normalizes both transports into the unchanged canonical CREATE event; the
+phone transport format does not become a second event architecture.
+
 ## 3. Project Layout
 
 Important files and directories:

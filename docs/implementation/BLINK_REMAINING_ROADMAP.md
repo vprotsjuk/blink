@@ -33,6 +33,9 @@ feasibility documents preserve chronology but never override this roadmap.
 - Current verification: Python `195/195`, focused Python `152/152`, Swift
   runner PASS, release build PASS, compile PASS, plist lint PASS,
   `git diff --check` PASS, and healthy watcher.
+- CREATE mailbox transport v2 is implemented at the Mac importer boundary as a
+  flat Shortcut-friendly schema; v1 remains backward-compatible and both
+  normalize into the same canonical CREATE transaction.
 
 ## Core remaining requirements
 
@@ -70,92 +73,26 @@ Early Done, remote DONE confirmation, unchanged original notification,
 duplicate/no-op silence, and Dock/Attention visual behavior were accepted on
 the real installed Mac/iPhone path. Production mailbox remains disabled.
 
-### Stage 2 — production iPhone attachment viewing — CURRENT
+### Simplified remaining roadmap
 
-Mac-side event-specific `ToPhone` packages, the canonical Files action,
-snapshot refresh/immutability, one-file direct open, multi-file chooser
-contract, security, dataless-placeholder handling, cleanup, retry, and
-idempotency are implemented behind controlled opt-in settings. Remaining:
-complete verification, harden the three manually-created Blink Shortcuts, evolve
-the existing `Blink Files` Shortcut to the versioned package input, and perform
-real iPhone acceptance. Production mailbox and production cutover remain
+**[CURRENT] Finish simple iPhone Shortcuts.** Reuse the single
+`Blink Create Stage2 WORK` candidate, keep CREATE flat/v2 and minimal, and
+retain the already prepared DONE and Files candidates. Production mailbox stays
 disabled.
 
-#### Stage 2 internal hardening gate
+**[NEXT] One real iPhone acceptance pass.** Prove CREATE, CREATE with one
+attachment, DONE, and Files/Open attachments on the owner’s phone.
 
-- **2A — Mac snapshot/Files infrastructure: DONE.** Deterministic ToPhone
-  packages, queued refresh, delivered immutability, exact package isolation,
-  cleanup, retry, and canonical ntfy action are implemented and tested.
-- **2B — Shortcut audit/design: CURRENT.** Audit the actual trees of `Blink
-  Create Test`, `Blink DONE Test`, and `Blink Files`; preserve untouched safety
-  copies; document problems and target trees before any owner phone editing.
-- **2C — Shortcut implementation/update: REMAINING.** Apply the approved
-  hardening while preserving existing contracts. CREATE must become a small
-  correction-friendly form with required non-empty Title, optional arbitrary
-  Description, explicit-offset date/time, independent integer Reminder and
-  Blinker values, importance choices, one optional attachment, and a final
-  Review/Edit/Cancel gate. DONE must remain fail-closed for malformed
-  machine-generated input. Files must accept
-  `blink-files-v1|<package-id>`, isolate only the exact package, require
-  `.ready` and matching manifest, and open one file directly or choose only
-  that package's files when multiple exist. Native SHA-256 verification is
-  optional on the phone because macOS remains authoritative.
-- **2D — Physical iPhone acceptance: REMAINING.** Run controlled one-file and
-  multi-file acceptance only after the Shortcut implementation is verified;
-  do not enable the production mailbox or send the acceptance push early.
-- **2E — Stage 2 closeout: REMAINING.** Reconcile the full description,
-  current contract, handoff, implementation report, this roadmap, and the
-  next-thread prompt, then close Stage 2 without starting Stage 3.
+**[NEXT] Today Morning Briefing.** Add the personal briefing flow with the
+existing Mac-owned scheduling/source-of-truth rules.
 
-The current audit found that all required action categories are present in the
-macOS Shortcuts library, including input extraction, text parsing/matching,
-conditions, safe stop, folder contents, file filtering, counting, chooser, and
-Quick Look. No native `Calculate Hash` action was available. The `/usr/bin/shortcuts`
-CLI exposes only `run`, `list`, `view`, and `sign`; it has no create/import/edit
-operation, and opaque Shortcut database manipulation is forbidden. Therefore
-the remaining implementation is a controlled GUI task, not an iPhone-only
-capability gap.
+**[NEXT] Final phone setup.** Finalize one Home Screen entry `Blink`, Share →
+Blink, and final Shortcut names/paths.
 
-### Stage 3 — personal Today Morning Briefing
+**[NEXT] Cleanup.** Remove obsolete Test/WORK/proof Shortcuts and temporary
+files only after accepted replacements exist; retain intentional backups.
 
-Implement the optional persistent setting/UI and watcher-owned daily delivery
-for all applicable Today personal events, including local date dedupe,
-wake-after-sleep, timezone, empty-day, duplicate, and Weather/Astronomy
-coexistence behavior.
-
-### Stage 4 — production iPhone cutover
-
-Finalize and verify production ToMac/ToPhone paths, production DONE/CREATE/
-Files Shortcuts, acceptance separation, untouched BACKUP, numeric limits, and
-rollback/disable procedure. Enable production mailbox only after these gates.
-
-Finalize the single iPhone-facing entry point only after the unified production
-CREATE Shortcut is finalized:
-
-- one Home Screen icon named `Blink` for direct personal-event creation;
-- `Share -> Blink` enters that same unified CREATE flow;
-- at most one attachment;
-- no separate Home Screen icons for DONE, Files, or Open attachments.
-
-### Stage 5 — full production end-to-end acceptance
-
-Exercise production CREATE (no attachment, image, PDF/file), attachment
-viewing, DONE, Early Done, duplicate/no-op/stale commands, `PENDING_SYNC`,
-sleep/wake, all briefings, Attention/Dock, physical blinker when available,
-and duplicate-send prevention.
-
-### Stage 6 — final documentation and handoff
-
-Reconcile the full description, current contract, implementation report,
-HANDOFF, next-thread prompt, this roadmap, and operational enable/disable/
-rollback instructions. Historical files may remain, but must be labelled as
-historical/superseded.
-
-### Stage 7 — short production soak
-
-After cutover, monitor mailbox runtime, journal, ledger, quarantine, cleanup,
-attachment leakage, briefing dedupe, duplicate sends, and rollback by
-disabling the mailbox flags.
+**[LATER] USB RGB lamp integration.** Keep hardware work separate.
 
 ## Compaction recovery
 

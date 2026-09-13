@@ -137,6 +137,12 @@ Mailbox operational state, when the opt-in worker is enabled, stays below
 `mailbox/processed_commands.json`; it is transport diagnostics only and never
 replaces `agenda.json` as the event source of truth.
 
+CREATE mailbox transport accepts v1 (nested) and v2 (flat Shortcut-friendly)
+payloads. V2 carries `reminder_offsets` as a strict comma-separated string and
+`blinker_minutes_before` as an integer, with optional flat attachment fields.
+The importer normalizes both versions into the same canonical CREATE
+transaction; no agenda or lifecycle contract changes.
+
 ## 3. Personal Event Contract
 
 Required fields: `id`, `title`, `start`, `reminders_minutes_before`, `enabled`. `start` must contain an explicit UTC offset. Optional `description` preserves newlines and paragraphs. Optional attachment metadata records only an owner ID and count/boolean; it never stores file bytes or absolute paths.

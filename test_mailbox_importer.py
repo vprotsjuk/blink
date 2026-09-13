@@ -38,6 +38,25 @@ def create_payload(package_id: str, *, attachment: bool = False) -> dict:
     return payload
 
 
+def create_payload_v2(package_id: str, *, attachment: bool = False) -> dict:
+    payload = {
+        "version": 2,
+        "type": "CREATE_EVENT",
+        "transfer_id": package_id,
+        "title": 'A "quote" \\ slash 😀 Україна {braces} [brackets] | pipe',
+        "description": 'Line one\n"double quotes"\n\\backslash\\\nemoji 😀\nУкраїна\n{braces} [brackets] | pipe',
+        "start": "2026-09-13T09:00:00-07:00",
+        "attention_level": "yellow",
+        "reminder_offsets": "60, 10, 0",
+        "blinker_minutes_before": 10,
+        "created_at": "2026-09-12T18:30:00-07:00",
+    }
+    if attachment:
+        payload["attachment_basename"] = f"{package_id}.attachment.pdf"
+        payload["attachment_original_filename"] = "contract.pdf"
+    return payload
+
+
 def done_payload(command_id: str, event_id: str) -> dict:
     return {
         "version": 1,
@@ -93,6 +112,88 @@ class MailboxImporterTests(unittest.TestCase):
             parsed = mailbox_importer.parse_package(candidate)
             self.assertEqual(parsed.transfer_id, transport_id)
             self.assertEqual(parsed.attachment_path.name, f"{transport_id}.attachment.pdf")
+
+    def test_create_v2_flat_transport_normalizes_to_canonical_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_id = "20260912154532-482193775"
+            write_ready_package(root, package_id, create_payload_v2(package_id))
+            parsed = mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+            self.assertEqual(parsed.reminder_offsets, (60, 10, 0))
+            self.assertEqual(parsed.blinker_minutes_before, 10)
+            self.assertEqual(parsed.description, create_payload_v2(package_id)["description"])
+
+    def test_create_v2_accepts_attachment_pair(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_id = "20260912154533-482193775"
+            write_ready_package(root, package_id, create_payload_v2(package_id, attachment=True), b"pdf")
+            parsed = mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+            self.assertEqual(parsed.original_filename, "contract.pdf")
+
+    def test_create_v2_rejects_malformed_reminder_transport(self):
+        for value in ("", "60,,10", "-1,0", "3.5", "abc"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                package_id = "20260912154534-482193775"
+                payload = create_payload_v2(package_id)
+                payload["reminder_offsets"] = value
+                write_ready_package(root, package_id, payload)
+                with self.assertRaises(mailbox_importer.MalformedPackage):
+                    mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+
+    def test_create_v2_rejects_invalid_blinker_transport(self):
+        for value in (-1, 3.5, True, "3"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                package_id = "20260912154535-482193775"
+                payload = create_payload_v2(package_id)
+                payload["blinker_minutes_before"] = value
+                write_ready_package(root, package_id, payload)
+                with self.assertRaises(mailbox_importer.MalformedPackage):
+                    mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+
+    def test_create_v2_requires_complete_attachment_pair(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_id = "20260912154536-482193775"
+            payload = create_payload_v2(package_id)
+            payload["attachment_basename"] = f"{package_id}.attachment.pdf"
+            write_ready_package(root, package_id, payload, b"pdf")
+            with self.assertRaises(mailbox_importer.MalformedPackage):
+                mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+
+    def test_create_v2_requires_explicit_start_and_known_attention(self):
+        for field, value in (("start", "2026-09-13T09:00:00"), ("attention_level", "blue")):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                package_id = "20260912154539-482193775"
+                payload = create_payload_v2(package_id)
+                payload[field] = value
+                write_ready_package(root, package_id, payload)
+                with self.assertRaises(mailbox_importer.MalformedPackage):
+                    mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+
+    def test_create_v1_and_v2_normalize_to_equivalent_canonical_command(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            v1_id = "20260912154537-482193775"
+            v2_id = "20260912154538-482193775"
+            v1 = create_payload(v1_id)
+            v1.update({"title": "Same", "description": "Line one\nLine two", "reminder_intent": {"offsets_minutes_before": [60, 10, 0]}, "blinker_intent": {"minutes_before": 10}})
+            v2 = create_payload_v2(v2_id)
+            v2.update({"title": "Same", "description": "Line one\nLine two", "reminder_offsets": "60,10,0", "blinker_minutes_before": 10})
+            v1_root = root / "v1"
+            v2_root = root / "v2"
+            v1_root.mkdir(); v2_root.mkdir()
+            write_ready_package(v1_root, v1_id, v1)
+            write_ready_package(v2_root, v2_id, v2)
+            first = mailbox_importer.parse_package(mailbox_importer.discover_packages(v1_root)[0])
+            second = mailbox_importer.parse_package(mailbox_importer.discover_packages(v2_root)[0])
+            self.assertEqual(
+                (first.title, first.description, first.start, first.reminder_offsets, first.attention_level, first.blinker_minutes_before),
+                (second.title, second.description, second.start, second.reminder_offsets, second.attention_level, second.blinker_minutes_before),
+            )
 
     def test_iCloud_resource_deadlock_while_staging_attachment_is_pending_sync(self):
         with tempfile.TemporaryDirectory() as tmp:

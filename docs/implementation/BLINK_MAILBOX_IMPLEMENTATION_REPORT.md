@@ -487,6 +487,25 @@ The phone MUST NOT send or override those fields, nor send `event_id`,
 `reminders_minutes_before`, `blinker_minutes_before`, recurrence, tags, or
 absolute `blink_datetime`.
 
+### CREATE transport v2 — flat Shortcut-friendly boundary
+
+The iPhone CREATE mailbox transport also supports version `2`, intentionally
+flat so native Apple Shortcuts does not need to construct nested dictionaries or
+JSON arrays. Version 1 remains accepted unchanged. Both versions normalize into
+the same canonical Mac CREATE transaction; the agenda schema and lifecycle are
+unchanged.
+
+Version 2 fields are `version: 2`, `type: "CREATE_EVENT"`, `transfer_id`,
+`title`, optional `description`, explicit-offset `start`, `attention_level`,
+`reminder_offsets` (a strict comma-separated non-negative integer string),
+`blinker_minutes_before` (a non-negative integer), and optional `created_at`.
+When one attachment exists, the flat pair `attachment_basename` and
+`attachment_original_filename` is required. The Mac importer independently
+parses/validates reminder and blinker values and converts them to the existing
+numeric `reminder_intent.offsets_minutes_before` and
+`blinker_intent.minutes_before` canonical fields. `.ready` ordering and
+transport-ID ownership are unchanged.
+
 ### Direct launch, Share Sheet, and zero-byte protection
 
 Direct launch has no attachment and must write only the JSON plus final `.ready`.

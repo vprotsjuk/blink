@@ -181,6 +181,10 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - Should a drop show staged attachment count before Save? **Recommended:** yes, reusing the existing paperclip/count presentation; Cancel removes only the draft staging folder.
 
 ## Next actions (3-7 concrete steps)
+CREATE mailbox transport v2 is now defined as a flat Shortcut-friendly
+transport. Version 1 remains accepted for compatibility; both versions are
+normalized by the Mac importer into the same canonical CREATE transaction.
+
 1. Keep the production mailbox disabled after the completed Phase 6 CREATE/DONE
    acceptance and empty-inbox preparation.
 2. Preserve the final originating-notification acknowledgement decision: the
