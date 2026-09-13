@@ -49,10 +49,11 @@ classifies macOS `Errno 11 (Resource deadlock avoided)` during package or
 attachment reads as `PENDING_SYNC`, preserving the exact package for retry.
 The accepted PDF was committed to a Mac-generated event-ID owner folder only
 after its bytes became local. A past-start event was observed in Today/Active
-until completion. Phase 6 DONE remains blocked because the existing
-`Blink DONE Test` Shortcut writes to historical `Blink_Feasibility/ToMac`; that
-folder is never used by the production/acceptance importer. The controlled
-mailbox is currently disabled.
+until completion. Phase 6 DONE remains blocked: after the accepted ntfy action
+was tapped, the acceptance inbox stayed empty and files appeared under the
+historical `Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.*` path. That
+feasibility tree is never used by the production/acceptance importer. The
+controlled mailbox is currently disabled.
 
 Real Apple Shortcuts has no native Generate UUID action. Production phone
 transport IDs therefore use `<yyyyMMddHHmmss>-<9-digit-random>`, for example

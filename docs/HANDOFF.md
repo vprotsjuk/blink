@@ -93,11 +93,13 @@ Controlled Phase 6A/6B CREATE acceptance subsequently passed against the empty
 acceptance inbox. The reader handled iCloud `dataless` files as `PENDING_SYNC`
 when macOS returned `Errno 11 (Resource deadlock avoided)`, then committed the
 PDF package after its bytes became local. The past-start event was observed in
-Today/Active with Attention enabled. Phase 6 DONE is currently blocked: the
-one-shot ntfy request was accepted, but `Blink DONE Test` wrote
-`20260912215237-901727503.done.json` + `.ready` to the historical
-`Blink_Feasibility/ToMac`. Those files remain untouched, and the acceptance
-worker was returned to OFF.
+Today/Active with Attention enabled. Phase 6 DONE remains blocked: after the
+one-shot ntfy request was accepted and the owner tapped `Done`, the acceptance
+inbox stayed empty and the event remained `done=false`. The newly produced
+files appeared under the historical
+`Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.*` path instead. All such
+feasibility files remain untouched, and the acceptance worker was returned to
+OFF.
 
 The long historical checkpoint paragraph immediately above contains older
 `120`/`133`/`160`/`162`/`163` test counts; they are superseded by the current `188` result

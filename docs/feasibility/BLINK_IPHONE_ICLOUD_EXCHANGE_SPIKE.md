@@ -253,13 +253,14 @@ committed to a Mac-generated event-ID owner folder and removed only after the
 agenda/attachment commit. The past-start PDF event was observed in Today/Active
 with Attention still enabled, matching the current `requires_done` lifecycle.
 
-The controlled real DONE request was accepted by ntfy, but the existing
-`Blink DONE Test` Shortcut wrote its package
-`20260912215237-901727503.done.json` + `.ready` to the historical
-`Blink_Feasibility/ToMac`, not the acceptance inbox. Those feasibility files
-remain untouched; the DONE importer was not pointed at that path. A future
-DONE acceptance requires an owner-approved Shortcut target for
-`Blink_Acceptance/ToMac`.
+The controlled real DONE request was accepted by ntfy and the owner tapped the
+button, but the acceptance inbox remained empty and the event stayed
+`done=false`. The newly produced files appeared under the historical
+`Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.*` path (the prior attempt also
+produced `20260912215237-901727503.done.json` + `.ready` there). Those
+feasibility files remain untouched; the DONE importer was not pointed at that
+path. A future DONE acceptance requires a verified Shortcut destination that
+writes directly to `Blink_Acceptance/ToMac`.
 
 ## Reproducibility evidence
 

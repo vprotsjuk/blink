@@ -253,15 +253,17 @@ enable commands were run in this checkpoint.
   `Today → Active` (not History), retained yellow Attention, and kept the
   configured 5-minute blinker lead. This is the current lifecycle behavior;
   no redesign was introduced.
-- **Real DONE acceptance — BLOCKED at transport boundary.** One controlled
-  ntfy request was accepted for event
-  `event-8acec3e8-352e-4300-813c-5a31efdaa0d7` using the encoded
-  `Blink DONE Test` action and no `clear=true`. The iPhone created
-  `20260912215237-901727503.done.json` plus `.ready`, but the existing test
-  Shortcut wrote them to the historical `Blink_Feasibility/ToMac`, not the
-  controlled acceptance inbox. Those files remain untouched; the DONE importer
-  was not pointed at feasibility. A future controlled run requires an
-  owner-approved DONE Shortcut target that writes to `Blink_Acceptance/ToMac`.
+- **Real DONE acceptance — BLOCKED at transport boundary.** The controlled
+  ntfy request for event `event-8acec3e8-352e-4300-813c-5a31efdaa0d7` was
+  accepted with the encoded `Blink DONE Test` action and no `clear=true`.
+  After the owner tapped `Done`, the acceptance inbox remained empty and the
+  event stayed `done=false`. The newly produced files appeared instead under
+  the historical path `Blink_Feasibility/ToMac/Blink_Acceptance/ToMac.json`
+  and `.ready` (the prior attempt also produced
+  `20260912215237-901727503.done.json` + `.ready` there). These feasibility
+  files remain untouched; the DONE importer was never pointed at that path.
+  A future controlled run requires a verified Shortcut destination that writes
+  directly into `Blink_Acceptance/ToMac`.
 - **Early Done audit — code change still pending.** `BlinkStore.complete` and
   `EventSnapshot`/Python sectioning already support future-start completion
   and History by `done=true`, but the Upcoming `EventListView` currently
