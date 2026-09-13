@@ -24,7 +24,13 @@ from app import ntfy_schedule
 from app import attachment_store
 from app import mailbox_importer
 from app.event_timing import effective_event_start
-from app.notification_format import build_done_action, build_event_payload, done_action_enabled
+from app.notification_format import (
+    build_done_action,
+    build_done_confirmation_payload,
+    build_event_payload,
+    done_action_enabled,
+    push_tags_for_event,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -143,10 +149,42 @@ def mailbox_worker_from_environment() -> MailboxWorker:
     if not enabled or mailbox_root is None:
         return MailboxWorker(lambda: {"scanned": 0, "applied": 0}, enabled=False)
     blink_root = PROJECT_DIR
+    agenda_path = blink_root / "agenda.json"
+
+    def operation() -> dict[str, Any]:
+        config = load_config()
+
+        def on_done_applied(command: mailbox_importer.ParsedCommand, result: dict[str, Any]) -> bool:
+            if config is None:
+                LOGGER.error("DONE confirmation skipped: configuration is unavailable")
+                return False
+            try:
+                document = agenda_store.load_agenda_document(agenda_path)
+            except (OSError, ValueError, json.JSONDecodeError) as exc:
+                LOGGER.error("DONE confirmation skipped: agenda reload failed: %s", exc)
+                return False
+            event = next(
+                (
+                    item
+                    for item in document.get("events", [])
+                    if isinstance(item, dict) and item.get("id") == command.event_id
+                ),
+                None,
+            )
+            if event is None:
+                LOGGER.error("DONE confirmation skipped: event %s is missing after apply", command.event_id)
+                return False
+            return send_done_confirmation_notification(config, event)
+
+        return mailbox_importer.process_mailbox_iteration(
+            mailbox_root,
+            blink_root,
+            agenda_path,
+            on_done_applied=on_done_applied,
+        )
+
     return MailboxWorker(
-        lambda: mailbox_importer.process_mailbox_iteration(
-            mailbox_root, blink_root, blink_root / "agenda.json"
-        ),
+        operation,
         enabled=True,
         runtime_path=blink_root / "mailbox" / "mailbox_runtime.json",
     )
@@ -1153,6 +1191,38 @@ def send_ntfy_notification(
         offset_minutes,
         status,
     )
+    return False
+
+
+def send_done_confirmation_notification(config: dict[str, Any], event: dict[str, Any]) -> bool:
+    """Send one short confirmation after a remote DONE was applied."""
+    payload = build_done_confirmation_payload(event)
+    priority = event.get("priority", "default")
+    if priority == "default":
+        priority = config.get("default_priority", "high")
+    request = build_ntfy_request(
+        config=config,
+        title=payload["title"],
+        message=payload["body"],
+        priority=str(priority),
+        tags=push_tags_for_event(event, config.get("default_tags", ["calendar"])),
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            status = response.getcode()
+    except urllib.error.HTTPError as exc:
+        LOGGER.error(
+            "DONE confirmation failure: event=%s HTTP %s: %s",
+            event.get("id", "<unknown>"), exc.code, _http_error_detail(exc),
+        )
+        return False
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        LOGGER.error("DONE confirmation failure: event=%s error=%s", event.get("id", "<unknown>"), exc)
+        return False
+    if 200 <= status < 300:
+        LOGGER.info("DONE confirmation sent: event=%s status=%s", event.get("id", "<unknown>"), status)
+        return True
+    LOGGER.error("DONE confirmation failure: event=%s status=%s", event.get("id", "<unknown>"), status)
     return False
 
 

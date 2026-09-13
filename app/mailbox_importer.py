@@ -17,7 +17,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from app.agenda_store import agenda_lock
@@ -739,9 +739,18 @@ def process_mailbox_iteration(
     agenda_path: Path,
     *,
     max_packages: int = 8,
+    on_done_applied: Callable[[ParsedCommand, dict[str, Any]], bool] | None = None,
 ) -> dict[str, int]:
     """Process one bounded mailbox scan; transport cleanup is last."""
-    stats = {"scanned": 0, "applied": 0, "pending": 0, "malformed": 0, "busy": 0}
+    stats = {
+        "scanned": 0,
+        "applied": 0,
+        "pending": 0,
+        "malformed": 0,
+        "busy": 0,
+        "confirmation_sent": 0,
+        "confirmation_failed": 0,
+    }
     recover_pending_transactions(blink_root, agenda_path)
     for candidate in discover_packages(mailbox_root)[: max(0, int(max_packages))]:
         stats["scanned"] += 1
@@ -768,6 +777,19 @@ def process_mailbox_iteration(
             stats["busy"] += 1
             continue
         stats["applied"] += 1
+        if (
+            command.kind == "DONE"
+            and outcome == "applied"
+            and not result.get("replayed")
+            and on_done_applied is not None
+        ):
+            try:
+                if on_done_applied(command, result):
+                    stats["confirmation_sent"] += 1
+                else:
+                    stats["confirmation_failed"] += 1
+            except Exception:
+                stats["confirmation_failed"] += 1
         for path in candidate.package_paths:
             try:
                 path.unlink()

@@ -564,3 +564,79 @@ class MailboxImporterTests(unittest.TestCase):
             stats = mailbox_importer.process_mailbox_iteration(mailbox, root, agenda, max_packages=1)
             self.assertEqual(stats["applied"], 1)
             self.assertEqual(list(mailbox.iterdir()), [])
+
+    def test_done_applied_callback_runs_once_and_not_for_replay_or_noop(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mailbox = root / "to_mac"
+            mailbox.mkdir()
+            agenda = self._agenda(root, [{
+                "id": "event-1",
+                "title": "Remote",
+                "start": "2099-09-15T11:00:00-07:00",
+                "reminders_minutes_before": [0],
+                "enabled": True,
+                "requires_done": True,
+                "done": False,
+                "done_at": None,
+                "attention_level": "yellow",
+            }])
+            transport_id = "20260912220000-123456789"
+            callback_calls = []
+
+            def callback(command, result):
+                callback_calls.append((command.transport_id, result.copy()))
+                return True
+
+            def write_done(command_id):
+                (mailbox / f"{command_id}.done.json").write_text(
+                    json.dumps(done_payload(command_id, "event-1")), encoding="utf-8"
+                )
+                (mailbox / f"{command_id}.ready").write_text("ready\n", encoding="utf-8")
+
+            write_done(transport_id)
+            mailbox_importer.process_mailbox_iteration(mailbox, root, agenda, on_done_applied=callback)
+            self.assertEqual(len(callback_calls), 1)
+            self.assertEqual(callback_calls[0][0], transport_id)
+            self.assertEqual(callback_calls[0][1]["result"], "applied")
+
+            write_done(transport_id)
+            mailbox_importer.process_mailbox_iteration(mailbox, root, agenda, on_done_applied=callback)
+            self.assertEqual(len(callback_calls), 1, "Ledger replay must not send a second confirmation")
+
+            noop_id = "20260912220001-123456789"
+            write_done(noop_id)
+            mailbox_importer.process_mailbox_iteration(mailbox, root, agenda, on_done_applied=callback)
+            self.assertEqual(len(callback_calls), 1, "Already-done event must not confirm")
+
+    def test_done_confirmation_failure_does_not_rollback_or_retain_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mailbox = root / "to_mac"
+            mailbox.mkdir()
+            agenda = self._agenda(root, [{
+                "id": "event-failure",
+                "title": "Remote",
+                "start": "2099-09-15T11:00:00-07:00",
+                "reminders_minutes_before": [0],
+                "enabled": True,
+                "requires_done": True,
+                "done": False,
+                "done_at": None,
+            }])
+            transport_id = "20260912220002-123456789"
+            (mailbox / f"{transport_id}.done.json").write_text(
+                json.dumps(done_payload(transport_id, "event-failure")), encoding="utf-8"
+            )
+            (mailbox / f"{transport_id}.ready").write_text("ready\n", encoding="utf-8")
+
+            stats = mailbox_importer.process_mailbox_iteration(
+                mailbox,
+                root,
+                agenda,
+                on_done_applied=lambda _command, _result: False,
+            )
+            self.assertEqual(stats["confirmation_failed"], 1)
+            self.assertEqual(list(mailbox.iterdir()), [], "Committed package must still be cleaned")
+            document = json.loads(agenda.read_text(encoding="utf-8"))
+            self.assertTrue(document["events"][0]["done"], "Confirmation failure must not roll back DONE")

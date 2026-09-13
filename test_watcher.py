@@ -183,6 +183,57 @@ class WatcherCoreTests(unittest.TestCase):
         self.assertNotIn("clear=true", request.headers["Actions"])
         self.assertIn("event-a%26b", request.headers["Actions"])
 
+    def test_done_confirmation_is_short_and_has_no_action_button(self):
+        event = {
+            "id": "event-confirm",
+            "title": "Replace Tesla wheels",
+            "description": "Costco San Jose",
+            "start": "2026-09-15T11:00:00-07:00",
+            "priority": "default",
+            "tags": ["calendar"],
+        }
+        captured = {}
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def getcode(self):
+                return 200
+
+        def fake_urlopen(request, timeout):
+            captured["request"] = request
+            captured["timeout"] = timeout
+            return FakeResponse()
+
+        with patch("watcher.urllib.request.urlopen", fake_urlopen):
+            sent = watcher.send_done_confirmation_notification(self._notification_config(), event)
+
+        self.assertTrue(sent)
+        self.assertEqual(
+            captured["request"].data.decode("utf-8"),
+            "Costco San Jose\nScheduled: September 15, 2026 at 11:00",
+        )
+        self.assertNotIn("Actions", captured["request"].headers)
+        self.assertTrue(captured["request"].headers["Title"].startswith("=?utf-8?"))
+
+    def test_done_confirmation_failure_does_not_change_event_data(self):
+        event = {
+            "id": "event-confirm-failure",
+            "title": "Keep completed",
+            "description": "",
+            "start": "2026-09-15T11:00:00-07:00",
+            "priority": "default",
+            "tags": ["calendar"],
+            "done": True,
+        }
+        with patch("watcher.urllib.request.urlopen", side_effect=OSError("offline")):
+            self.assertFalse(watcher.send_done_confirmation_notification(self._notification_config(), event))
+        self.assertTrue(event["done"])
+
     def test_send_ntfy_notification_supports_cyrillic_title(self):
         event = {
             "id": "ru",

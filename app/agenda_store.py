@@ -46,7 +46,6 @@ def load_agenda_document(path: Path, *, assume_locked: bool = False) -> dict[str
     if not isinstance(raw.get("events"), list):
         raw["events"] = []
     migrated = migrate_obsolete_fields(raw)
-    migrated = repair_completed_future_events(migrated)
     attachment_store.migrate_legacy_series_attachments(path.parent, migrated.get("events", []))
     for event in migrated.get("events", []):
         if isinstance(event, dict):
@@ -68,22 +67,6 @@ def migrate_obsolete_fields(document: dict[str, Any]) -> dict[str, Any]:
         event.pop("snoozed_until", None)
         event.pop("snoozed_for_minutes", None)
         event.pop("template_id", None)
-    return result
-
-
-def repair_completed_future_events(document: dict[str, Any], now: datetime | None = None) -> dict[str, Any]:
-    """Reopen stale records left by older builds after a completed event was moved forward."""
-    result = json.loads(json.dumps(document))
-    current = now or datetime.now(ZoneInfo(LOCAL_TIMEZONE))
-    for event in result.get("events", []):
-        if not isinstance(event, dict) or not is_personal_event(event):
-            continue
-        if event.get("requires_done") is not True or event.get("done") is not True:
-            continue
-        start = parse_aware_start(event)
-        if start is not None and start > current.astimezone(start.tzinfo):
-            event["done"] = False
-            event["done_at"] = None
     return result
 
 
@@ -311,6 +294,8 @@ def complete_event(document: dict[str, Any], event_id: str, now: datetime) -> di
     local_now = now.astimezone(ZoneInfo(LOCAL_TIMEZONE))
     for event in result.get("events", []):
         if event.get("id") == event_id:
+            if event.get("done") is True:
+                return result
             event["requires_done"] = True
             event["done"] = True
             event["done_at"] = local_now.isoformat()

@@ -196,6 +196,33 @@ func testLifecycleSectionsAndDonePersistence() throws {
     try expect(reloaded.history.map(\.id) == ["active"], "Done state should survive reload")
 }
 
+func testFutureCompletionMovesToHistoryAndIsIdempotent() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try """
+    {"version":1,"events":[{"id":"future","title":"Future","description":"Keep","start":"2099-09-15T11:00:00-07:00","reminders_minutes_before":[60],"enabled":true,"requires_done":true,"done":false,"done_at":null,"attention_level":"yellow","attachments":{"owner_id":"future","count":1,"has_files":true}}]}
+    """.write(to: agenda, atomically: true, encoding: .utf8)
+    let store = BlinkStore(root: root)
+    let attachmentOwner = AttachmentWorkspace(root: root).attachmentURL(ownerID: "future")
+    try FileManager.default.createDirectory(at: attachmentOwner, withIntermediateDirectories: true)
+    try Data("keep".utf8).write(to: attachmentOwner.appendingPathComponent("keep.txt"))
+    let completion = parseISODate("2026-09-12T21:30:00-07:00")!
+    try store.complete(eventID: "future", now: completion)
+
+    var snapshot = store.loadSnapshot(now: parseISODate("2026-09-12T21:31:00-07:00")!)
+    try expect(snapshot.upcoming.isEmpty, "Completed future event should leave Upcoming")
+    try expect(snapshot.history.map(\.id) == ["future"], "Completed future event should enter History")
+    try expect(snapshot.history.first?.start == "2099-09-15T11:00:00-07:00", "Completion must preserve original start")
+    try expect(snapshot.history.first?.done_at == "2026-09-12T21:30:00-07:00", "Completion must record done_at")
+    try expect(snapshot.attentionState == .off, "Completed future event must clear attention")
+    try expect(snapshot.history.first?.attachments?.hasFiles == true, "Completion must preserve attachments")
+
+    try store.complete(eventID: "future", now: parseISODate("2026-09-12T22:00:00-07:00")!)
+    snapshot = store.loadSnapshot(now: parseISODate("2026-09-12T22:01:00-07:00")!)
+    try expect(snapshot.history.first?.done_at == "2026-09-12T21:30:00-07:00", "Repeated completion must not change done_at")
+    try expect(snapshot.history.count == 1, "Repeated completion must not duplicate History")
+}
+
 func testAttentionHighestPriorityAndExclusions() throws {
     let events = [
         BlinkEvent(id: "green", title: "Green", description: nil, start: "2026-09-07T10:00:00-07:00", reminders_minutes_before: [0], enabled: true, source: nil, requires_done: true, done: false, done_at: nil, attention_level: "green"),
@@ -451,7 +478,7 @@ func testEditingDoneEventToFutureIsRejected() throws {
     try expect(rejected, "Moving a history event to the future should be rejected")
 }
 
-func testLoadingStaleCompletedFutureEventRepairsAndMovesIt() throws {
+func testCompletedFutureEventRemainsInHistory() throws {
     let root = try temporaryRoot()
     let agenda = root.appendingPathComponent("agenda.json")
     try """
@@ -459,11 +486,11 @@ func testLoadingStaleCompletedFutureEventRepairsAndMovesIt() throws {
     """.write(to: agenda, atomically: true, encoding: .utf8)
     let store = BlinkStore(root: root)
     let snapshot = store.loadSnapshot(now: parseISODate("2026-09-08T09:00:00-07:00")!)
-    try expect(snapshot.upcoming.map(\.id) == ["event"], "Stale completed future event should be repaired into upcoming")
-    try expect(snapshot.history.isEmpty, "Repaired event should leave history")
+    try expect(snapshot.upcoming.isEmpty, "Completed future event should not re-enter Upcoming")
+    try expect(snapshot.history.map(\.id) == ["event"], "Completed future event should remain in History")
     let object = try readJSONObject(agenda)
     let events = object["events"] as? [[String: Any]] ?? []
-    try expect(events.first?["done"] as? Bool == false, "Stale completed future event was not persisted as unfinished")
+    try expect(events.first?["done"] as? Bool == true, "Completed future event must remain done")
 }
 
 func testAttentionOutputMappingAndTransitions() throws {
@@ -1000,6 +1027,29 @@ func testActiveAttentionUiContracts() throws {
     try expect(source.contains("todayTabAttentionColor"), "Today tab should receive the highest active priority color")
 }
 
+func testUpcomingRowsExposeDone() throws {
+    let sourceURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/BlinkSwiftUICore/ContentView.swift")
+    let source = try String(contentsOf: sourceURL, encoding: .utf8)
+    guard let start = source.range(of: "struct EventListView: View"),
+          let end = source.range(of: "struct EventRows: View", range: start.upperBound..<source.endIndex)
+    else {
+        throw TestFailure(description: "Could not locate EventListView source")
+    }
+    let upcomingSection = String(source[start.lowerBound..<end.lowerBound])
+    try expect(upcomingSection.contains("showsDone: true"), "Upcoming rows should expose Done")
+    guard let todayStart = source.range(of: "struct TodayView: View"),
+          let todayEnd = source.range(of: "struct EventListView: View", range: todayStart.upperBound..<source.endIndex)
+    else {
+        throw TestFailure(description: "Could not locate TodayView source")
+    }
+    let todaySection = String(source[todayStart.lowerBound..<todayEnd.lowerBound])
+    try expect(todaySection.contains("showsDone: true"), "Today rows should expose Done")
+}
+
 func testLocationSearchAndCustomCoordinateContracts() throws {
     let url = try LocationGeocoder.searchURL(query: "San Francisco")
     let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
@@ -1509,6 +1559,7 @@ let tests: [(String, () throws -> Void)] = [
     ("disable and delete events", testDisableAndDeleteEvents),
     ("save creates missing agenda", testSaveCreatesMissingAgenda),
     ("lifecycle sections and done persistence", testLifecycleSectionsAndDonePersistence),
+    ("future completion moves to history and is idempotent", testFutureCompletionMovesToHistoryAndIsIdempotent),
     ("attention highest priority and exclusions", testAttentionHighestPriorityAndExclusions),
     ("legacy past events do not become active", testLegacyPastEventsDoNotBecomeActive),
     ("blinker offset starts attention before event start", testBlinkerOffsetStartsAttentionBeforeEventStart),
@@ -1521,7 +1572,7 @@ let tests: [(String, () throws -> Void)] = [
     ("complete weekly fixed recurring appends next weekday", testCompleteWeeklyFixedRecurringAppendsNextWeekday),
     ("editing done event is rejected", testEditingDoneEventIsRejected),
     ("editing done event to future is rejected", testEditingDoneEventToFutureIsRejected),
-    ("loading stale completed future event repairs and moves it", testLoadingStaleCompletedFutureEventRepairsAndMovesIt),
+    ("completed future event remains in history", testCompletedFutureEventRemainsInHistory),
     ("attention output mapping and transitions", testAttentionOutputMappingAndTransitions),
     ("loads astronomy v2 location and weather read-only files", testLoadsAstronomyV2LocationAndWeatherReadOnlyFiles),
     ("loads astronomy schedule status", testLoadsAstronomyScheduleStatus),
@@ -1549,6 +1600,7 @@ let tests: [(String, () throws -> Void)] = [
     ("new event plus button and tab hover contracts", testNewEventPlusButtonAndTabHoverContracts),
     ("importance picker uses event color", testImportancePickerUsesEventColor),
     ("active attention UI contracts", testActiveAttentionUiContracts),
+    ("upcoming rows expose Done", testUpcomingRowsExposeDone),
     ("location search and custom coordinate contracts", testLocationSearchAndCustomCoordinateContracts),
     ("GUI store has no sender symbols", testGuiStoreDoesNotContainSenderSymbols),
     ("Astronomy uses shared push icons", testAstronomyUsesSharedPushIcons),

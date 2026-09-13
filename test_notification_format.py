@@ -8,6 +8,7 @@ from app.notification_format import (
     MAX_NTFY_TITLE_BYTES,
     build_event_notification,
     build_done_action,
+    build_done_confirmation_payload,
     build_event_payload,
     push_tags_for_event,
 )
@@ -90,6 +91,16 @@ class NotificationFormatTests(unittest.TestCase):
             0,
         )
         self.assertNotIn("actions", payload)
+
+    def test_done_confirmation_payload_contains_title_description_and_schedule_without_action(self):
+        payload = build_done_confirmation_payload(self.personal_event())
+        self.assertEqual(payload["title"], "✓ Done — Visit")
+        self.assertEqual(payload["body"], "Bring papers\nScheduled: September 14, 2026 at 15:00")
+        self.assertNotIn("actions", payload)
+
+    def test_done_confirmation_payload_omits_empty_description(self):
+        payload = build_done_confirmation_payload(self.personal_event(description=""))
+        self.assertEqual(payload["body"], "Scheduled: September 14, 2026 at 15:00")
 
     def test_direct_payload_and_queued_payload_share_action_representation(self):
         payload = build_event_payload(

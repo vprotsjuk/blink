@@ -772,14 +772,6 @@ public struct BlinkStore {
                         repaired = true
                     }
                 }
-                guard (rawEvents[index]["source"] as? String ?? "personal") == "personal",
-                      rawEvents[index]["requires_done"] as? Bool == true,
-                      rawEvents[index]["done"] as? Bool == true,
-                      let startText = rawEvents[index]["start"] as? String,
-                      let start = parseISODate(startText), start > now else { continue }
-                rawEvents[index]["done"] = false
-                rawEvents[index]["done_at"] = NSNull()
-                repaired = true
             }
             if repaired {
                 object["events"] = rawEvents
@@ -1009,20 +1001,21 @@ public struct BlinkStore {
     public func complete(eventID: String, now: Date = Date()) throws {
         try withAgendaLock {
             var document = try loadAgendaObject()
-        var events = document["events"] as? [[String: Any]] ?? []
-        guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else { return }
-        events[index]["requires_done"] = true
-        events[index]["done"] = true
-        events[index]["done_at"] = localISOString(now)
-        let generation = (events[index]["generation"] as? Int) ?? 0
-        let hasSuccessor = events.contains {
-            ($0["recurrence_parent_id"] as? String) == eventID
-                && (($0["generation"] as? Int) ?? -1) == generation + 1
-        }
-        if !hasSuccessor, let next = buildNextRecurringEvent(from: events[index], completedAt: now) {
-            events.append(next)
-        }
-        document["events"] = events
+            var events = document["events"] as? [[String: Any]] ?? []
+            guard let index = events.firstIndex(where: { ($0["id"] as? String) == eventID }) else { return }
+            if events[index]["done"] as? Bool == true { return }
+            events[index]["requires_done"] = true
+            events[index]["done"] = true
+            events[index]["done_at"] = localISOString(now)
+            let generation = (events[index]["generation"] as? Int) ?? 0
+            let hasSuccessor = events.contains {
+                ($0["recurrence_parent_id"] as? String) == eventID
+                    && (($0["generation"] as? Int) ?? -1) == generation + 1
+            }
+            if !hasSuccessor, let next = buildNextRecurringEvent(from: events[index], completedAt: now) {
+                events.append(next)
+            }
+            document["events"] = events
             try saveAgendaObject(document)
         }
     }

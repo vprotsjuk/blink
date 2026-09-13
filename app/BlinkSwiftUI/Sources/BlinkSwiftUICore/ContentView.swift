@@ -959,6 +959,7 @@ struct TodayView: View {
                 attachmentRoot: attachmentRoot,
                 activeEventIDs: activeEventIDs,
                 pulseVisible: pulseVisible,
+                showsDone: true,
             )
             Spacer()
         }
@@ -987,6 +988,7 @@ struct EventListView: View {
                 attachmentRoot: attachmentRoot,
                 activeEventIDs: activeEventIDs,
                 pulseVisible: pulseVisible,
+                showsDone: true,
                 showsToggle: title != "History",
                 showsHistory: title == "History"
             )

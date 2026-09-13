@@ -544,7 +544,7 @@ class AgendaStoreTests(unittest.TestCase):
                 now=datetime.fromisoformat("2026-09-08T09:00:00-07:00"),
             )
 
-    def test_loading_stale_completed_future_event_repairs_and_moves_it(self):
+    def test_completed_future_event_remains_in_history_when_loaded(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "agenda.json"
             path.write_text(json.dumps({
@@ -560,17 +560,34 @@ class AgendaStoreTests(unittest.TestCase):
                     "done_at": "2026-09-08T09:09:40-07:00",
                 }],
             }), encoding="utf-8")
-            document = agenda_store.repair_completed_future_events(
-                json.loads(path.read_text(encoding="utf-8")),
-                now=datetime.fromisoformat("2026-09-08T09:00:00-07:00"),
-            )
+            document = agenda_store.load_agenda_document(path)
             event = document["events"][0]
-            self.assertFalse(event["done"])
-            self.assertIsNone(event["done_at"])
+            self.assertTrue(event["done"])
+            self.assertEqual(event["done_at"], "2026-09-08T09:09:40-07:00")
             sections = agenda_store.split_personal_event_sections(
                 document, datetime.fromisoformat("2026-09-08T09:00:00-07:00")
             )
-            self.assertEqual([item["id"] for item in sections["upcoming"]], ["event"])
+            self.assertEqual([item["id"] for item in sections["history"]], ["event"])
+
+    def test_complete_event_is_idempotent_for_done_event(self):
+        document = {
+            "version": 1,
+            "events": [{
+                "id": "event",
+                "title": "Done",
+                "start": "2099-09-15T11:00:00-07:00",
+                "reminders_minutes_before": [0],
+                "enabled": True,
+                "requires_done": True,
+                "done": True,
+                "done_at": "2026-09-12T21:30:00-07:00",
+                "recurrence": {"mode": "weekly_fixed", "weekday": 2, "time": "11:00"},
+            }],
+        }
+        repeated = agenda_store.complete_event(
+            document, "event", now=datetime.fromisoformat("2026-09-12T22:00:00-07:00")
+        )
+        self.assertEqual(repeated, document)
 
 
 if __name__ == "__main__":

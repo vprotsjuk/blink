@@ -68,6 +68,18 @@ def build_done_action(
     return f"view, Done, {shortcut_url}"
 
 
+def build_done_confirmation_payload(event: dict[str, Any]) -> dict[str, str]:
+    """Build the short Mac-confirmed completion push without an action button."""
+    title = _truncate_utf8(
+        f"✓ Done — {_single_line_title(event.get('title', ''))}",
+        MAX_NTFY_TITLE_BYTES,
+    )
+    scheduled = f"Scheduled: {_event_date_label(event)}"
+    description = str(event.get("description", "")).strip()
+    body = f"{description}\n{scheduled}" if description else scheduled
+    return {"title": title, "body": _truncate_utf8(body, MAX_NTFY_BODY_BYTES)}
+
+
 def build_event_payload(
     config: dict[str, Any], event: dict[str, Any], offset_minutes: int
 ) -> dict[str, Any]:
