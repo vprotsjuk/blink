@@ -519,10 +519,13 @@ Observed iPhone behavior:
    produced `AllFiles = 3`, `.ready = 1`, manifest = 1, and `Attachments = 1`.
    The WORK plist contains 46 actions and its successful branch ends in
    `Choose from Attachments` → `Show Selected Item in Quick Look`. The
-   pre-repair WORK copy had 42 actions. Therefore the remaining diagnostic
-   boundary is the iPhone's actually synced WORK version versus the repaired
-   Mac version, followed by iOS presentation only if the iPhone tree is
-   confirmed current. No further push should be sent before that check.
+   pre-repair WORK copy had 42 actions. The owner subsequently confirmed by
+   iPhone editor screenshot that the repaired `Get file` → `Get Contents of
+   File` → `AllFiles` prefix is present on the phone. The stale-version
+   hypothesis is therefore removed. The remaining diagnostic boundary is
+   the iPhone runtime output after `AllFiles` and the final Quick Look
+   presentation. No further push should be sent before that boundary is
+   diagnosed.
 
 Therefore package availability and basic iCloud synchronization are proven.
 The unresolved area is the binding/presentation between the filtered Shortcut
@@ -550,8 +553,9 @@ acquisition repair, the candidate was adjusted only in its final branches:
 The SQLite action blob and macOS editor confirm that both chooser inputs are
 the filtered `Attachments` File items/references. The repaired tree was
 tested by one new phone notification after the repair, but the result was
-again only a checkmark with no chooser or preview. The iPhone's actual synced
-action tree still needs independent verification.
+again only a checkmark with no chooser or preview. The iPhone editor now
+confirms the repaired acquisition prefix; actual runtime values after
+`AllFiles` still need independent verification.
 
 ## 12. Exact questions for independent GPT diagnosis
 

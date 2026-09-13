@@ -96,8 +96,11 @@ Blink_Acceptance/ToPhone` → `Get Contents of File` pattern. It again completed
 with a checkmark but no chooser/PDF. Mac-side evaluation of the same package
 gave `AllFiles = 3`, ready = 1, manifest = 1, and attachments = 1, so the
 package and fail-closed counts do not explain the observed iPhone result. The
-iPhone's synced WORK version must be checked before any further push; the
-production mailbox stays disabled.
+owner has now confirmed by iPhone editor screenshot that the repaired
+acquisition prefix is present on the phone, so the stale-version hypothesis
+is removed. The remaining diagnostic boundary is the iPhone runtime output
+after `AllFiles` and the final Quick Look presentation; the production
+mailbox stays disabled.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.

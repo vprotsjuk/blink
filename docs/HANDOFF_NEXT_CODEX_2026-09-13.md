@@ -268,11 +268,13 @@ The controlled Mac-side evidence immediately before that push was:
 `manifest matches = 1`, and `Attachments = 1`. The WORK plist has 46 actions,
 and its successful-count path is `Choose from Attachments` → `Show Selected
 Item in Quick Look`; no fail-closed branch should be selected for this
-package. The pre-repair WORK copy had 42 actions, so the iPhone's actually
-synced Shortcut version is now an explicit unresolved boundary: the Mac
-database contains the repaired 46-action tree, but the iPhone editor has not
-yet been independently verified after the repair. No further push should be
-sent until that version boundary is checked.
+package. The pre-repair WORK copy had 42 actions. The owner's subsequent
+iPhone editor screenshot now confirms the repaired acquisition prefix is
+present on the phone, so the stale-version hypothesis is removed. The
+remaining unobserved boundary is the iPhone runtime output after `AllFiles`:
+ready and manifest counts, attachment count, and then presentation of the
+final Quick Look action. No further push should be sent until that boundary
+is diagnosed.
 
 Do not add another contents action after `Attachments` unless the independent
 review proves its input is the folder and its output is a file list. The old

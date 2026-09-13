@@ -131,9 +131,12 @@ repair still finished on iPhone with a checkmark but no chooser or PDF. The
 Mac-side package evaluation immediately before the push was `AllFiles = 3`,
 ready = 1, manifest = 1, and attachments = 1; therefore the Mac package and
 fail-closed count branches do not explain the failure. The Mac database has
-the repaired 46-action tree, while the iPhone's actually synced WORK version
-has not yet been independently verified. No further push should be sent
-before checking that version boundary.
+the repaired 46-action tree. The owner has now confirmed by iPhone editor
+screenshot that the repaired acquisition prefix is present on the phone, so
+the stale-version hypothesis is removed. The remaining diagnostic boundary
+is the iPhone runtime output after `AllFiles` and the final Quick Look
+presentation. No further push should be sent before that boundary is
+diagnosed.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.

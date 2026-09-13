@@ -119,11 +119,14 @@ new controlled push was sent after the repair and again finished on iPhone
 with a checkmark but no chooser or PDF. Immediately before that push, the Mac
 package evaluation was `AllFiles = 3`, ready = 1, manifest = 1, and
 attachments = 1, so no fail-closed count branch should have stopped the
-Shortcut. The Mac database contains the repaired 46-action WORK tree; the
-iPhone's actually synced tree remains unverified, and no additional push is
-allowed until that version boundary is checked. SQLite/editor inspection
-confirms the filtered values are File items/references. No production mailbox
-was enabled. The unresolved gate is still physical iPhone viewing.
+Shortcut. The Mac database contains the repaired 46-action WORK tree, and the
+owner's iPhone editor screenshot now confirms the repaired acquisition prefix
+is present on the phone. The stale-version hypothesis is removed. The
+remaining unobserved boundary is the iPhone runtime output after `AllFiles`
+and the final Quick Look presentation; no additional push is allowed until
+that boundary is diagnosed. SQLite/editor inspection confirms the filtered
+values are File items/references. No production mailbox was enabled. The
+unresolved gate is still physical iPhone viewing.
 
 SwiftUI also has the approved Phase 7 fast refresh: `ContentView` observes the
 parent directory containing `agenda.json`, filters/debounces atomic-replace
