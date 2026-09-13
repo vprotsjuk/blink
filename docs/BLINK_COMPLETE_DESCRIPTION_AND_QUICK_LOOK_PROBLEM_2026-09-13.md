@@ -629,6 +629,49 @@ The independent GPT should challenge this proposal and answer:
 No further ntfy push has been sent after this failure. The next action must be
 diagnosis, not another acceptance attempt.
 
+### External GPT proposal and Codex assessment
+
+The independent GPT agrees that another speculative WORK edit or acceptance
+push would be premature. It proposes four diagnostic areas: use the unchanged
+old Shortcut as a control, expose on-device counts, compare invocation
+contexts, and evaluate the presentation action only after the earlier
+boundaries are proven. It also correctly notes that Mac-side counts do not
+prove the values produced on the iPhone.
+
+I accept that diagnostic direction, but choose the least invasive first
+experiment. The unchanged canonical `Blink Files` Shortcut currently points
+to `Blink_Feasibility/ToPhone`, where the Mac contains exactly one known PDF:
+`745 Windsor Dr Menlo Park_1.pdf`. It still uses the historical simple flow:
+
+~~~text
+Get file/folder
+-> Get Contents of File
+-> Choose from List
+-> Quick Look
+~~~
+
+The first diagnostic should therefore be a manual run of this unchanged
+canonical Shortcut on the current physical iPhone. This requires no new ntfy
+push, does not modify any Shortcut, and uses only one owner action. Its
+information value is higher than immediately building instrumentation:
+
+- If canonical `Blink Files` opens the PDF, current iOS and the basic
+  `Get Contents` → chooser → Quick Look presentation path work; the defect is
+  narrowed to the WORK input parsing, filters, variable binding, or the
+  external action's input/context.
+- If canonical `Blink Files` also ends with a checkmark and no preview, the
+  problem is not specific to Stage2 validation; current iOS Quick Look or the
+  Shortcut presentation context becomes the leading boundary.
+- If canonical fails with a concrete error, that error is more valuable than
+  another acceptance result and must be recorded verbatim.
+
+The exact owner action is: open `Shortcuts` → open `Blink Files` → tap the
+play button once. Do not edit it and do not run WORK for this control. Report
+only whether the PDF opened, the Shortcut showed a checkmark without a PDF,
+or an error appeared. After that result, the next diagnostic will be selected
+from the evidence: on-device checkpoint counts if the canonical control
+works, or invocation/presentation isolation if it does not.
+
 ## 12. Exact questions for independent GPT diagnosis
 
 Please independently diagnose the issue from the facts above. Do not assume
