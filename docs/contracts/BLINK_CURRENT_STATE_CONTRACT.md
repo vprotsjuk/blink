@@ -96,9 +96,10 @@ disabled and `Blink_Production/ToMac` remains unused.
 
 The first controlled Files push to `Blink Files Stage2 WORK` was accepted by
 ntfy (HTTP 200), but tapping the action on iPhone opened the Shortcuts library
-instead of Quick Look. The Mac candidate and URL were verified; physical
-acceptance therefore remains gated on confirming that the exact candidate name
-and latest version are synced on iPhone. No production mailbox was enabled.
+instead of Quick Look. The Mac candidate and URL were verified, and a later
+iPhone screenshot confirmed that the full candidate and escaped-pipe regex are
+present there. Physical acceptance therefore remains gated on isolating the
+runtime handoff/package-visibility failure. No production mailbox was enabled.
 
 SwiftUI also has the approved Phase 7 fast refresh: `ContentView` observes the
 parent directory containing `agenda.json`, filters/debounces atomic-replace

@@ -631,9 +631,11 @@ The 2026-09-13 controlled push instead targeted the hardened candidate
 `Blink Files Stage2 WORK`. ntfy accepted it with HTTP 200 and the action had
 no `clear=true`, but tapping `Files` on iPhone opened the Shortcuts library
 instead of Quick Look. Mac inspection confirmed the candidate, input contract,
-regex, and attachment decision tree. The iPhone currently shows fewer synced
-Shortcuts than the Mac, so the remaining gate is an exact-name/latest-version
-iCloud sync check. No second push has been sent.
+regex, and attachment decision tree. A later iPhone screenshot confirmed that
+the full candidate and escaped-pipe regex are present there. The remaining
+failure is therefore the runtime handoff from the ntfy action into Shortcut
+execution (or package visibility at execution time), not an absent Shortcut
+name. No second push has been sent.
 
 The existing `Blink Files` Shortcut still points at the historical
 `Blink_Feasibility/ToPhone` contract and must be evolved before the physical
