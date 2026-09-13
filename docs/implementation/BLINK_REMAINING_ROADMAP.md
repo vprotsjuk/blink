@@ -76,9 +76,45 @@ Mac-side event-specific `ToPhone` packages, the canonical Files action,
 snapshot refresh/immutability, one-file direct open, multi-file chooser
 contract, security, dataless-placeholder handling, cleanup, retry, and
 idempotency are implemented behind controlled opt-in settings. Remaining:
-complete verification, evolve the existing `Blink Files` Shortcut to the
-versioned package input, and perform real iPhone acceptance. Production mailbox
-and production cutover remain disabled.
+complete verification, harden the three manually-created Blink Shortcuts, evolve
+the existing `Blink Files` Shortcut to the versioned package input, and perform
+real iPhone acceptance. Production mailbox and production cutover remain
+disabled.
+
+#### Stage 2 internal hardening gate
+
+- **2A — Mac snapshot/Files infrastructure: DONE.** Deterministic ToPhone
+  packages, queued refresh, delivered immutability, exact package isolation,
+  cleanup, retry, and canonical ntfy action are implemented and tested.
+- **2B — Shortcut audit/design: CURRENT.** Audit the actual trees of `Blink
+  Create Test`, `Blink DONE Test`, and `Blink Files`; preserve untouched safety
+  copies; document problems and target trees before any owner phone editing.
+- **2C — Shortcut implementation/update: REMAINING.** Apply the approved
+  hardening while preserving existing contracts. CREATE must become a small
+  correction-friendly form with required non-empty Title, optional arbitrary
+  Description, explicit-offset date/time, independent integer Reminder and
+  Blinker values, importance choices, one optional attachment, and a final
+  Review/Edit/Cancel gate. DONE must remain fail-closed for malformed
+  machine-generated input. Files must accept
+  `blink-files-v1|<package-id>`, isolate only the exact package, require
+  `.ready` and matching manifest, and open one file directly or choose only
+  that package's files when multiple exist. Native SHA-256 verification is
+  optional on the phone because macOS remains authoritative.
+- **2D — Physical iPhone acceptance: REMAINING.** Run controlled one-file and
+  multi-file acceptance only after the Shortcut implementation is verified;
+  do not enable the production mailbox or send the acceptance push early.
+- **2E — Stage 2 closeout: REMAINING.** Reconcile the full description,
+  current contract, handoff, implementation report, this roadmap, and the
+  next-thread prompt, then close Stage 2 without starting Stage 3.
+
+The current audit found that all required action categories are present in the
+macOS Shortcuts library, including input extraction, text parsing/matching,
+conditions, safe stop, folder contents, file filtering, counting, chooser, and
+Quick Look. No native `Calculate Hash` action was available. The `/usr/bin/shortcuts`
+CLI exposes only `run`, `list`, `view`, and `sign`; it has no create/import/edit
+operation, and opaque Shortcut database manipulation is forbidden. Therefore
+the remaining implementation is a controlled GUI task, not an iPhone-only
+capability gap.
 
 ### Stage 3 — personal Today Morning Briefing
 
