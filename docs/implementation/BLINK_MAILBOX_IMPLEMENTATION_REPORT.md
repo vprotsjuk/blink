@@ -487,3 +487,4 @@ passed with native DONE package `20260912163022-101411924`. Phase 4B closeout:
 support and contract tests: `0935e73 Preserve arbitrary mailbox minute values`.
 Phase 5 acceptance closeout and Phase 6 inbox preparation:
 `04ce992 Close Phase 5 and prepare acceptance inbox`.
+Manual custom-minute UI acceptance: `02e1013 Record custom minute UI acceptance`.
