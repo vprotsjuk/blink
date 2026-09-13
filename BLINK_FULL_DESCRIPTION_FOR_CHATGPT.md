@@ -44,13 +44,16 @@ The boundaries are deliberate:
 
 The project intentionally keeps the blocks independent. A change to one block must be traced through its explicit dependencies, but unrelated blocks must not be mixed into the same implementation path.
 
-### Future iPhone exchange boundary (feasibility only; manual phase complete)
+### Future iPhone exchange boundary (manual Phase 4B/5 complete; Phase 6 gated)
 
 The future Blink ↔ iPhone exchange is deliberately not part of the current
 production runtime. Manual feasibility testing is complete against the private
 Apple Shortcuts container at
 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents`, using
-`Blink_Feasibility/ToMac` and `ToPhone`. The mailbox is transport only:
+`Blink_Feasibility/ToMac` and `ToPhone`, plus the Phase 5 acceptance inbox
+`Blink_Acceptance/ToMac`. Historical Phase 5 artifacts are preserved in
+`Blink_Acceptance/Archive/Phase5-20260912211629`; the active acceptance inbox
+is empty. The mailbox is transport only:
 `agenda.json`, event folders, and Mac JSON contracts remain the source of truth;
 iPhone commands never edit them directly. ntfy remains Mac → iPhone
 notification transport only. Phase 2B canonical transactions and Phase 3's
@@ -71,7 +74,10 @@ controlled `Blink DONE Test` action carried `blink-done-v1|EVENT123`, the user
 tapped `Done`, and the Shortcut created
 `20260912163022-101411924.done.json` plus
 `20260912163022-101411924.ready` in feasibility `ToMac`. These results do not
-authorize production mailbox integration.
+authorize production mailbox integration. Phase 5 real iPhone CREATE acceptance
+also passed for no attachment, image, and PDF packages, explicit-offset dates,
+arbitrary integer reminder/blinker values including `[3, 0]` and `3`, empty
+Description, and phone-side rejection of empty Title/invalid reminder input.
 
 The iPhone DONE notification lifecycle remains an open design question. After
 the button creates a DONE package, it is not yet decided whether the ntfy
@@ -96,9 +102,10 @@ parent directory of `agenda.json`, debounces relevant atomic replacements, and
 reuses the normal reload/snapshot path while retaining the 30-second polling
 fallback. Production mailbox processing remains disabled.
 
-The completed CREATE_EVENT feasibility flow supports direct launch without a
-file and Share Sheet input limited to Images, PDFs, and Files, with at most one
-attachment. It writes `<transfer_id>.event.json`, then an optional
+The completed CREATE_EVENT flow supports direct launch without a file and Share
+Sheet input limited to Images, PDFs, and Files, with at most one attachment. It
+uses the production transport ID `<yyyyMMddHHmmss>-<9-digit-random>` and writes
+`<transfer_id>.event.json`, then an optional
 `<transfer_id>.attachment.<extension>`, then `<transfer_id>.ready` last. A
 test bug where an empty direct-launch Text was treated as an attachment was
 fixed by checking `HasAttachment is true`; the zero-byte
@@ -397,7 +404,12 @@ The shared reminder preset list is defined centrally so that future changes to a
 10 minutes, 5 minutes, and at time
 ```
 
-The UI filters presets against the effective event start. The watcher schedules only reminders with valid due timestamps. Duplicate sends are prevented using the event identity, occurrence, and reminder offset.
+The UI keeps presets convenient while also exposing Custom whole-minute values
+for reminders and the independent Blinker. Imported arbitrary integers such as
+`3`, `17`, `120`, or `240` are shown and round-trip without loss; `0` is
+represented only as `At time`. The watcher schedules only reminders with valid
+due timestamps. Duplicate sends are prevented using the event identity,
+occurrence, and reminder offset.
 
 Time input is 24-hour `HH:mm` everywhere. Users may type a valid time directly or use the stepper arrows. Inputs have stable width so `00:00` through `23:59` always fit. Date selection explicitly preserves/loads the selected year.
 

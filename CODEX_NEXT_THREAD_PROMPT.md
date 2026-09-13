@@ -1,20 +1,22 @@
 # Blink: Short Prompt for the Next Codex Task
 
 **Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility, Phase 4B
-real iPhone DONE-action acceptance, and Phase 7 fast agenda refresh are complete; Phase 1 shared agenda locking, Phase 2A importer core, Phase 2B
+real iPhone DONE-action acceptance, Phase 5 CREATE acceptance, and Phase 7 fast agenda refresh are complete; Phase 1 shared agenda locking, Phase 2A importer core, Phase 2B
 canonical transactions/recovery, Phase 3's opt-in watcher worker, and Phase 4A
 Mac ntfy DONE action support are implemented. Production mailbox integration
 and DONE action delivery remain disabled by default after controlled acceptance. The verified private Apple
 Shortcuts container is
 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents` with
-`Blink_Feasibility/ToMac` and `ToPhone`. Four test Shortcuts were used:
+`Blink_Feasibility/ToMac`, `Blink_Acceptance/ToMac`, and `ToPhone`. Four test Shortcuts were used:
 `Blink Test`, `Blink Files`, `Blink DONE Test`, and `Blink Create Test`.
 
 Confirmed manual PASS: iPhone → Mac file transport, Mac → iPhone `ToPhone` +
 Quick Look, external Shortcut URL input, real ntfy DONE → `.done.json` +
 `.ready`, CREATE_EVENT direct launch, image and PDF attachments, repeated Viber
-PDF after `Always Allow`, and direct-launch regression after the attachment
-branch fix. Real Apple Shortcuts has no native Generate UUID action, so the
+PDF after `Always Allow`, direct-launch regression after the attachment branch
+fix, and Phase 5 CREATE acceptance with explicit-offset dates, arbitrary integer
+reminder/blinker values, empty Description, and phone-side validation. Real
+Apple Shortcuts has no native Generate UUID action, so the
 production phone transport ID is `<yyyyMMddHHmmss>-<9-digit-random>`; UUIDv4
 remains accepted for backward compatibility. The combined value is transport
 identity only, never an event ID or event start time. The mailbox is transport
@@ -31,12 +33,14 @@ packages, and delete transport files only after successful apply.
 Implementation checkpoint: Phase 1 shared agenda locking is complete in commit
 `98753a8`; Phase 2A is in `421963d`, Phase 2B in `aa50f96`, and Phase 3 in
 `df50af7` plus diagnostics follow-up `47a381b`; Phase 4A is `a8c682b`; Phase
-4B acceptance is recorded in `49eaf30`. The next task is the Phase 5 CREATE
-Shortcut migration checklist; production iCloud, ntfy Actions, and Shortcuts
-remain unchanged. See
+4B acceptance is recorded in `49eaf30`. Phase 5 manual acceptance artifacts
+are archived outside the now-empty `Blink_Acceptance/ToMac` under
+`Blink_Acceptance/Archive/Phase5-20260912211629`; the next task is
+controlled Phase 6 mailbox acceptance only after explicit owner authorization.
+Production iCloud, ntfy Actions, and Shortcuts remain unchanged. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
-Current verification: `.venv/bin/python -m unittest -q` ran 181 tests and passed;
+Current verification: `.venv/bin/python -m unittest -q` passes the current suite;
 Python compile, plist lint, `./status_watcher.command`, Swift test runner, and
 Swift release build passed. The alternate command with `-s tests` is not
 runnable because this checkout has no importable `tests/` directory; root-level

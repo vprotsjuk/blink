@@ -24,18 +24,21 @@ SwiftUI GUI -> local JSON files -> watcher.py -> ntfy -> iPhone
 - Keep personal events, transport/queue, weather, astronomy, location, and UI as independent blocks connected by explicit JSON contracts.
 - Use atomic writes and preserve unknown JSON fields unless a documented migration removes a retired field.
 
-### Future iPhone exchange (manual feasibility complete; production not implemented)
+### Future iPhone exchange (manual Phase 4B/5 complete; production not implemented)
 
 A private Apple Shortcuts container has been manually verified at
 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents` with
-`Blink_Feasibility/{ToMac,ToPhone}`. This is transport only, not a database or
-source of truth: `agenda.json` and Blink-local attachment folders remain
+`Blink_Feasibility/{ToMac,ToPhone}` and the separate acceptance inbox
+`Blink_Acceptance/ToMac`. This is transport only, not a database or source of
+truth: `agenda.json` and Blink-local attachment folders remain
 Mac-only, and ntfy remains Mac → iPhone push transport. Manual feasibility
 coverage is complete for file transport, Quick Look, external Shortcut input,
 DONE, and CREATE_EVENT with no attachment, image, and PDF. Phase 2B canonical
 transactions and Phase 3's single opt-in watcher worker are implemented, but
 production iCloud processing remains disabled by default; no real
-`Blink_Production/ToMac` root is configured. No public links, HTTP, production
+`Blink_Production/ToMac` root is configured. Phase 5 manual CREATE acceptance
+passed with the migrated `Blink Create Test`; its historical artifacts are
+archived outside the now-empty acceptance inbox. No public links, HTTP, production
 ntfy Actions, production Shortcut changes, or Photos/Documents access is
 enabled. See
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](../feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
@@ -124,7 +127,10 @@ Upcoming -> Active -> Done -> History
   and Search continue to use that shared last-good snapshot and Health reports
   the source, count, last successful load, and error.
 - Snooze, Quiet Hours, and Templates are retired and must not be reintroduced.
-- Reminder offsets are centrally defined and unavailable offsets are removed when they no longer fit before the event.
+- Reminder offsets are canonical non-negative integer minutes and may include
+  arbitrary values or multiple entries. Presets are UI convenience only;
+  custom reminder/blinker values are preserved during editor save, and `0` is
+  represented as `At time`.
 - New events default the independent Blinker picker to `At event`
   (`blinker_minutes_before: 0`). Reminders are a separate multi-select; changing
   either control never changes the other.
@@ -237,12 +243,14 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 
 ## 10. Current Verification Snapshot
 
-- Python: 181 tests passing via `.venv/bin/python -m unittest -q`.
+- Python: 185 tests passing via `.venv/bin/python -m unittest -q`, including
+  explicit mailbox arbitrary-minute and title-validation coverage.
 - Alternate discovery command `.venv/bin/python -m unittest discover -s tests -p
   'test_*.py' -v` is not runnable here because this checkout has no importable
   `tests/` directory; root-level `test_*.py` modules are covered by the default
   command.
-- Swift UI/store contract runner: passing.
+- Swift UI/store contract runner: passing, including custom reminder/blinker
+  round-trip and observer save-loop coverage.
 - Swift release build: passing.
 - Python compile checks: passing.
 - Plist validation: passing.

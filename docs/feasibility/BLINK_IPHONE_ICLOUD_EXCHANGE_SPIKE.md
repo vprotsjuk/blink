@@ -1,16 +1,17 @@
 # Blink ↔ iPhone private iCloud exchange — feasibility / robustness spike
 
-**Status:** manual feasibility complete; no production feature implemented.
+**Status:** manual feasibility plus Phase 4B/5 acceptance complete; no
+production feature enabled.
 **Date:** 2026-09-12
 **Project:** `/Users/vitaliiprotsiuk/Desktop/Blink`
 
 ## Safety boundary
 
 This spike does not modify `watcher.py`, `agenda.json`, production SwiftUI
-behavior, ntfy configuration, or any user folders outside the dedicated test
-area. It does not create public iCloud links, access Photos/Documents, or use
-HTTP/ntfy for file exchange. The production source of truth remains the Mac's
-local Blink JSON and attachment folders.
+behavior, ntfy configuration, or any user folders outside the approved
+Shortcuts test/acceptance areas. It does not create public iCloud links, access
+Photos/Documents, or use HTTP/ntfy for file exchange. The production source of
+truth remains the Mac's local Blink JSON and attachment folders.
 
 ## Architecture under test
 
@@ -34,6 +35,10 @@ outside the Blink repository:
 iCloud Drive/Shortcuts/Blink_Feasibility/
   ToMac/
   ToPhone/
+
+iCloud Drive/Shortcuts/Blink_Acceptance/
+  ToMac/                         # active Phase 5 target; currently empty
+  Archive/Phase5-20260912211629/ # preserved manual artifacts
 ```
 
 The actual macOS filesystem root is the private Apple Shortcuts container:
@@ -132,8 +137,10 @@ internal iOS permission model: Photos received `Always Allow`, Viber received
 `Always Allow`, first access showed privacy prompts, and repeated Viber PDF
 sharing did not show another prompt.
 
-The 9-digit Random Number used for `command_id`/`transfer_id` is feasibility-only
-and is not a production identity strategy.
+The original spike used a 9-digit Random Number while exploring the transport.
+The accepted production-native transport identity is now
+`<yyyyMMddHHmmss>-<9-digit-random>`; the complete combined value is the
+`command_id`/`transfer_id`, never an event ID or event start time.
 
 ## Part 4 — confirmed package contracts
 
@@ -174,6 +181,34 @@ owner-owned and outside the fixture/protocol. The future `Blink Files` Shortcut 
 or present a list when there are two or more. Quick Look/standard preview is
 enough. No public links, HTTP, or ntfy are involved.
 
+## Part 6 — Phase 5 actual CREATE acceptance
+
+The owner migrated the existing `Blink Create Test`; the safety duplicate
+`Blink Create Test BACKUP` was not modified. The active Shortcut writes to the
+separate acceptance inbox
+`~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/ToMac`.
+Manual acceptance passed for CREATE without attachment, with one image, and
+with one PDF. The observed successful examples were:
+
+- `20260912192619-650719048.event.json` + `.ready`, with no attachment;
+- `20260912194513-228316619.event.json` + matching `.attachment.jpeg` + `.ready`;
+- `20260912194754-657491603.event.json` + matching `.attachment.pdf` + `.ready`.
+
+The final JSON contract carried explicit-offset `start`/`created_at`,
+`reminder_intent.offsets_minutes_before`, `attention_level`, and
+`blinker_intent.minutes_before`, with no Mac-owned lifecycle fields. Manual
+checks passed for arbitrary integer values including reminders `[3, 0]`, `17`,
+and `240`, blinker `0`, `3`, and `240`, empty Description, and rejection of
+empty Title/invalid reminder input. The Mac importer independently enforces
+the required Title and integer-minute rules. A deliberately past event package
+was created successfully; lifecycle handling is reserved for Phase 6.
+
+After acceptance, 25 historical entries were moved reversibly with filenames
+preserved to
+`~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/Archive/Phase5-20260912211629`.
+The active `Blink_Acceptance/ToMac` inbox is empty. Production mailbox
+processing remains disabled and no production root is configured.
+
 ## Findings and recommendation
 
 The flat package plus final `.ready` marker is feasible with ordinary filesystem
@@ -196,20 +231,22 @@ decided what should happen to the original ntfy notification:
 `clear=true` is not an approved production solution. Decide this separately
 before implementing the production DONE action.
 
-## Next stage (description only; not implemented)
+## Next stage (Phase 6 controlled acceptance; production still disabled)
 
-A future Mac-side mailbox reader/importer may read only the approved private
-`ToMac` root. It must require matching `.ready`, validate JSON and any declared
-attachment, be idempotent, treat duplicate DONE and stale occurrences as
-NO-OPs, survive malformed packages without blocking later packages, and archive
-or delete only after successful application. Remote DONE must call the existing
-Blink Done business logic; Remote CREATE_EVENT must call the existing event
+The existing Mac-side mailbox reader/importer may be enabled only for a
+controlled run against the empty `Blink_Acceptance/ToMac` root. It requires
+matching `.ready`, validates JSON and any declared attachment, is idempotent,
+treats duplicate DONE and stale occurrences as NO-OPs, survives malformed
+packages without blocking later packages, and removes transport files only
+after successful application. Remote DONE calls the existing Blink Done
+business logic; Remote CREATE_EVENT calls the existing event
 creation/persistence path. The mailbox must never become the source of truth or
-a second scheduler/sender.
+a second scheduler/sender. Production `Blink_Production/ToMac` remains unused.
 
 ## Reproducibility evidence
 
 The bounded filesystem test created only `AI_TEST_*` files under the dedicated
-`Blink_Feasibility` area and removed only those files. It never cleaned, renamed,
-or otherwise mutated pre-existing owner files in either mailbox folder. No
-production runtime files are part of this spike.
+`Blink_Feasibility` area and removed only those files. Historical Phase 5 files
+in the separately approved `Blink_Acceptance/ToMac` were later moved
+reversibly, with names preserved, into its sibling archive; the feasibility
+folders were not changed. No production runtime files are part of this spike.

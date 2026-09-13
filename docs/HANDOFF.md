@@ -29,7 +29,8 @@ This checkpoint is an audit only; no source code was changed for it.
 The manual iPhone/iCloud feasibility phase is complete. The verified private
 Apple Shortcuts container is
 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents`, with
-`Blink_Feasibility/ToMac` and `ToPhone`. Confirmed PASS results are:
+`Blink_Feasibility/ToMac`, `ToPhone`, and the separate
+`Blink_Acceptance/ToMac` inbox. Confirmed PASS results are:
 
 - iPhone → Mac file transport;
 - Mac → iPhone `ToPhone` plus Quick Look;
@@ -73,8 +74,23 @@ parent-directory `DispatchSource` watcher debounces relevant atomic
 `agenda.json` replacements and reuses the normal reload path; 30-second
 polling remains the correctness fallback, and observer failure is non-fatal.
 
+Phase 5 manual CREATE acceptance is COMPLETE. The owner migrated the existing
+`Blink Create Test` (the owner-created `Blink Create Test BACKUP` was left
+untouched). Real iPhone acceptance passed for CREATE without attachment, with
+image, and with PDF; explicit-offset dates; arbitrary integer reminders and
+blinker values including `[3, 0]`, `3`, and `240`; empty Description; and
+phone-side rejection of empty Title/invalid reminder input. The Mac importer
+independently enforces the required-title and non-negative-integer contract.
+
+The acceptance inbox was archived safely after a stability check: 25 historical
+entries were moved with filenames preserved to
+`~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/Archive/Phase5-20260912211629`.
+`Blink_Acceptance/ToMac` is empty and remains the active Shortcut target.
+Production mailbox/importer remains disabled; do not point it at the archive or
+enable `Blink_Production/ToMac` until the owner explicitly starts Phase 6.
+
 The long historical checkpoint paragraph immediately above contains older
-`120`/`133`/`160`/`162`/`163` test counts; they are superseded by the current `181` result
+`120`/`133`/`160`/`162`/`163` test counts; they are superseded by the current `185` result
 recorded below.
 Checkpoint and source prompt saved. The briefing timing regression is covered: saving Weather or Astronomy after today's configured local time records the change instant and defers that newly configured briefing to the next local day instead of sending immediately; saving before the target still sends today, and ordinary missed targets retain late catch-up. Python verification: 120 passing. Swift test runner and release build pass. The live watcher was restarted with the fix and did not emit another Weather/Astronomy briefing for today's already-past saved targets. Astronomy push rise/set labels now use thin arrows after the matching icon (`☀️ ↑/↓`, `🌙 ↑/↓`) in grouped lines and individual titles; large arrows remain phase-only. Disabled past unfinished events now remain in History, new GUI events default the blinker to `At time`, personal push titles include the event attention color icon, editing a completed event into the future reopens it, and stale completed records with future starts are repaired on load. Enabled overdue unfinished events now pulse in the app until `Done`; Blink's app-owned `Today` tab alternates between normal text and the highest active priority color from every tab. It is app-owned because macOS `TabView.tabItem` ignores dynamic label color. This is UI-only and does not change lifecycle or sending. Event toggle labels are `On`/`Off`, with disabled row text dimmed but its priority dot retained. Astronomy now uses `☀️` for all Sun events and never emits `🌅`. Moon-related messages use `Waxing Moon`/`Waning Moon` on ordinary days and reserve `New Moon`/`Full Moon` for the exact event day; one large `⬆️`/`⬇️` phase arrow appears on ordinary days only, with one countdown, no textual `Moon is …` line, and no repeated Sunset or standalone Moon event name in the body. Thin `↑`/`↓` UI arrows now mean only rise/set; large arrows mean only waxing/waning. The watcher owns the shared formatter; SwiftUI mirrors the approved icon language only. Astronomy also presents a scrollable Weather-style settings surface plus today's Sun/Moon summary. Its upper settings and lower summaries share the same two columns, so Sun and Moon remain vertically aligned. Weather now uses day/night icons for compact temperature and humidity lines; the Astronomy briefing respects `Use Weather briefing time` by either appending to Weather or sending a separate ntfy briefing. The app reads live JSON from `/Users/vitaliiprotsiuk/Desktop/Blink`; an empty UI after a build is an app-process restart issue, not a data-loss state. Watcher remains the only sender.
 
@@ -93,6 +109,9 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - The installed build now freezes History; reuse is available through `Duplicate as new event`, which creates a new event ID and attachment owner.
 - Existing stale records with `done=true` and a future start are repaired during app load, persisted with `done=false`, and therefore physically move out of `History` without requiring another edit.
 - New event default blinker is independent `At event` (`blinker_minutes_before = 0`); it is not attached to a reminder row.
+- Reminder and Blinker controls preserve arbitrary non-negative integer minute
+  values from phone CREATE packages; presets remain convenience labels and
+  custom values round-trip without loss.
 - Personal push titles use `🟢/🟡/🔴` -> color is visible on iPhone while ntfy priority headers remain independent.
 - Remote queue signature includes title, description, and attention level -> queued payloads are rebuilt when their visible content or color changes.
 - Remote queue signature also includes `attachments.has_files` -> a visible paperclip transition invalidates queued payloads, while count-only changes do not duplicate an unchanged push.
@@ -105,7 +124,7 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - Row `Paste`/`Add Files` use a short-lived immediate transaction; editor attachments retain the longer Save/Cancel draft lifecycle.
 
 ## Tried & results (bullets)
-- Python verification -> `Ran 181 tests; OK` (`.venv/bin/python -m unittest -q`).
+- Python verification -> `Ran 185 tests; OK` (`.venv/bin/python -m unittest -q`).
 - Alternate discovery -> not runnable: `ImportError: Start directory is not importable: 'tests'` because this checkout has no importable `tests/` directory; root-level `test_*.py` modules are covered by the default command.
 - Swift verification -> `Swift Blink store tests passed.` and release build completed, including briefing-change persistence coverage.
 - Astronomy regeneration -> 732 day records generated.
@@ -135,22 +154,24 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - Should a drop show staged attachment count before Save? **Recommended:** yes, reusing the existing paperclip/count presentation; Cancel removes only the draft staging folder.
 
 ## Next actions (3-7 concrete steps)
-1. Keep the production mailbox disabled while preparing the Phase 5 CREATE
-   Shortcut migration checklist.
+1. Keep the production mailbox disabled after the completed Phase 5 CREATE
+   acceptance and empty-inbox preparation.
 2. Resolve the DONE acknowledgement/notification lifecycle: immediate clear, retention until Mac confirmation, or another UX. `clear=true` is not selected.
-3. Implement the production CREATE Shortcut path (Phase 5) only after the remaining transport decisions are approved.
+3. When explicitly authorized, run the controlled Phase 6 CREATE/DONE
+   acceptance against only `Blink_Acceptance/ToMac`, using reversible one-shot
+   `BLINK_MAILBOX_ENABLED`/`BLINK_MAILBOX_ROOT` settings.
 
 ## Files touched (paths)
 `watcher.py`, `app/attachment_store.py`, `app/weather_store.py`, `test_watcher.py`, `test_weather_store.py`, `app/agenda_store.py`, `app/notification_format.py`, `test_agenda_store.py`, `test_notification_format.py`, `test_attachment_store.py`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/Models.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AttachmentStore.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift`, `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`, `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `CODEX_NEXT_THREAD_PROMPT.md`, `docs/superpowers/plans/2026-09-09-astronomy-push-format.md`, `docs/superpowers/plans/2026-09-09-event-attachments-and-history-freeze.md`.
 
 ## Commands run (command -> outcome)
-- `.venv/bin/python -m unittest -q` -> 181 tests passed.
+- `.venv/bin/python -m unittest -q` -> 185 tests passed.
 - `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` -> not runnable (`ImportError: Start directory is not importable: 'tests'`; no `tests/` directory in this checkout).
 - `.venv/bin/python -m py_compile watcher.py app/attachment_store.py app/agenda_store.py app/notification_format.py` -> passed.
 - `.venv/bin/python -m py_compile watcher.py app/*.py astronomy/generate_astronomy.py` -> passed.
 - `plutil -lint Blink.app/Contents/Info.plist launchd/*.plist` -> all plist files OK.
 - `./status_watcher.command` -> watcher running; PID 57317, fresh heartbeat.
-- `swift run BlinkSwiftUITestRunner` -> all Swift store/UI contract tests passed, including attachment/history/UI contracts.
+- `swift run BlinkSwiftUITestRunner` -> all Swift store/UI contract tests passed, including custom-minute round-trip and attachment/history/UI contracts.
 - `swift build -c release` -> release build passed and was installed in `Blink.app/Contents/MacOS/Blink`.
 - `.venv/bin/python -m py_compile watcher.py app/*.py astronomy/generate_astronomy.py` -> passed.
 - `jq` active Astronomy contract checks -> passed; 732 records and no Eclipse/advance-offset keys.

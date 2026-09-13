@@ -8,7 +8,8 @@ PHASE 2B COMPLETE (temporary-root canonical mutation/recovery)
 PHASE 3 COMPLETE (opt-in in-process watcher worker; production mailbox remains disabled)
 PHASE 4A COMPLETE (Mac ntfy DONE action support; disabled by default)
 PHASE 4B COMPLETE (real iPhone ntfy DONE action accepted)
-PHASE 5 NOT STARTED
+PHASE 5 COMPLETE (manual `Blink Create Test` migration and acceptance passed)
+PHASE 6 PREPARATION COMPLETE (acceptance inbox archived and left empty)
 PHASE 7 COMPLETE (debounced external agenda refresh; 30-second polling retained)
 
 ## Approved architecture
@@ -161,20 +162,89 @@ and the existing local attachment contract.
   outputs. Ordinary GUI saves produce at most one debounced refresh and do not
   recurse.
 
-## Phase 5 — iPhone `Blink Create Test` migration checklist
+### Phase 5 Mac-side arbitrary-minute support
 
-This is a preparation checklist only. It does not modify the Shortcut, enable
-the importer, or authorize production `Blink_Production/ToMac`. Perform the
-actions against a new clean acceptance inbox, not the historical
-`Blink_Feasibility/ToMac` contents.
+- The importer contract already accepts any non-negative integer reminder list
+  and one non-negative integer blinker value; duplicate reminders are
+  canonicalized and phone-owned lifecycle fields remain rejected.
+- SwiftUI now preserves every valid reminder offset during save instead of
+  dropping values merely because they do not match a preset. Existing presets
+  remain available, while custom reminder rows and custom blinker values can
+  be entered as whole minutes. `0` remains `At time` and is never duplicated
+  as a custom row.
+- Swift round-trip coverage includes imported `[3, 0]`, custom reminder `17`,
+  custom blinker `3`/`240`, and the existing observer save-loop contract.
+
+## Phase 5 — iPhone `Blink Create Test` manual acceptance
+
+- The owner migrated the existing `Blink Create Test`; no new production
+  Shortcut was created. `Blink Create Test BACKUP` remains untouched.
+- The active Shortcut targets
+  `/Users/vitaliiprotsiuk/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/ToMac`.
+- Manual acceptance passed for CREATE without attachment, with image, and with
+  PDF. The observed packages were:
+  `20260912192619-650719048.event.json` + `.ready` (no attachment),
+  `20260912194513-228316619.event.json` + matching
+  `.attachment.jpeg` + `.ready`, and
+  `20260912194754-657491603.event.json` + matching
+  `.attachment.pdf` + `.ready`.
+- Arbitrary integer reminders and blinker values passed, including
+  `reminder_intent.offsets_minutes_before: [3, 0]`, `17`, and `240`, with
+  `blinker_intent.minutes_before: 0`, `3`, and `240`. Empty Description was
+  accepted; whitespace-only Title and invalid reminder input were rejected on
+  the phone and are independently rejected by the Mac importer.
+- `.ready` remained the final marker. A deliberately past event package was
+  created successfully; its post-import lifecycle remains a Phase 6 check.
+
+## Phase 6 preparation — clean acceptance inbox
+
+- Historical Phase 5 artifacts were moved reversibly (25 entries, filenames
+  preserved) to `/Users/vitaliiprotsiuk/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/Archive/Phase5-20260912211629`.
+- `Blink_Acceptance/ToMac` is now empty and remains the active Shortcut target.
+- Production mailbox remains disabled: `BLINK_MAILBOX_ENABLED` and the
+  mailbox root are not configured; `Blink_Production/ToMac` is unused.
+
+### Phase 6 controlled enable/disable procedure (prepared, not executed)
+
+1. Confirm `Blink_Acceptance/ToMac` is empty and keep the existing watcher as
+   the only scheduler.
+2. After explicit owner authorization, set the per-user LaunchAgent
+   environment for one controlled run and restart that same watcher:
+   `launchctl setenv BLINK_MAILBOX_ENABLED 1`,
+   `launchctl setenv BLINK_MAILBOX_ROOT "/Users/vitaliiprotsiuk/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/ToMac"`,
+   then `launchctl kickstart -k gui/$(id -u)/com.vitalii.blink.watcher`.
+3. After the acceptance window, immediately run
+   `launchctl unsetenv BLINK_MAILBOX_ENABLED`,
+   `launchctl unsetenv BLINK_MAILBOX_ROOT`, and kickstart the same label again
+   so the worker returns to its disabled default. Verify with
+   `./status_watcher.command` and a final empty-inbox check.
+
+This procedure is documented for the future controlled test only; none of its
+enable commands were run in this checkpoint.
+
+## Phase 5 — historical iPhone `Blink Create Test` migration checklist
+
+This is the original preparation checklist retained for traceability. It does
+not describe pending work; the actual manual implementation and acceptance
+above supersede it where details differ. It does not enable the importer or
+authorize production `Blink_Production/ToMac`.
+
+### Phase 5 preparation — clean acceptance inbox
+
+- Acceptance inbox: `/Users/vitaliiprotsiuk/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/ToMac`
+- The folder is inside the verified private Apple Shortcuts iCloud container;
+  it was verified empty before migration and is empty again after archival.
+- `BLINK_MAILBOX_ENABLED` and the mailbox/importer root remain unset; the
+  historical feasibility inbox is untouched and `Blink_Production/ToMac`
+  remains unused.
 
 ### Existing blocks that remain unchanged
 
 1. Keep the existing `Shortcut Input` entry path so direct launch remains
    valid.
 2. Keep the Share Sheet input types limited to `Images`, `PDFs`, and `Files`.
-3. Keep `Ask Where To Save = OFF` and the fixed acceptance destination
-   `Blink_Feasibility/ToMac` until a separately approved clean inbox is chosen.
+3. Keep `Ask Where To Save = OFF` and use the clean acceptance destination
+   `Blink_Acceptance/ToMac`.
 4. Keep the final stop/return behavior after the package is completely written.
 
 ### Blocks to delete
@@ -311,11 +381,14 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
 - `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AgendaFileLock.swift` — Darwin
   implementation interoperable with Python `flock`.
 - `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/Models.swift` — shared lock around
-  all Swift agenda read/modify/write and repair paths.
+  all Swift agenda read/modify/write and repair paths plus lossless arbitrary
+  reminder-minute normalization.
+- `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift` — custom
+  whole-minute reminder/blinker controls while preserving presets.
 - `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AgendaDirectoryObserver.swift` —
   parent-directory DispatchSource observer with signature filtering and debounce.
-- `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift` — Swift lock and
-  Python interoperability tests.
+- `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift` — Swift lock,
+  Python interoperability, and custom-minute round-trip tests.
 - `test_agenda_store.py` — Python contention and lost-update regression tests.
 - `app/mailbox_importer.py` — Phase 2A parser and local transport state
   primitives plus Phase 2B transactions/recovery and bounded scans.
@@ -333,13 +406,14 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
 - `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md` — this
   persistent checkpoint.
 - `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`,
-  `docs/HANDOFF.md`, `CODEX_NEXT_THREAD_PROMPT.md` — synchronized implementation
-  status; feasibility contracts unchanged.
+  `docs/HANDOFF.md`, `CODEX_NEXT_THREAD_PROMPT.md`,
+  `docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md` — synchronized
+  implementation status and Phase 5/6 mailbox contract.
 
 ## Tests
 
-- `.venv/bin/python -m unittest -q` → 181 tests passed.
-- `.venv/bin/python -m unittest -q test_mailbox_importer` → 29 tests passed.
+- `.venv/bin/python -m unittest -q` → 185 tests passed.
+- `.venv/bin/python -m unittest -q test_mailbox_importer` → 33 tests passed.
 - `.venv/bin/python -m unittest -q test_notification_format test_ntfy_schedule test_watcher`
   → 89 tests passed.
 - Previous Phase 4 notification/watcher focused suite remains covered by the
@@ -378,17 +452,18 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
 ## Open owner decisions
 
 - Numeric transport size/package caps remain to be measured and selected.
-- Exact ntfy Actions syntax and iOS Shortcut URL acceptance remain manual
-  acceptance items.
+- Phase 4B ntfy Actions syntax and iOS Shortcut URL acceptance passed on the
+  real iPhone; only the acknowledgement UX remains open.
 - DONE notification acknowledgement UX remains open; `clear=true` is not
   selected.
 
 ## Next implementation tasks
 
-1. Prepare the exact Phase 5 `Blink Create Test` migration checklist without
-   changing the Shortcut or enabling production mailbox processing.
-2. Perform controlled Phase 6 mailbox acceptance only in a clean inbox, never
-   by pointing the importer at the historical feasibility inbox.
+1. Perform controlled Phase 6 CREATE/DONE mailbox acceptance only after the
+   owner explicitly enables the worker against the empty
+   `Blink_Acceptance/ToMac` inbox.
+2. Keep the Phase 6 enable/disable procedure one-shot and reversible; never
+   point the importer at the archived or historical feasibility inbox.
 
 ## Last checkpoint
 
