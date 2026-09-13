@@ -46,5 +46,5 @@
 - Modify: `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`, `docs/HANDOFF.md`, `CODEX_NEXT_THREAD_PROMPT.md`, `docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`
 
 - [x] Record Done semantics, future-event History behavior, idempotency, remote confirmation format, and production-off status.
-- [ ] Run Python tests/compile, Swift runner/release build, plist lint, `git diff --check`, and `./status_watcher.command`.
-- [ ] Keep acceptance mailbox OFF and confirm `git status --short` and recent log.
+- [x] Run Python tests/compile, Swift runner/release build, plist lint, `git diff --check`, and `./status_watcher.command`.
+- [x] Keep acceptance mailbox OFF and confirm `git status --short` and recent log.
