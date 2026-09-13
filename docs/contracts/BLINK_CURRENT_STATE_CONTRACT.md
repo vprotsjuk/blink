@@ -89,10 +89,12 @@ event-specific ToPhone snapshots with deterministic
 queued/delayed package when canonical files change; after the reminder becomes
 due, the delivered snapshot is immutable until bounded cleanup. The ntfy
 payload uses the canonical percent-encoded `Files` action with input
-`blink-files-v1|<package-id>`; no `clear=true` is added. The existing
-`Blink Files` Shortcut must read only the matching package, open one file
-directly, and chooser-select among multiple files. Production mailbox remains
-disabled and `Blink_Production/ToMac` remains unused.
+`blink-files-v1|<package-id>`; no `clear=true` is added. The isolated WORK
+candidate reads only the matching package, then uses
+`Choose from Attachments` → `Show Selected Item in Quick Look` for both the
+one-file and multiple-file branches. The original and backup `Blink Files`
+Shortcuts remain unchanged. Production mailbox remains disabled and
+`Blink_Production/ToMac` remains unused.
 
 The first controlled Files push to `Blink Files Stage2 WORK` was accepted by
 ntfy (HTTP 200), but tapping the action on iPhone opened the Shortcuts library
@@ -100,12 +102,13 @@ instead of Quick Look. The Mac candidate and URL were verified, and a later
 iPhone screenshot confirmed that the full candidate and escaped-pipe regex are
 present there, and the Shortcut showed a completion checkmark after the tap.
 The PDF opened manually from Files, proving package availability, while the
-iOS Quick Look action produced no preview. The WORK candidate currently uses
-`Show Item from List in Quick Look` after `Get First Item` and
-`Show Selected Item in Quick Look` after the chooser; the original and backup
-Shortcuts remain unchanged. No production mailbox was enabled. The unresolved
-gate is to determine why the iPhone run completes with a checkmark without
-presenting the PDF, despite the same PDF opening manually in Files.
+iOS Quick Look action produced no preview. The WORK candidate now uses
+`Choose from Attachments` followed by `Show Selected Item in Quick Look` in
+both count branches; the original and backup Shortcuts remain unchanged.
+SQLite/editor inspection confirms the filtered values are File
+items/references. No production mailbox was enabled. The unresolved gate is
+the physical iPhone result: the run must visibly present the PDF rather than
+only finish with a checkmark.
 
 SwiftUI also has the approved Phase 7 fast refresh: `ContentView` observes the
 parent directory containing `agenda.json`, filters/debounces atomic-replace

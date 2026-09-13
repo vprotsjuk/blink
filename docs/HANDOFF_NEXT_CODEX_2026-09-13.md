@@ -234,8 +234,8 @@ Set Variable AttachmentCount to Count
 If AttachmentCount is 0 → Stop This Shortcut
 Otherwise
   If AttachmentCount is 1
-    Get First Item from Attachments
-    Show Item from List in Quick Look
+    Choose from Attachments (Select Multiple OFF)
+    Show Selected Item in Quick Look
   Otherwise
     Choose from Attachments (Select Multiple OFF)
     Show Selected Item in Quick Look
@@ -244,8 +244,9 @@ End If
 ```
 
 The regex, `.ready` check, manifest check, exact attachment prefix, and
-fail-closed count branch are present. The final actions must be Quick Look,
-not `Open Item`.
+fail-closed count branch are present. The one-file and multi-file branches now
+use the same `Choose from Attachments` → `Show Selected Item in Quick Look`
+pattern. The final actions remain Quick Look, not `Open Item`.
 
 ## Unresolved real-device problem
 
@@ -263,13 +264,12 @@ under a different name. Adding it to PDF attachments can convert file
 references into raw contents and break Quick Look. Verify the actual input and
 output types in the editor before changing anything.
 
-Independent review says `Show Item from List in Quick Look` is semantically
-valid after `Get First Item`, and `Show Selected Item in Quick Look` is valid
-after chooser. The remaining hypotheses are a wrong output type/binding or an
-iOS presentation issue. A safe diagnostic variant is to use chooser plus
-`Show Selected Item in Quick Look` even for the one-file case, matching the old
-proven path. Do not declare success until a physical iPhone run visibly shows
-the PDF.
+The editor and SQLite action blob establish that `AllFiles` and the filtered
+`Attachments` are File items/references, not raw bytes. The one-file branch was
+therefore changed to the same chooser-plus-Quick-Look pattern already used by
+the multi-file branch. The old and backup Shortcuts remain unchanged. This is
+still a diagnostic candidate, not an accepted fix: do not declare success until
+a physical iPhone run visibly shows the PDF.
 
 ## Cleanup and forbidden actions
 

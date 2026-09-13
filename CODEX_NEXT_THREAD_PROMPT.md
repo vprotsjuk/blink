@@ -64,12 +64,14 @@ packages during reconciliation, and freezes delivered snapshots until bounded
 cleanup. The canonical ntfy action is `Files` with input
 `blink-files-v1|<package-id>` and percent-encoded `shortcuts://` query values;
 no `clear=true` is added. The existing `Blink Files` Shortcut must read only
-the matching package, open one file directly, and chooser-select multiple
-files. Physical iPhone acceptance is the remaining Stage 2 gate; production
-mailbox and `Blink_Production/ToMac` remain disabled/unused. The current
-`Blink Files Stage2 WORK` candidate completes on iPhone with a checkmark but
-shows no PDF preview; compare it with the old `Blink Files` tree and diagnose
-the actual Quick Look/file-type binding before any further edit.
+the matching package, and Quick Look only the matching file set. Physical
+iPhone acceptance is the remaining Stage 2 gate; production mailbox and
+`Blink_Production/ToMac` remain disabled/unused. The current
+`Blink Files Stage2 WORK` candidate now uses
+`Choose from Attachments` → `Show Selected Item in Quick Look` in both the
+one-file and multiple-file branches. It is not accepted yet: the previous run
+completed with a checkmark but showed no PDF preview, so perform one controlled
+physical retest before changing the tree again.
 
 Phase 6A/6B CREATE acceptance has since passed against `Blink_Acceptance/ToMac`;
 iCloud `dataless` package bytes are treated as `PENDING_SYNC` and retried. The

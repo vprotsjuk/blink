@@ -636,12 +636,12 @@ the full candidate and escaped-pipe regex are present there, and the Shortcut
 showed a completion checkmark after the tap. The PDF opened manually from
 Files, proving package availability, but the iOS Quick Look action produced no
 preview. The WORK candidate was therefore adjusted only in its final branches
-to use `Show Item from List in Quick Look` for the first item and
-`Show Selected Item in Quick Look` for the chooser-selected item. The original
-and backup Shortcuts remain unchanged. The iPhone run still completes with a
-checkmark without presenting the PDF; the PDF opens manually in Files, so the
-remaining issue is the Quick Look/file-type binding or presentation context.
-No second push has been sent.
+to use `Choose from Attachments` followed by `Show Selected Item in Quick Look`
+for both one-file and multiple-file counts. SQLite/editor inspection confirms
+the filtered values are File items/references, not raw bytes. The original and
+backup Shortcuts remain unchanged. Physical iPhone retest is still pending;
+the previous run completed with a checkmark without presenting the PDF, while
+the same PDF opened manually in Files. No second push has been sent.
 
 The existing `Blink Files` Shortcut still points at the historical
 `Blink_Feasibility/ToPhone` contract and must be evolved before the physical

@@ -119,9 +119,13 @@ while a reminder is queued/delayed; once it becomes due, the delivered
 snapshot is immutable until bounded cleanup. The canonical ntfy action is
 `Files` with input `blink-files-v1|<package-id>` and percent-encoded
 `shortcuts://` query values. The existing `Blink Files` Shortcut must validate
-the exact package, open one file directly in Quick Look, or chooser-select
-multiple files. Physical iPhone acceptance is the remaining Stage 2 gate; no
-phone-to-Mac round trip or extra Home Screen icon is introduced.
+the exact package, open only the matching file set in Quick Look, and never
+read unrelated ToPhone artifacts. Physical iPhone acceptance is the remaining
+Stage 2 gate; no phone-to-Mac round trip or extra Home Screen icon is
+introduced. The isolated `Blink Files Stage2 WORK` candidate currently uses
+`Choose from Attachments` → `Show Selected Item in Quick Look` in both the
+one-file and multiple-file branches; this is still pending real-device
+acceptance.
 
 Confirmed manual results (2026-09-12): iPhone → Mac file transport, Mac →
 iPhone `ToPhone` + Quick Look, external Shortcut URL input, the real ntfy DONE
