@@ -8,7 +8,7 @@ reading another document first.
 **Snapshot:** 2026-09-13  
 **Project root:** /Users/vitaliiprotsiuk/Desktop/Blink  
 **Owner language:** Russian; technical discussion may be English.  
-**Current Git commit:** 044d4c9 test: target controlled Files acceptance shortcut
+**Current Git commit:** 69a4a42 docs: record Files acquisition repair and retest result
 **Current branch:** main  
 **Production mailbox:** disabled  
 **New ntfy notification for this investigation:** one Files-only retest sent to WORK; physical tap completed, still no preview
