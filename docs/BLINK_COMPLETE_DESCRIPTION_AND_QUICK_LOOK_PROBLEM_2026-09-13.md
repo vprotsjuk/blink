@@ -8,7 +8,7 @@ reading another document first.
 **Snapshot:** 2026-09-13  
 **Project root:** /Users/vitaliiprotsiuk/Desktop/Blink  
 **Owner language:** Russian; technical discussion may be English.  
-**Current Git commit:** 69a4a42 docs: record Files acquisition repair and retest result
+**Current Git commit:** 1747524 docs: confirm repaired Files tree on iPhone
 **Current branch:** main  
 **Production mailbox:** disabled  
 **New ntfy notification for this investigation:** one Files-only retest sent to WORK; physical tap completed, still no preview
@@ -556,6 +556,78 @@ tested by one new phone notification after the repair, but the result was
 again only a checkmark with no chooser or preview. The iPhone editor now
 confirms the repaired acquisition prefix; actual runtime values after
 `AllFiles` still need independent verification.
+
+### Latest work result and request for independent GPT analysis
+
+The latest controlled sequence was deliberately limited to one push after the
+Mac-side acquisition repair. It targeted exactly `Blink Files Stage2 WORK`
+and used the existing one-file package. ntfy returned HTTP 200. The owner
+reported the same physical result: the phone switched to Shortcuts, WORK ran
+to a checkmark, the screen briefly blinked, no chooser appeared, and the PDF
+was not presented. The owner then opened the WORK editor on the iPhone and
+sent a screenshot confirming that the repaired prefix is actually present on
+the phone:
+
+~~~text
+Get file from Shortcuts at path Blink_Acceptance/ToPhone
+Get Contents of File (input: File)
+Set variable AllFiles to Folder Contents
+~~~
+
+This removes the stale-iPhone-version hypothesis. It does not, by itself,
+show the runtime values produced by those actions.
+
+Immediately before the push, the Mac-side package and Shortcut were checked
+again. The package directory contained exactly three entries: one manifest,
+one `.ready` marker, and one expected PDF. Evaluating the same names gave:
+
+~~~text
+AllFiles                         3
+.ready matches                   1
+manifest matches                1
+Attachments                      1
+WORK action count               46
+final successful path             Choose from Attachments -> Quick Look
+canonical Blink Files            unchanged
+Blink Files BACKUP Stage2       unchanged
+production mailbox               OFF
+~~~
+
+The Mac SQLite action blob and editor show that the fail-closed branches are
+intended to stop only when ready is not exactly one, manifest is not exactly
+one, or attachment count is zero. With the verified package, the Mac-side
+values pass all three checks. Therefore no additional acquisition action or
+random filter rewrite is currently justified.
+
+My current proposal is a single minimal diagnostic, not another acceptance
+push and not an edit to WORK: create a temporary diagnostic copy that exposes
+only four checkpoints—`AllFiles` count, `.ready` count, manifest count, and
+`Attachments` count—before the final presentation action. The diagnostic must
+use the same fixed acceptance package, leave `Blink Files` and the backup
+untouched, keep production mailbox OFF, and be removed after the result is
+recorded. If all four iPhone values pass, the remaining hypothesis is the
+presentation boundary of `Show Selected Item in Quick Look` when the shortcut
+is launched by the ntfy `shortcuts://` URL. Only then should GPT compare
+Quick Look with `Open Item` as a deliberate alternative and explain exactly
+which presentation context changes; `Open Item` is not yet accepted.
+
+The independent GPT should challenge this proposal and answer:
+
+1. Can the iPhone screenshot and the Mac action blob prove the actual runtime
+   type of `AllFiles` and `Attachments`, or is an on-device checkpoint still
+   required?
+2. Could `Filter Files` return a list that is valid for counting but invalid
+   as the input of `Choose from List` or `Show Selected Item in Quick Look`?
+3. Does a one-item `Choose from List` necessarily present a chooser on the
+   current iOS Shortcuts runtime?
+4. Is `Show Selected Item in Quick Look` expected to remain visible when the
+   shortcut is launched from an ntfy action, or can iOS dismiss that UI after
+   the shortcut finishes?
+5. What is the smallest diagnostic shortcut and the smallest safe fix, if any,
+   that can prove the exact stopping action without touching production?
+
+No further ntfy push has been sent after this failure. The next action must be
+diagnosis, not another acceptance attempt.
 
 ## 12. Exact questions for independent GPT diagnosis
 
