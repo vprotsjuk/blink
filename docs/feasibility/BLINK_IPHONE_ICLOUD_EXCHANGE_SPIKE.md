@@ -220,28 +220,34 @@ not production integration.
 
 ### Open design question: the originating ntfy DONE notification
 
-After the user taps DONE, the iPhone creates the DONE package. A future Mac
-importer will validate it and call the normal Blink Done path. It is not yet
-decided what should happen to the original ntfy notification:
+After the user taps DONE, the iPhone creates the DONE package. The Mac importer
+now validates it and calls the normal Blink Done path. It is not yet decided
+what should happen to the original ntfy notification:
 
 - clear it immediately after the button tap;
 - keep it until Mac confirms successful package receipt and application; or
 - use another acknowledgement UX.
 
-`clear=true` is not an approved production solution. Decide this separately
-before implementing the production DONE action.
+`clear=true` is not an approved production solution. Separately from that open
+originating-notification lifecycle, a newly applied DONE now emits one short
+Mac confirmation titled `✓ Done — <event title>` with optional description and
+scheduled local time, without an action button or `clear=true`. Duplicate,
+no-op, stale, malformed, pending, and failed commands do not emit it, and a
+delivery failure never rolls back completion.
 
 ## Next stage (Phase 6 controlled acceptance; production still disabled)
 
-The existing Mac-side mailbox reader/importer may be enabled only for a
-controlled run against the empty `Blink_Acceptance/ToMac` root. It requires
+The Mac-side mailbox reader/importer is implemented and may be enabled only for
+a controlled run against the empty `Blink_Acceptance/ToMac` root. It requires
 matching `.ready`, validates JSON and any declared attachment, is idempotent,
 treats duplicate DONE and stale occurrences as NO-OPs, survives malformed
 packages without blocking later packages, and removes transport files only
 after successful application. Remote DONE calls the existing Blink Done
-business logic; Remote CREATE_EVENT calls the existing event
-creation/persistence path. The mailbox must never become the source of truth or
-a second scheduler/sender. Production `Blink_Production/ToMac` remains unused.
+business logic, including future-start Early Done and idempotency; Remote
+CREATE_EVENT calls the existing event creation/persistence path. A newly
+applied remote DONE emits the short Mac confirmation described above. The
+mailbox must never become the source of truth or a second scheduler/sender.
+Production `Blink_Production/ToMac` remains unused.
 
 Phase 6A CREATE without attachment and Phase 6B CREATE with a PDF were
 completed against the acceptance root on 2026-09-12. The PDF package

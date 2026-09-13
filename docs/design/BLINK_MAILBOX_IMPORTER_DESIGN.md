@@ -481,10 +481,12 @@ Current writers are:
 - Swift `BlinkStore.complete` (Done and recurrence successor);
 - Swift `setAttentionLevel`, `setEnabled`, and `delete`;
 - Swift `addFiles` and `addJPEG` (attachment manifest updates);
-- Swift `loadEventResult` when it repairs future `done=true` records or
-  attachment manifests;
-- Python `app/agenda_store.load_agenda_document` when it persists migration,
-  stale-record repair, or manifest reconciliation.
+- Swift `loadEventResult` when it reconciles attachment manifests;
+- Python `app/agenda_store.load_agenda_document` when it persists migration or
+  manifest reconciliation.
+
+Completed events are authoritative: `done=true` remains in History even when
+the start is in the future. Load never reopens a completed future event.
 
 `watcher.py` normally reads agenda and does not write event records. There is
 no shared lock or version check.
@@ -659,6 +661,15 @@ contains the transport ID and result, and `mailbox_runtime.json` records the
 last result. The signal is therefore observable even if iCloud cleanup or an
 iOS notification update fails; acknowledgement UX must not be coupled to
 deleting the source notification.
+
+The implemented Mac-side acknowledgement signal is a separate short ntfy
+confirmation sent only after a newly applied remote DONE commits. It uses the
+title `✓ Done — <event title>` and a body containing the optional description
+plus `Scheduled: <local date/time>`, has no action button, and never uses
+`clear=true`. Ledger replays, `noop_done`, `stale_event`, malformed, pending,
+and failed commands do not emit it; delivery failure never rolls back the
+completion. The originating iOS notification lifecycle remains open exactly as
+listed above.
 
 ## 19. Observability and Health proposal
 

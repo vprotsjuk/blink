@@ -35,8 +35,12 @@ Implementation checkpoint: Phase 1 shared agenda locking is complete in commit
 `df50af7` plus diagnostics follow-up `47a381b`; Phase 4A is `a8c682b`; Phase
 4B acceptance is recorded in `49eaf30`. Phase 5 manual acceptance artifacts
 are archived outside the now-empty `Blink_Acceptance/ToMac` under
-`Blink_Acceptance/Archive/Phase5-20260912211629`; the next task is
-controlled Phase 6 mailbox acceptance only after explicit owner authorization.
+`Blink_Acceptance/Archive/Phase5-20260912211629`. Phase 6 controlled CREATE
+and DONE acceptance passed. Early Done is implemented for Today/Upcoming and
+future-start events move directly to History with preserved `start` and actual
+`done_at`. Remote DONE sends one short post-apply confirmation without an
+action button or `clear=true`; duplicate/no-op/stale/malformed/pending/failed
+commands remain silent and notification failure does not roll back completion.
 Production iCloud, ntfy Actions, and Shortcuts remain unchanged. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 

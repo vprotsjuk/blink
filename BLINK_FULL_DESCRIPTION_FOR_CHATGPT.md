@@ -92,6 +92,17 @@ owner tapped the accepted ntfy action, package
 was applied, and the event became `done=true`. Historical feasibility files
 remain untouched and the controlled mailbox was returned to OFF.
 
+Mac-side Early Done uses the same canonical completion path as Today and
+remote DONE. Eligible unfinished personal events in Today and Upcoming expose
+physical and context-menu `Done`; completing a future-start event preserves its
+original `start`, records the actual local `done_at`, immediately removes it
+from Upcoming, and places it in History. Repeated local or remote DONE is an
+idempotent no-op. A newly applied remote DONE emits one short confirmation
+(`✓ Done — <event title>` with optional description and scheduled local time),
+without an action button or `clear=true`; duplicate, stale/no-op, malformed,
+pending, and failed commands do not emit a confirmation, and a send failure
+does not roll back completion.
+
 The iPhone DONE notification lifecycle remains an open design question. After
 the button creates a DONE package, it is not yet decided whether the ntfy
 notification disappears immediately, remains until Mac acknowledgement, or
@@ -378,7 +389,7 @@ The same event object can be viewed in different tabs based on its state. Tabs a
 - `Delete`: removes the event record intentionally. This is the destructive action and is separate from Off.
 - There is no Snooze feature in the current product. Legacy snooze fields are only stripped during JSON migration.
 
-Today shows `Done`, a folder button, `On/Off`, `Edit`, attachment actions, and `Delete`. Upcoming shows a folder button, `On/Off`, `Edit`, attachment actions, and `Delete`. History shows `Duplicate as new event`, a folder button only when attachments exist, and `Delete`; it never shows Edit or edit-on-click. In Today/Upcoming, the row content opens the editor by double-click, not single-click. The UI must not hide Done merely because an event has become overdue.
+Today and Upcoming show `Done`, a folder button, `On/Off`, `Edit`, attachment actions, and `Delete` for eligible unfinished personal rows. History shows `Duplicate as new event`, a folder button only when attachments exist, and `Delete`; it never shows Edit or edit-on-click. In Today/Upcoming, the row content opens the editor by double-click, not single-click. The UI must not hide Done merely because an event has become overdue or has a future start.
 
 ## 7. Attention, Colors, and Blinker
 
@@ -621,7 +632,7 @@ Shows active events for today, including overdue unfinished items. The header pl
 
 ### Upcoming
 
-Shows future enabled events sorted by effective time. Each row displays full date including year, time, priority dot, title, description, `📎` plus count when attachments exist, a folder button, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on double-click.
+Shows future enabled events sorted by effective time. Each row displays full date including year, time, priority dot, title, description, `📎` plus count when attachments exist, a folder button, `Done`, `On/Off`, `Edit`, and `Delete`. The content area opens Edit on double-click.
 
 ### History
 

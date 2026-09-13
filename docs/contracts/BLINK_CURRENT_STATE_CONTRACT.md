@@ -119,7 +119,9 @@ Upcoming -> Active -> Done -> History
 - `Delete` removes the event and its queued reminders; deleted events do not enter History.
 - `Edit` is available only for non-History events and preserves unrelated fields and existing lifecycle state while recalculating the view classification and future reminder schedule.
 - History is frozen. A historical event cannot be edited in place; it can only be duplicated as a new event with a new ID and new attachment owner, or deleted. The source history record remains unchanged when duplicated.
-- On load, a legacy/stale personal record with `done=true` and a future `start` is repaired to unfinished (`done=false`, `done_at=null`) and immediately classified into `Today`/`Upcoming`.
+- `done=true` is authoritative regardless of whether `start` is in the past or
+  future: the event is classified into `History`, its original `start` is
+  preserved, and load never reopens it automatically.
 - Recurrence supports fixed weekly events and `days after Done`; completion creates at most one successor.
 - Every event occurrence owns `event_data/attachments/<event-id>`. `series_id`
   is recurrence metadata only and is never a production attachment owner.
@@ -161,6 +163,15 @@ remote delivery because the visible payload is unchanged.
 Personal pushes retain a useful title and description, with date/time and reminder context in the body. Personal titles begin with the event attention icon `🟢`, `🟡`, or `🔴`; if local attachments exist, exactly one `📎` marker is added. ntfy urgency remains independently controlled by its `Priority` header. The full multiline title/description remains local; the push uses a compact single-line title and a UTF-8 byte-safe body projection bounded by the current ntfy limits. Local paths, filenames, and file bytes are never sent. Weather identifies its block as `WEATHER` in the ntfy title/header, then shows location/date and selected weather blocks. If Astronomy is included with Weather, the body contains a plain `ASTRONOMY` section. If `Use Weather briefing time` is off, Astronomy is sent as its own briefing with the native ntfy title/header `ASTRONOMY` and a body beginning with the date; no Markdown markers are sent because the phone app displays them literally. Standalone notification titles use the same ntfy title/header styling. Astronomy rise/set labels use thin arrows after their matching icon: `☀️ ↑ Sunrise`, `☀️ ↓ Sunset`, `🌙 ↑ Moonrise`, and `🌙 ↓ Moonset`; Solar Noon remains `☀️` without a direction arrow, and `🌅` is not emitted. Individual Astronomy bodies include date/time and preserve useful calculated facts, but remove the duplicated event sentence and generic `Event starts now` line. Solar Noon renders solar altitude as a separate `Sun altitude: …° above horizon.` fact. Individual Astronomy notifications omit outgoing ntfy tags; internal event tags remain for classification and icon selection. Group Astronomy briefings show the lunar phase with exactly one large direction arrow (`⬆️` waxing or `⬇️` waning), followed by one `<N> days until Full Moon.` or `<N> days until New Moon.` line derived from the generated Skyfield schedule; exact Full/New Moon events omit the arrow. Standalone Moonrise/Moonset titles use the thin rise/set arrow, while standalone phase-event titles use the phase icon and omit the arrow at the exact boundary. The watcher owns this presentation and must not introduce a second approximate lunar calculation. The body must not repeat an event title: Sunset starts with its next useful fact, and standalone Moonrise/Moonset/New Moon/Full Moon bodies contain the countdown only. User-entered personal title/description may be in any language; application labels are English.
 
 Personal and Astronomy event reminders use the rolling 24-hour queue. Weather is never added to that remote queue: at/after its configured local time the watcher fetches Open-Meteo fresh and sends directly. After a Mac sleep, the first watcher cycle checks today's delivered key and, if absent, performs the same fresh fetch and direct send; there is no late cutoff and only one automatic Weather briefing per local date. When a Weather or Astronomy briefing time is saved after today's local target has already passed, the watcher records the configuration-change instant and defers that newly configured briefing to the next local day; it does not send a late catch-up immediately from the Save action.
+
+After a remote DONE is newly applied, the mailbox worker may send exactly one
+short Mac confirmation using the same ntfy topic. Its title is
+`✓ Done — <event title>` and its body is the optional description followed by
+`Scheduled: <local date/time>`. The confirmation has no action button and never
+uses `clear=true`; duplicate, already-done, stale, malformed, pending, or
+failed commands are silent. A confirmation delivery failure is diagnostic only
+and never rolls back the committed completion or changes the originating
+notification.
 
 ## 5. Astronomy Contract
 

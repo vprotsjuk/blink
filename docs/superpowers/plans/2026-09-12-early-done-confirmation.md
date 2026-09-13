@@ -24,10 +24,10 @@
 - Modify: `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift`
 - Test: `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift`
 
-- [ ] Add a source-contract test proving `EventListView` passes `showsDone: true`.
-- [ ] Run the Swift runner and confirm the new test fails before the UI change.
-- [ ] Pass `showsDone: true` in `EventListView` and rerun the focused runner.
-- [ ] Add model tests for future completion preserving `start`, recording `done_at`, moving to History, and removing attention eligibility.
+- [x] Add a source-contract test proving `EventListView` passes `showsDone: true`.
+- [x] Run the Swift runner and confirm the new test fails before the UI change.
+- [x] Pass `showsDone: true` in `EventListView` and rerun the focused runner.
+- [x] Add model tests for future completion preserving `start`, recording `done_at`, moving to History, and removing attention eligibility.
 
 ### Task 2: Add canonical remote DONE confirmation
 
@@ -35,16 +35,16 @@
 - Modify: `app/mailbox_importer.py`, `watcher.py`
 - Test: `test_mailbox_importer.py`, `test_watcher.py`, `test_notification_format.py`
 
-- [ ] Add failing tests for one confirmation on `applied`, no confirmation on `noop_done`/`stale_event`, title/description/scheduled time formatting, no action button, and failure without rollback.
-- [ ] Implement a bounded confirmation callback from the mailbox worker using existing ntfy request/sender primitives.
-- [ ] Keep notification failure diagnostic-only after `done=true` is committed.
-- [ ] Run focused Python tests, then the full suite.
+- [x] Add failing tests for one confirmation on `applied`, no confirmation on `noop_done`/`stale_event`, title/description/scheduled time formatting, no action button, and failure without rollback.
+- [x] Implement a bounded confirmation callback from the mailbox worker using existing ntfy request/sender primitives.
+- [x] Keep notification failure diagnostic-only after `done=true` is committed.
+- [x] Run focused Python tests, then the full suite.
 
 ### Task 3: Documentation and verification
 
 **Files:**
 - Modify: `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`, `docs/HANDOFF.md`, `CODEX_NEXT_THREAD_PROMPT.md`, `docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`
 
-- [ ] Record Done semantics, future-event History behavior, idempotency, remote confirmation format, and production-off status.
+- [x] Record Done semantics, future-event History behavior, idempotency, remote confirmation format, and production-off status.
 - [ ] Run Python tests/compile, Swift runner/release build, plist lint, `git diff --check`, and `./status_watcher.command`.
 - [ ] Keep acceptance mailbox OFF and confirm `git status --short` and recent log.

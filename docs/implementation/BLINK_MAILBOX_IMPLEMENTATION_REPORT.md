@@ -261,13 +261,21 @@ enable commands were run in this checkpoint.
   `result=applied` in the journal/processed ledger, removed the exact package
   after commit, and persisted the event as `done=true`. The acceptance inbox
   is empty again; historical feasibility files remain untouched.
-- **Early Done audit — code change still pending.** `BlinkStore.complete` and
-  `EventSnapshot`/Python sectioning already support future-start completion
-  and History by `done=true`, but the Upcoming `EventListView` currently
-  leaves `showsDone` at its default `false`; its rows/context menu therefore
-  still need a small owner-approved change to expose `Done` for future
-  Upcoming events. No parallel completion path was added, and Early-Done
-  implementation tests remain pending a separately authorized follow-up.
+- **Early Done — COMPLETE.** Today (including its future same-day section) and
+  Upcoming rows expose the existing physical/context-menu `Done` action for
+  eligible unfinished personal events. Future-start completion preserves the
+  original `start`, records the actual local `done_at`, clears attention, and
+  classifies the event directly into History. Swift and Python completion are
+  idempotent; repeated local or remote DONE is a no-op and does not create a
+  second recurrence successor.
+- **Remote DONE confirmation — COMPLETE.** After a newly applied remote DONE
+  commits under the agenda lock, the mailbox worker sends one short ntfy
+  confirmation titled `✓ Done — <event title>`, with optional description and
+  `Scheduled: <local date/time>` in the body. It has no action button and never
+  adds `clear=true`. Ledger replays, `noop_done`, `stale_event`, malformed,
+  pending, and failed commands remain silent. A confirmation HTTP/network
+  failure is diagnostic-only and never rolls back the committed completion;
+  package cleanup still follows the normal post-commit boundary.
 - The controlled mailbox was returned to **OFF** immediately after the DONE
   acceptance. `Blink_Production/ToMac` remains unused and the acceptance inbox
   is empty.
@@ -517,8 +525,9 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
    archived or historical feasibility inbox.
 2. Resolve the DONE acknowledgement/notification lifecycle separately;
    `clear=true` remains unselected.
-3. Do not implement Early Done or begin Phase 5/6 follow-on work until
-   explicitly requested.
+3. Early Done and post-apply remote DONE confirmation are now implemented;
+   do not begin a new phase or owner-dependent manual acceptance without a
+   separate request.
 
 ## Last checkpoint
 
