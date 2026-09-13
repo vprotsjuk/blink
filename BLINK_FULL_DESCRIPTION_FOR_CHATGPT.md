@@ -105,6 +105,21 @@ production ntfy Actions, or production Shortcut changes are enabled. Confirmed
 results and package formats are in
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
+Stage 2 Mac-side attachment viewing is implemented behind controlled opt-in
+settings `BLINK_NTFY_FILES_ACTION_ENABLED=1` and `BLINK_TO_PHONE_ROOT`; the
+production mailbox and `Blink_Production/ToMac` remain disabled/unused. For
+each eligible personal reminder with current attachments, the Mac creates a
+deterministic flat ToPhone snapshot with package ID
+`blink-files-v1-<sha256-prefix>`, a versioned manifest, ordinal files, and a
+`.ready` marker written last. Queue reconciliation refreshes the same package
+while a reminder is queued/delayed; once it becomes due, the delivered
+snapshot is immutable until bounded cleanup. The canonical ntfy action is
+`Files` with input `blink-files-v1|<package-id>` and percent-encoded
+`shortcuts://` query values. The existing `Blink Files` Shortcut must validate
+the exact package, open one file directly in Quick Look, or chooser-select
+multiple files. Physical iPhone acceptance is the remaining Stage 2 gate; no
+phone-to-Mac round trip or extra Home Screen icon is introduced.
+
 Confirmed manual results (2026-09-12): iPhone → Mac file transport, Mac →
 iPhone `ToPhone` + Quick Look, external Shortcut URL input, the real ntfy DONE
 button producing `.done.json` + `.ready`, CREATE_EVENT direct launch without an

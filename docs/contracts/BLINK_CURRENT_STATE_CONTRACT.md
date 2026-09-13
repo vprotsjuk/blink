@@ -29,7 +29,7 @@ SwiftUI GUI -> local JSON files -> watcher.py -> ntfy -> iPhone
 - Keep personal events, transport/queue, weather, astronomy, location, and UI as independent blocks connected by explicit JSON contracts.
 - Use atomic writes and preserve unknown JSON fields unless a documented migration removes a retired field.
 
-### Future iPhone exchange (manual Phase 4B/5 complete; production not implemented)
+### iPhone exchange (manual Phase 4B/5/6 complete; Stage 2 Mac-side implemented, physical acceptance pending)
 
 A private Apple Shortcuts container has been manually verified at
 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents` with
@@ -80,6 +80,20 @@ Controlled Phase 4B acceptance passed with `Blink DONE Test`, input
 The importer remained disabled; this does not enable production mailbox
 processing.
 
+Stage 2 Mac-side attachment viewing is now implemented behind the separate
+opt-in controls `BLINK_NTFY_FILES_ACTION_ENABLED=1` and
+`BLINK_TO_PHONE_ROOT` (physical iPhone acceptance is still pending). The Mac
+keeps `event_data/attachments/<owner-id>/` canonical and stages flat,
+event-specific ToPhone snapshots with deterministic
+`blink-files-v1-<sha256-prefix>` package IDs. Queue reconciliation refreshes a
+queued/delayed package when canonical files change; after the reminder becomes
+due, the delivered snapshot is immutable until bounded cleanup. The ntfy
+payload uses the canonical percent-encoded `Files` action with input
+`blink-files-v1|<package-id>`; no `clear=true` is added. The existing
+`Blink Files` Shortcut must read only the matching package, open one file
+directly, and chooser-select among multiple files. Production mailbox remains
+disabled and `Blink_Production/ToMac` remains unused.
+
 SwiftUI also has the approved Phase 7 fast refresh: `ContentView` observes the
 parent directory containing `agenda.json`, filters/debounces atomic-replace
 events, and rereads the file through `BlinkStore.loadEventResult()` so the
@@ -89,9 +103,9 @@ does not write agenda data.
 
 The following are core remaining requirements, not implemented behavior:
 
-- production event-specific iPhone attachment viewing through `ToPhone`, a
-  `Files/Open attachments` action, one-file direct open, multi-file chooser,
-  Quick Look, and safe package cleanup/retry;
+- physical iPhone acceptance of the implemented event-specific `ToPhone`
+  attachment viewing action, including one-file direct open and multi-file
+  chooser behavior;
 - an optional personal Today Morning Briefing containing every applicable
   Today event, with persistent enable/disable, watcher-owned delivery,
   local-date dedupe, wake/timezone/empty-day rules, and Weather/Astronomy

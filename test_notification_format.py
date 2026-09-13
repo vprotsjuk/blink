@@ -9,6 +9,7 @@ from app.notification_format import (
     build_event_notification,
     build_done_action,
     build_done_confirmation_payload,
+    build_files_action,
     build_event_payload,
     push_tags_for_event,
 )
@@ -109,6 +110,42 @@ class NotificationFormatTests(unittest.TestCase):
             0,
         )
         self.assertEqual(payload["actions"], build_done_action(self.personal_event(), enabled=True))
+
+    def test_files_action_uses_percent20_and_encoded_transport_input(self):
+        package = "blink-files-v1-" + "a" * 32
+        action = build_files_action(package, shortcut_name="Blink Files")
+        self.assertIn("name=Blink%20Files", action)
+        self.assertNotIn("Blink+Files", action)
+        self.assertIn("blink-files-v1%7C" + package, action)
+        self.assertNotIn("clear=true", action)
+
+    def test_files_payload_requires_opt_in_and_package_id(self):
+        event = self.personal_event(attachments={"owner_id": "event-abc_123", "count": 1, "has_files": True})
+        package = "blink-files-v1-" + "b" * 32
+        off = build_event_payload({"default_priority": "high", "default_tags": ["calendar"]}, event, 0, files_package_id=package)
+        self.assertNotIn("actions", off)
+        on = build_event_payload(
+            {"default_priority": "high", "default_tags": ["calendar"], "files_action_enabled": True},
+            event,
+            0,
+            files_package_id=package,
+        )
+        self.assertIn("actions", on)
+        self.assertIn("Files", on["actions"])
+
+    def test_files_action_excludes_weather_astronomy_and_no_files(self):
+        for event in (
+            self.personal_event(attachments={"owner_id": "event-abc_123", "count": 0, "has_files": False}),
+            self.personal_event(source="weather", attachments={"owner_id": "event-abc_123", "count": 1, "has_files": True}),
+            self.personal_event(source="astronomy", attachments={"owner_id": "event-abc_123", "count": 1, "has_files": True}),
+        ):
+            payload = build_event_payload(
+                {"default_priority": "high", "default_tags": ["calendar"], "files_action_enabled": True},
+                event,
+                0,
+                files_package_id=None if not event.get("attachments", {}).get("has_files") else "blink-files-v1-" + "c" * 32,
+            )
+            self.assertNotIn("Files", payload.get("actions", ""))
     def test_event_notification_uses_title_and_readable_description(self):
         event = {
             "title": "Визит ко клиенту",

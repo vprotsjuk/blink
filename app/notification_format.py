@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from urllib.parse import quote, urlencode
 from datetime import datetime
 from typing import Any
@@ -22,6 +23,9 @@ _MONTHS = (
 DONE_SHORTCUT_NAME = "Blink DONE"
 DONE_ACTION_VERSION = "blink-done-v1"
 DONE_SHORTCUT_NAME_ENV = "BLINK_NTFY_DONE_SHORTCUT_NAME"
+FILES_ACTION_VERSION = "blink-files-v1"
+FILES_SHORTCUT_NAME = "Blink Files"
+FILES_ACTION_ENABLED_ENV = "BLINK_NTFY_FILES_ACTION_ENABLED"
 
 
 def done_shortcut_name() -> str:
@@ -68,6 +72,27 @@ def build_done_action(
     return f"view, Done, {shortcut_url}"
 
 
+def files_action_enabled(config: dict[str, Any] | None = None) -> bool:
+    if isinstance(config, dict) and isinstance(config.get("files_action_enabled"), bool):
+        return config["files_action_enabled"]
+    return os.environ.get(FILES_ACTION_ENABLED_ENV, "").strip().lower() in {"1", "true", "yes"}
+
+
+def build_files_action(package_id: str, *, shortcut_name: str = FILES_SHORTCUT_NAME) -> str:
+    """Build the canonical percent-encoded action for one ToPhone package."""
+    if not re.fullmatch(r"blink-files-v1-[0-9a-f]{32}", str(package_id)):
+        raise ValueError("invalid ToPhone package id")
+    query = urlencode(
+        {
+            "name": shortcut_name,
+            "input": "text",
+            "text": f"{FILES_ACTION_VERSION}|{package_id}",
+        },
+        quote_via=quote,
+    )
+    return f"view, Files, shortcuts://run-shortcut?{query}"
+
+
 def build_done_confirmation_payload(event: dict[str, Any]) -> dict[str, str]:
     """Build the short Mac-confirmed completion push without an action button."""
     title = _truncate_utf8(
@@ -81,7 +106,7 @@ def build_done_confirmation_payload(event: dict[str, Any]) -> dict[str, str]:
 
 
 def build_event_payload(
-    config: dict[str, Any], event: dict[str, Any], offset_minutes: int
+    config: dict[str, Any], event: dict[str, Any], offset_minutes: int, *, files_package_id: str | None = None
 ) -> dict[str, Any]:
     """Return the canonical title/body/metadata representation for ntfy."""
     effective_start = (
@@ -104,8 +129,16 @@ def build_event_payload(
         "tags": push_tags_for_event(event, config.get("default_tags", ["calendar"])),
     }
     action = build_done_action(event, enabled=done_action_enabled(config))
-    if action is not None:
-        payload["actions"] = action
+    actions = [action] if action is not None else []
+    if (
+        files_package_id
+        and files_action_enabled(config)
+        and event.get("source", "personal") == "personal"
+        and event.get("done") is not True
+    ):
+        actions.append(build_files_action(files_package_id))
+    if actions:
+        payload["actions"] = "; ".join(actions)
     return payload
 
 

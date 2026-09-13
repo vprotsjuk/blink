@@ -72,10 +72,13 @@ the real installed Mac/iPhone path. Production mailbox remains disabled.
 
 ### Stage 2 — production iPhone attachment viewing — CURRENT
 
-Implement and test event-specific `ToPhone` packages, the Files/Open
-attachments action, one-file direct open, multi-file chooser, Quick Look,
-security, dataless-placeholder handling, cleanup, retry, and idempotency;
-then perform real iPhone acceptance.
+Mac-side event-specific `ToPhone` packages, the canonical Files action,
+snapshot refresh/immutability, one-file direct open, multi-file chooser
+contract, security, dataless-placeholder handling, cleanup, retry, and
+idempotency are implemented behind controlled opt-in settings. Remaining:
+complete verification, evolve the existing `Blink Files` Shortcut to the
+versioned package input, and perform real iPhone acceptance. Production mailbox
+and production cutover remain disabled.
 
 ### Stage 3 — personal Today Morning Briefing
 

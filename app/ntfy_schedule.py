@@ -40,6 +40,7 @@ def build_desired_queue(
     now: datetime,
     window_hours: int,
     config: dict[str, Any],
+    files_package_for: Callable[[dict[str, Any], int], str | None] | None = None,
 ) -> dict[str, dict[str, Any]]:
     desired: dict[str, dict[str, Any]] = {}
     window_end = now + timedelta(hours=window_hours)
@@ -58,7 +59,8 @@ def build_desired_queue(
                 continue
             seq = sequence_id(event, offset)
             reminder_key = f"{event['id']}|{effective_start.isoformat()}|{offset}"
-            payload = build_event_payload(config, event, offset)
+            files_package_id = files_package_for(event, offset) if files_package_for else None
+            payload = build_event_payload(config, event, offset, files_package_id=files_package_id)
             payload["delivery_time"] = reminder_time.isoformat()
             desired[seq] = {
                 "sequence_id": seq,
@@ -67,6 +69,7 @@ def build_desired_queue(
                 "event_id": event["id"],
                 "offset_minutes": offset,
                 "delivery_time": reminder_time.isoformat(),
+                "files_package_id": files_package_id,
                 "payload": payload,
                 "payload_hash": payload_hash(payload),
             }

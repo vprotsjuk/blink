@@ -519,10 +519,13 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
 - `watcher.py` — opt-in single mailbox worker and non-blocking loop handoff.
 - `app/notification_format.py` — canonical DONE action and notification payload.
 - `app/ntfy_schedule.py` — queued payload reuse with action metadata.
+- `app/to_phone_store.py` — deterministic atomic ToPhone snapshots, strict
+  package validation, delivered immutability, and bounded cleanup.
 - `test_mailbox_importer.py` — Phase 2A/2B temporary-root tests.
 - `test_watcher.py` — worker stall, single-flight, exception, and retry tests.
-- `test_notification_format.py`, `test_ntfy_schedule.py` — action, encoding,
-  eligibility, and queue-signature coverage.
+- `test_notification_format.py`, `test_ntfy_schedule.py`, `test_to_phone_store.py` —
+  action, encoding, eligibility, queue reconciliation, snapshot, validation,
+  immutability, and cleanup coverage.
 - `docs/design/BLINK_MAILBOX_IMPORTER_DESIGN.md` — approved-baseline wording
   cleanup only.
 - `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md` — this
@@ -533,6 +536,13 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
   implementation status and Phase 5/6 mailbox contract.
 
 ## Tests
+
+Stage 2 verification: `python3 -m unittest discover -q` → **211 tests passed**;
+focused agenda/mailbox/notification/watcher/schedule/ToPhone suite → **168
+tests passed**. The new coverage includes queued attachment mutation before
+delivery, delivered snapshot immutability, deterministic package ownership,
+atomic `.ready` publication, direct/queued canonical action equality, and
+percent-encoded `Blink Files` input.
 
 - `.venv/bin/python -m unittest -q` → 195 tests passed.
 - `.venv/bin/python -m unittest -q test_agenda_store test_mailbox_importer
@@ -567,6 +577,44 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
   `17`, and set Blinker `3`; the editor visibly showed `Custom — 17 min before`
   and `Custom — 3 min before`. The draft was not saved.
 
+## Stage 2 — ToPhone attachment viewing (Mac-side implementation)
+
+Stage 2 implementation is in progress. The approved architecture is
+snapshot-per-reminder: the Mac stages a deterministic event-specific package
+before direct sends and during remote queue reconciliation. While a reminder is
+queued or delayed, reconciliation refreshes the same package ID when canonical
+attachments change. Once the reminder becomes due (or a direct send is
+accepted), the package is recorded as delivered and remains immutable until
+bounded cleanup. No phone-to-Mac round trip is used.
+
+The opt-in Mac controls are `BLINK_NTFY_FILES_ACTION_ENABLED=1` and an
+explicit `BLINK_TO_PHONE_ROOT`; production mailbox flags remain disabled. The
+flat ToPhone package is `<package-id>.manifest.json`, ordinal attachment files,
+and `<package-id>.ready` written last. `Blink Files` receives
+`blink-files-v1|<package-id>` through a percent-encoded `shortcuts://` action;
+one file opens directly and multiple files are chooser-backed. DONE input,
+`clear=true` OPEN, Weather/Astronomy behavior, and the canonical local
+attachment source remain unchanged.
+
+The clean controlled acceptance transport root is
+`~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/ToPhone`;
+it was created and verified empty. `Blink_Feasibility/ToPhone` and
+`Blink_Production/ToMac` were not modified. Physical iPhone acceptance of the
+Files action remains the only Stage 2 gate; Stage 3 has not started.
+
+The first controlled acceptance package is staged for the real eligible event
+`event-0f6edc58-50f4-48fb-9423-15ddb499d876` (`Биометрия`) with its canonical
+PDF attachment. Package ID:
+`blink-files-v1-f5363e8bb0beeba1de7c2cf98215e8c9`. The exact action is:
+`view, Files, shortcuts://run-shortcut?name=Blink%20Files&input=text&text=blink-files-v1%7Cblink-files-v1-f5363e8bb0beeba1de7c2cf98215e8c9`.
+
+The existing `Blink Files` Shortcut still points at the historical
+`Blink_Feasibility/ToPhone` contract and must be evolved before the physical
+acceptance tap: read `blink-files-v1|<package-id>`, use
+`Blink_Acceptance/ToPhone`, filter by the exact package stem, open one matching
+file directly in Quick Look, and chooser-select only matching files when there
+are multiple. No other Shortcut or production path is changed by this stage.
+
 ## Known risks / blockers
 
 - Phase 1 changes are committed, but the existing live watcher/app may need the
@@ -587,10 +635,10 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
 
 1. Keep the production mailbox disabled and never point the importer at the
    archived or historical feasibility inbox.
-2. Stage 1 of `BLINK_REMAINING_ROADMAP.md` is current: perform owner-controlled
-   manual acceptance of Early Done, remote confirmation, and Dock/Attention;
-   stop before Stage 2.
-3. Keep the numeric package/worker limits as a pre-production gate.
+2. Finish the Mac-side Stage 2 package/action tests and verification, then
+   perform the single controlled physical `Blink Files` tap on iPhone.
+3. Keep Stage 3 (personal Today Morning Briefing) and numeric package/worker
+   limits as separate remaining gates.
 
 ## Last checkpoint
 

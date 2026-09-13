@@ -5,6 +5,7 @@ location.json
 watcher_state.json
 watcher_runtime.json
 ntfy_schedule_state.json
+to_phone_state.json
 watcher.log
 watcher.pid
 watcher.stdout.log

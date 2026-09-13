@@ -90,6 +90,29 @@ class WatcherCoreTests(unittest.TestCase):
             event["attachments"]["has_files"] = True
             self.assertTrue(watcher.remote_reconcile_due([event], now))
 
+    def test_remote_reconcile_signature_changes_when_attachment_bytes_change(self):
+        event = {
+            "id": "fingerprint-event", "start": "2026-09-12T11:00:00-07:00", "enabled": True,
+            "done": False, "title": "Attachment", "description": "", "attention_level": "green",
+            "reminders_minutes_before": [0], "source": "personal",
+            "attachments": {"owner_id": "fingerprint-event", "count": 1, "has_files": True},
+        }
+        now = datetime.fromisoformat("2026-09-10T10:00:00-07:00")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / "event_data" / "attachments" / "fingerprint-event"
+            folder.mkdir(parents=True)
+            source = folder / "note.txt"
+            source.write_text("one", encoding="utf-8")
+            config = {"files_action_enabled": True}
+            with patch.object(watcher, "PROJECT_DIR", root), patch.object(
+                watcher, "_last_remote_reconcile_at", None
+            ), patch.object(watcher, "_last_remote_reconcile_signature", None):
+                self.assertTrue(watcher.remote_reconcile_due([event], now, config=config))
+                self.assertFalse(watcher.remote_reconcile_due([event], now, config=config))
+                source.write_text("two", encoding="utf-8")
+                self.assertTrue(watcher.remote_reconcile_due([event], now, config=config))
+
     def test_remote_reconcile_signature_changes_when_done_action_changes(self):
         event = {
             "id": "event-action",
@@ -314,6 +337,99 @@ class WatcherCoreTests(unittest.TestCase):
             self.assertTrue(watcher.send_ntfy_notification(self._notification_config(), event, 0))
 
         self.assertNotIn("calendar", captured["request"].headers.get("Tags", "").lower())
+
+    def test_direct_personal_send_stages_files_action_and_marks_package_delivered(self):
+        event = {
+            "id": "direct-files",
+            "title": "Review files",
+            "description": "",
+            "start": "2026-08-02T11:00:00-07:00",
+            "priority": "high",
+            "tags": [],
+            "source": "personal",
+            "done": False,
+            "attachments": {"owner_id": "direct-files", "count": 1, "has_files": True},
+        }
+        captured = {}
+
+        class FakeResponse:
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+            def getcode(self): return 200
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "event_data" / "attachments" / "direct-files"
+            source.mkdir(parents=True)
+            (source / "Permit.pdf").write_bytes(b"pdf")
+            config = {**self._notification_config(), "files_action_enabled": True, "to_phone_root": str(root / "ToPhone")}
+            def fake_urlopen(request, timeout):
+                captured["request"] = request
+                return FakeResponse()
+
+            with patch.object(watcher, "PROJECT_DIR", root), patch(
+                "watcher.urllib.request.urlopen", fake_urlopen
+            ):
+                self.assertTrue(watcher.send_ntfy_notification(config, event, 0))
+            self.assertIn("view, Files,", captured["request"].headers["Actions"])
+            self.assertIn("name=Blink%20Files", captured["request"].headers["Actions"])
+            self.assertNotIn("Blink+Files", captured["request"].headers["Actions"])
+
+    def test_files_feature_off_leaves_payload_without_action(self):
+        event = {
+            "id": "off-files", "title": "No files action", "description": "",
+            "start": "2026-08-02T11:00:00-07:00", "priority": "high", "tags": [],
+            "source": "personal", "done": False,
+            "attachments": {"owner_id": "off-files", "count": 1, "has_files": True},
+        }
+        payload = notification_format.build_event_payload(
+            {"default_priority": "high", "default_tags": [], "files_action_enabled": False},
+            event,
+            0,
+            files_package_id="blink-files-v1-" + "d" * 32,
+        )
+        self.assertNotIn("actions", payload)
+
+    def test_remote_reconcile_refreshes_queued_snapshot_and_freezes_after_due(self):
+        event = {
+            "id": "queued-files", "title": "Queued files", "description": "",
+            "start": "2026-09-12T19:00:00-07:00", "start_dt": datetime.fromisoformat("2026-09-12T19:00:00-07:00"),
+            "priority": "high", "tags": [], "source": "personal", "done": False,
+            "enabled": True, "reminders_minutes_before": [60],
+            "attachments": {"owner_id": "queued-files", "count": 1, "has_files": True},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "event_data" / "attachments" / "queued-files"
+            source.mkdir(parents=True)
+            source_file = source / "note.txt"
+            source_file.write_text("one", encoding="utf-8")
+            to_phone = root / "Blink_Acceptance" / "ToPhone"
+            config = {**self._notification_config(), "files_action_enabled": True, "to_phone_root": str(to_phone)}
+            state_path = root / "ntfy_schedule_state.json"
+            with patch.object(watcher, "PROJECT_DIR", root), patch.object(
+                watcher, "send_scheduled_ntfy_notification", return_value=True
+            ):
+                first = watcher.reconcile_remote_schedule(
+                    config, [event], datetime.fromisoformat("2026-09-12T17:30:00-07:00"), state_path
+                )
+                package = next(iter(first["scheduled"].values()))["files_package_id"]
+                package_file = next(path for path in to_phone.iterdir() if "__01__" in path.name)
+                self.assertEqual(package_file.read_text(encoding="utf-8"), "one")
+                source_file.write_text("two", encoding="utf-8")
+                watcher.reconcile_remote_schedule(
+                    config, [event], datetime.fromisoformat("2026-09-12T17:31:00-07:00"), state_path
+                )
+                self.assertEqual(package_file.read_text(encoding="utf-8"), "two")
+                delivered = watcher.reconcile_remote_schedule(
+                    config, [event], datetime.fromisoformat("2026-09-12T18:01:00-07:00"), state_path
+                )
+                self.assertEqual(delivered["delivered"][next(iter(delivered["delivered"]))]["status"], "assumed_sent")
+                source_file.write_text("three", encoding="utf-8")
+                watcher.reconcile_remote_schedule(
+                    config, [event], datetime.fromisoformat("2026-09-12T18:02:00-07:00"), state_path
+                )
+                self.assertEqual(package_file.read_text(encoding="utf-8"), "two")
 
     def test_placeholder_topic_is_rejected(self):
         with self.assertRaises(watcher.SetupError):

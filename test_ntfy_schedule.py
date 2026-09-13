@@ -246,6 +246,41 @@ class NtfyScheduleTests(unittest.TestCase):
         self.assertEqual(state["delivered"][seq]["status"], "assumed_sent")
         self.assertTrue(ntfy_schedule.is_reminder_owned_by_remote(state, reminder_key))
 
+    def test_queue_files_callback_adds_canonical_files_action_and_hash(self):
+        event = self.event(attachments={"owner_id": "dentist", "count": 1, "has_files": True})
+        package = "blink-files-v1-" + "e" * 32
+        desired = ntfy_schedule.build_desired_queue(
+            events=[event],
+            now=datetime.fromisoformat("2026-09-12T17:30:00-07:00"),
+            window_hours=24,
+            config={"default_priority": "high", "default_tags": [], "files_action_enabled": True},
+            files_package_for=lambda _event, _offset: package,
+        )
+        item = next(iter(desired.values()))
+        self.assertEqual(item["files_package_id"], package)
+        self.assertIn("view, Files,", item["payload"]["actions"])
+        self.assertIn("name=Blink%20Files", item["payload"]["actions"])
+        self.assertNotIn("Blink+Files", item["payload"]["actions"])
+        self.assertEqual(item["payload_hash"], ntfy_schedule.payload_hash(item["payload"]))
+
+    def test_queue_attachment_change_can_refresh_same_package_without_new_sequence(self):
+        event = self.event(attachments={"owner_id": "dentist", "count": 1, "has_files": True})
+        package = "blink-files-v1-" + "f" * 32
+        now = datetime.fromisoformat("2026-09-12T17:30:00-07:00")
+        first = ntfy_schedule.build_desired_queue(
+            events=[event], now=now, window_hours=24,
+            config={"default_priority": "high", "default_tags": [], "files_action_enabled": True},
+            files_package_for=lambda _event, _offset: package,
+        )
+        event["attachments"]["count"] = 2
+        second = ntfy_schedule.build_desired_queue(
+            events=[event], now=now, window_hours=24,
+            config={"default_priority": "high", "default_tags": [], "files_action_enabled": True},
+            files_package_for=lambda _event, _offset: package,
+        )
+        self.assertEqual(set(first), set(second))
+        self.assertEqual(first[next(iter(first))]["payload"]["actions"], second[next(iter(second))]["payload"]["actions"])
+
 
 if __name__ == "__main__":
     unittest.main()

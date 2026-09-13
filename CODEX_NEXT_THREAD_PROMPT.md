@@ -52,6 +52,18 @@ Production iCloud and production Shortcuts remain unchanged; DONE action
 delivery remains disabled by default. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
+Stage 2 Mac-side attachment viewing is implemented behind the controlled
+`BLINK_NTFY_FILES_ACTION_ENABLED=1` plus explicit `BLINK_TO_PHONE_ROOT`
+settings. The Mac snapshots canonical event attachments into deterministic flat
+ToPhone packages (`blink-files-v1-<sha256-prefix>`), refreshes queued/delayed
+packages during reconciliation, and freezes delivered snapshots until bounded
+cleanup. The canonical ntfy action is `Files` with input
+`blink-files-v1|<package-id>` and percent-encoded `shortcuts://` query values;
+no `clear=true` is added. The existing `Blink Files` Shortcut must read only
+the matching package, open one file directly, and chooser-select multiple
+files. Physical iPhone acceptance is the remaining Stage 2 gate; production
+mailbox and `Blink_Production/ToMac` remain disabled/unused.
+
 Phase 6A/6B CREATE acceptance has since passed against `Blink_Acceptance/ToMac`;
 iCloud `dataless` package bytes are treated as `PENDING_SYNC` and retried. The
 past-start event was observed in Today/Active with Attention enabled. Phase 6

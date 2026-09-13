@@ -23,12 +23,14 @@ from app import agenda_store, location_store, watcher_lifecycle, weather_store
 from app import ntfy_schedule
 from app import attachment_store
 from app import mailbox_importer
+from app import to_phone_store
 from app.event_timing import effective_event_start
 from app.notification_format import (
     build_done_action,
     build_done_confirmation_payload,
     build_event_payload,
     done_action_enabled,
+    files_action_enabled,
     push_tags_for_event,
 )
 
@@ -259,6 +261,9 @@ def validate_config(raw: Any) -> dict[str, Any]:
         "default_tags": default_tags or ["calendar"],
         "done_action_enabled": os.environ.get("BLINK_NTFY_DONE_ACTION_ENABLED", "").strip().lower()
         in {"1", "true", "yes"},
+        "files_action_enabled": os.environ.get("BLINK_NTFY_FILES_ACTION_ENABLED", "").strip().lower()
+        in {"1", "true", "yes"},
+        "to_phone_root": os.environ.get("BLINK_TO_PHONE_ROOT", "").strip(),
     }
 
 
@@ -1140,6 +1145,41 @@ def _http_error_detail(exc: urllib.error.HTTPError) -> str:
         return ""
 
 
+def _to_phone_root(config: dict[str, Any]) -> Path | None:
+    if not files_action_enabled(config):
+        return None
+    root_text = str(config.get("to_phone_root") or os.environ.get("BLINK_TO_PHONE_ROOT", "")).strip()
+    if not root_text:
+        return None
+    root = Path(root_text).expanduser()
+    if not root.is_absolute():
+        return None
+    return root
+
+
+def _prepare_files_package(
+    config: dict[str, Any], event: dict[str, Any], offset_minutes: int, *, delivered: bool = False,
+) -> str | None:
+    if event.get("source", "personal") != "personal" or event.get("done") is True:
+        return None
+    root = _to_phone_root(config)
+    if root is None:
+        return None
+    try:
+        result = to_phone_store.prepare_snapshot(
+            root,
+            event,
+            offset_minutes,
+            source_root=attachment_store.attachments_root(PROJECT_DIR),
+            now=datetime.now(timezone.utc),
+            delivered=delivered,
+        )
+    except (OSError, ValueError) as exc:
+        LOGGER.warning("ToPhone snapshot skipped for event=%s: %s", event.get("id", "<unknown>"), exc)
+        return None
+    return result.package_id if result.ready and result.has_files else None
+
+
 def send_ntfy_notification(
     config: dict[str, Any], event: dict[str, Any], offset_minutes: int
 ) -> bool:
@@ -1147,7 +1187,8 @@ def send_ntfy_notification(
     if effective_start is None:
         LOGGER.error("Notification skipped: event %s has no valid start", event.get("id", "<unknown>"))
         return False
-    payload = build_event_payload(config, event, offset_minutes)
+    files_package_id = _prepare_files_package(config, event, offset_minutes)
+    payload = build_event_payload(config, event, offset_minutes, files_package_id=files_package_id)
     request = build_ntfy_request(
         config=config,
         title=str(payload["title"]),
@@ -1182,6 +1223,15 @@ def send_ntfy_notification(
         return False
 
     if 200 <= status < 300:
+        if files_package_id is not None:
+            files_root = _to_phone_root(config)
+            if files_root is not None:
+                try:
+                    to_phone_store.mark_delivered(
+                        files_root, files_package_id, datetime.now(timezone.utc)
+                    )
+                except OSError as exc:
+                    LOGGER.warning("ToPhone delivery ledger update failed: %s", exc)
         LOGGER.info("Notification success: event=%s offset=%s status=%s", event["id"], offset_minutes, status)
         return True
 
@@ -1376,6 +1426,7 @@ def reconcile_remote_schedule(
         now=now,
         window_hours=24,
         config=config,
+        files_package_for=lambda event, offset: _prepare_files_package(config, event, offset),
     )
     reconciled = ntfy_schedule.reconcile(
         desired=desired,
@@ -1384,8 +1435,24 @@ def reconcile_remote_schedule(
         cancel_func=lambda item: cancel_scheduled_ntfy_notification(config, item),
         now=now,
     )
+    files_root = _to_phone_root(config)
+    if files_root is not None:
+        for delivered_item in reconciled.get("delivered", {}).values():
+            if not isinstance(delivered_item, dict):
+                continue
+            package = delivered_item.get("files_package_id")
+            if package and delivered_item.get("status") in {"assumed_sent", "assumed_delivered"}:
+                to_phone_store.mark_delivered(files_root, str(package), now)
+        to_phone_store.cleanup(files_root, now, ttl_seconds=7 * 24 * 60 * 60)
     ntfy_schedule.save_state_atomic(schedule_state_path, reconciled)
     return reconciled
+
+
+def _source_attachment_fingerprint(event: dict[str, Any]) -> str | None:
+    try:
+        return to_phone_store.source_fingerprint(attachment_store.attachments_root(PROJECT_DIR), event)
+    except (OSError, ValueError):
+        return None
 
 
 def remote_reconcile_due(
@@ -1412,6 +1479,10 @@ def remote_reconcile_due(
             "has_files": bool(
                 isinstance(event.get("attachments"), dict)
                 and event["attachments"].get("has_files") is True
+            ),
+            "attachment_fingerprint": (
+                _source_attachment_fingerprint(event)
+                if config and files_action_enabled(config) else None
             ),
             "done_action": build_done_action(
                 event, enabled=done_action_enabled(config)
