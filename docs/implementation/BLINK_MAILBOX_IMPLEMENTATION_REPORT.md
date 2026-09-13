@@ -648,10 +648,12 @@ Mac-side evaluation immediately before the push produced `AllFiles = 3`,
 ready = 1, manifest = 1, and attachments = 1. The Mac database contains the
 repaired 46-action tree. The owner has now confirmed by iPhone editor
 screenshot that the repaired acquisition prefix is present on the phone, so
-the stale-version hypothesis is removed. The remaining unverified boundary
-is the iPhone runtime output after `AllFiles` and the final Quick Look
-presentation. No production mailbox was enabled, and no further push should
-be sent before that boundary is diagnosed.
+the stale-version hypothesis is removed. The unchanged canonical `Blink
+Files` control then displayed its chooser and opened one PDF successfully on
+the current iPhone. General iOS Quick Look presentation works; the remaining
+unverified boundary is the WORK runtime output after `AllFiles` and its
+parsing/filter/count path. No production mailbox was enabled, and no further
+push should be sent before that boundary is diagnosed.
 
 The existing `Blink Files` Shortcut still points at the historical
 `Blink_Feasibility/ToPhone` contract and must be evolved before the physical

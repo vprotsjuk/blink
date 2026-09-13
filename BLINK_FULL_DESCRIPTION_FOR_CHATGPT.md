@@ -133,10 +133,11 @@ ready = 1, manifest = 1, and attachments = 1; therefore the Mac package and
 fail-closed count branches do not explain the failure. The Mac database has
 the repaired 46-action tree. The owner has now confirmed by iPhone editor
 screenshot that the repaired acquisition prefix is present on the phone, so
-the stale-version hypothesis is removed. The remaining diagnostic boundary
-is the iPhone runtime output after `AllFiles` and the final Quick Look
-presentation. No further push should be sent before that boundary is
-diagnosed.
+the stale-version hypothesis is removed. The unchanged canonical `Blink
+Files` control then displayed its chooser and opened one PDF successfully on
+the current iPhone. General iOS Quick Look presentation works; the remaining
+diagnostic boundary is the WORK parsing/filter/count path after acquisition.
+No further push should be sent before that boundary is diagnosed.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.

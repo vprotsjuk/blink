@@ -124,9 +124,13 @@ owner's iPhone editor screenshot now confirms the repaired acquisition prefix
 is present on the phone. The stale-version hypothesis is removed. The
 remaining unobserved boundary is the iPhone runtime output after `AllFiles`
 and the final Quick Look presentation; no additional push is allowed until
-that boundary is diagnosed. SQLite/editor inspection confirms the filtered
-values are File items/references. No production mailbox was enabled. The
-unresolved gate is still physical iPhone viewing.
+that boundary is diagnosed. The unchanged canonical `Blink Files` control has
+now displayed its one-item chooser and opened a PDF successfully on the
+current iPhone, proving the general iOS presentation path. The remaining
+failure is specific to WORK parsing, filters, counts/conditionals, or the
+filtered item type. SQLite/editor inspection confirms the filtered values are
+File items/references. No production mailbox was enabled. The unresolved gate
+is still physical iPhone viewing.
 
 SwiftUI also has the approved Phase 7 fast refresh: `ContentView` observes the
 parent directory containing `agenda.json`, filters/debounces atomic-replace

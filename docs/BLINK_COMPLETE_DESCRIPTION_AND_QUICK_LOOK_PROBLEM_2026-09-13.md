@@ -650,27 +650,36 @@ Get file/folder
 -> Quick Look
 ~~~
 
-The first diagnostic should therefore be a manual run of this unchanged
-canonical Shortcut on the current physical iPhone. This requires no new ntfy
-push, does not modify any Shortcut, and uses only one owner action. Its
-information value is higher than immediately building instrumentation:
+The owner performed this canonical control on the current physical iPhone.
+The chooser displayed exactly one PDF (`745 Windsor Dr Menlo...`), and the
+selected PDF opened successfully in Quick Look. This is current device
+evidence, not a historical claim. It proves that iOS can present a file using
+the historical `Get Contents` → chooser → Quick Look path, so `Open Item` is
+not indicated and the general presentation context is not the primary fault.
 
-- If canonical `Blink Files` opens the PDF, current iOS and the basic
-  `Get Contents` → chooser → Quick Look presentation path work; the defect is
-  narrowed to the WORK input parsing, filters, variable binding, or the
-  external action's input/context.
-- If canonical `Blink Files` also ends with a checkmark and no preview, the
-  problem is not specific to Stage2 validation; current iOS Quick Look or the
-  Shortcut presentation context becomes the leading boundary.
-- If canonical fails with a concrete error, that error is more valuable than
-  another acceptance result and must be recorded verbatim.
+The diagnosis is now narrowed to WORK-specific processing after its input is
+accepted: package-id parsing, dynamic-name filters, counts/conditionals, or
+the runtime type passed into `Attachments`. Mac-side counts cannot prove the
+corresponding iPhone values.
 
-The exact owner action is: open `Shortcuts` → open `Blink Files` → tap the
-play button once. Do not edit it and do not run WORK for this control. Report
-only whether the PDF opened, the Shortcut showed a checkmark without a PDF,
-or an error appeared. After that result, the next diagnostic will be selected
-from the evidence: on-device checkpoint counts if the canonical control
-works, or invocation/presentation isolation if it does not.
+The next least-invasive diagnostic is the existing temporary `Blink Files
+Acquisition Test`, already visible in the iPhone Shortcuts library. It has no
+input parser or filters and uses the acceptance path directly:
+
+~~~text
+Get file from Shortcuts at path Blink_Acceptance/ToPhone
+-> Get Contents of File
+-> Choose from List
+-> Quick Look
+~~~
+
+This needs no new ntfy push and no Shortcut edit. If it shows the acceptance
+package's three entries and opens the PDF, the acceptance-folder acquisition
+and presentation are proven, leaving WORK's parsing/filter/count path as the
+first unproven boundary. If it errors or does not show the package, the
+failure is at the acceptance-folder acquisition boundary. The owner should
+run this temporary Shortcut once and report the visible result; WORK and the
+canonical/backup Shortcuts must not be edited.
 
 ## 12. Exact questions for independent GPT diagnosis
 
