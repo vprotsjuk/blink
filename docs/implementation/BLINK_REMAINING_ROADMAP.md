@@ -49,6 +49,12 @@ feasibility documents preserve chronology but never override this roadmap.
 3. Real USB RGB lamp/device adapter and physical acceptance remain a separate
    hardware task; do not invent a protocol before the device is known.
 4. Numeric mailbox/package/worker limits remain a pre-production safety gate.
+5. The final production iPhone entry point must be one Home Screen icon
+   `Blink` for direct event creation. `Share -> Blink` must use the same
+   unified production CREATE flow and support at most one attachment. DONE,
+   Files, and Open attachments remain notification actions/internal Shortcuts,
+   not separate Home Screen icons. The icon is deferred until Stage 4 after
+   the unified production Shortcut is finalized.
 
 ## Stages
 
@@ -83,6 +89,14 @@ coexistence behavior.
 Finalize and verify production ToMac/ToPhone paths, production DONE/CREATE/
 Files Shortcuts, acceptance separation, untouched BACKUP, numeric limits, and
 rollback/disable procedure. Enable production mailbox only after these gates.
+
+Finalize the single iPhone-facing entry point only after the unified production
+CREATE Shortcut is finalized:
+
+- one Home Screen icon named `Blink` for direct personal-event creation;
+- `Share -> Blink` enters that same unified CREATE flow;
+- at most one attachment;
+- no separate Home Screen icons for DONE, Files, or Open attachments.
 
 ### Stage 5 — full production end-to-end acceptance
 
