@@ -440,6 +440,9 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
   `20260912163022-101411924.done.json` + `.ready`.
 - The controlled flags were one-shot only; production default remains
   `Blink DONE`, and `BLINK_NTFY_DONE_ACTION_ENABLED` remains off by default.
+- Manual UI check after the release deploy opened New Event, added reminder
+  `17`, and set Blinker `3`; the editor visibly showed `Custom — 17 min before`
+  and `Custom — 3 min before`. The draft was not saved.
 
 ## Known risks / blockers
 
