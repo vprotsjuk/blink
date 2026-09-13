@@ -126,6 +126,9 @@ introduced. The isolated `Blink Files Stage2 WORK` candidate currently uses
 `Choose from Attachments` → `Show Selected Item in Quick Look` in both the
 one-file and multiple-file branches; this is still pending real-device
 acceptance.
+For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
+override the action target; when unset, the production default remains
+`Blink Files`.
 
 Confirmed manual results (2026-09-12): iPhone → Mac file transport, Mac →
 iPhone `ToPhone` + Quick Look, external Shortcut URL input, the real ntfy DONE
@@ -497,12 +500,14 @@ The shared reminder preset list is defined centrally so that future changes to a
 10 minutes, 5 minutes, and at time
 ```
 
-The UI keeps presets convenient while also exposing Custom whole-minute values
-for reminders and the independent Blinker. Imported arbitrary integers such as
-`3`, `17`, `120`, or `240` are shown and round-trip without loss; `0` is
-represented only as `At time`. The watcher schedules only reminders with valid
-due timestamps. Duplicate sends are prevented using the event identity,
-occurrence, and reminder offset.
+The UI keeps the existing presets convenient and exposes Custom whole-minute
+values for reminders. Reminders support multiple integer-minute offsets;
+Blinker keeps one integer-minute offset and has no Custom value for now.
+Imported arbitrary reminder integers such as `3`, `17`, `120`, or `240` are
+shown and round-trip without loss; `0` is represented only as `At time`. Do not
+introduce fractional minutes, seconds, or a new universal timing control. The
+watcher schedules only reminders with valid due timestamps. Duplicate sends are
+prevented using the event identity, occurrence, and reminder offset.
 
 Time input is 24-hour `HH:mm` everywhere. Users may type a valid time directly or use the stepper arrows. Inputs have stable width so `00:00` through `23:59` always fit. Date selection explicitly preserves/loads the selected year.
 

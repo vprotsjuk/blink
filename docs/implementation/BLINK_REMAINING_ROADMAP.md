@@ -1,8 +1,8 @@
 # Blink Remaining Roadmap and Compaction Checkpoint
 
 **Status:** authoritative post-Phase-7 roadmap
-**Snapshot:** 2026-09-12
-**Current stage:** **Stage 2 — production iPhone attachment viewing**
+**Snapshot:** 2026-09-13
+**Current stage:** **Stage 2 — iPhone Files acceptance, one-file retest pending**
 
 This file is the single persistent roadmap for work after the completed
 original Phase 7. Running code and
@@ -30,9 +30,11 @@ feasibility documents preserve chronology but never override this roadmap.
   empty; `Blink_Production/ToMac` is unused.
 - Production default DONE Shortcut name remains `Blink DONE`; the optional
   `BLINK_NTFY_DONE_SHORTCUT_NAME` override is for controlled tests only.
-- Current verification: Python `195/195`, focused Python `152/152`, Swift
-  runner PASS, release build PASS, compile PASS, plist lint PASS,
-  `git diff --check` PASS, and healthy watcher.
+- Current verification before the latest retest change: Python `218/218`,
+  focused Python `111/111`, Swift release build PASS, compile PASS,
+  `git diff --check` PASS, and healthy watcher. The latest source change adds
+  an opt-in Files Shortcut-name override and has its focused regression test
+  passing; the full suite is the next repository checkpoint.
 - CREATE mailbox transport v2 is implemented at the Mac importer boundary as a
   flat Shortcut-friendly schema; v1 remains backward-compatible and both
   normalize into the same canonical CREATE transaction.
@@ -73,15 +75,29 @@ Early Done, remote DONE confirmation, unchanged original notification,
 duplicate/no-op silence, and Dock/Attention visual behavior were accepted on
 the real installed Mac/iPhone path. Production mailbox remains disabled.
 
+## Owner timing decision — 2026-09-13
+
+Keep the existing Mac timing UI essentially unchanged. Do not introduce a new
+timing model, fractional minutes, seconds, or a universal timing control.
+
+- Reminders keep the existing presets, `Custom minutes`, integer minutes, and
+  multiple reminder offsets.
+- Blinker keeps the existing presets, integer minutes, and one blinker offset;
+  it has no Custom value for now because Mac does not currently expose one.
+- This decision is recorded only; timing work is not part of the current Files
+  acceptance task.
+
 ### Simplified remaining roadmap
 
-**[CURRENT] Finish simple iPhone Shortcuts.** Reuse the single
-`Blink Create Stage2 WORK` candidate, keep CREATE flat/v2 and minimal, and
-retain the already prepared DONE and Files candidates. Production mailbox stays
-disabled.
+**[CURRENT] Finish Stage 2 Files acceptance.** The one-file Files-only retest
+has been sent explicitly to `Blink Files Stage2 WORK`; physical visible Quick
+Look presentation is pending. Production mailbox stays disabled.
 
-**[NEXT] One real iPhone acceptance pass.** Prove CREATE, CREATE with one
-attachment, DONE, and Files/Open attachments on the owner’s phone.
+**[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
+2+ file package and perform one physical Files tap proving package isolation.
+
+**[NEXT] Combined Done + Files acceptance.** Verify both ntfy actions are
+independent after Files itself passes.
 
 **[NEXT] Today Morning Briefing.** Add the personal briefing flow with the
 existing Mac-owned scheduling/source-of-truth rules.
@@ -89,8 +105,12 @@ existing Mac-owned scheduling/source-of-truth rules.
 **[NEXT] Final phone setup.** Finalize one Home Screen entry `Blink`, Share →
 Blink, and final Shortcut names/paths.
 
-**[NEXT] Cleanup.** Remove obsolete Test/WORK/proof Shortcuts and temporary
-files only after accepted replacements exist; retain intentional backups.
+**[REQUIRED AFTER ACCEPTANCE] Cleanup.** Inventory all Blink Shortcuts and
+iCloud roots, remove obsolete Test/WORK/proof/acceptance clutter only after
+accepted replacements exist, and retain intentional recovery backups until
+replacement is proven. Inventory and cleanup of the repository must also be
+performed without deleting canonical data, source code, runtime state, or
+authoritative documentation.
 
 **[LATER] USB RGB lamp integration.** Keep hardware work separate.
 

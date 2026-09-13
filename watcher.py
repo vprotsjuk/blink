@@ -263,6 +263,7 @@ def validate_config(raw: Any) -> dict[str, Any]:
         in {"1", "true", "yes"},
         "files_action_enabled": os.environ.get("BLINK_NTFY_FILES_ACTION_ENABLED", "").strip().lower()
         in {"1", "true", "yes"},
+        "files_shortcut_name": os.environ.get("BLINK_NTFY_FILES_SHORTCUT_NAME", "").strip(),
         "to_phone_root": os.environ.get("BLINK_TO_PHONE_ROOT", "").strip(),
     }
 

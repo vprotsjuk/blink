@@ -133,6 +133,23 @@ class NotificationFormatTests(unittest.TestCase):
         self.assertIn("actions", on)
         self.assertIn("Files", on["actions"])
 
+    def test_files_payload_supports_explicit_test_shortcut_override(self):
+        event = self.personal_event()
+        package = "blink-files-v1-" + "d" * 32
+        with patch.dict(os.environ, {"BLINK_NTFY_FILES_SHORTCUT_NAME": "Blink Files Stage2 WORK"}):
+            payload = build_event_payload(
+                {
+                    "default_priority": "high",
+                    "default_tags": ["calendar"],
+                    "files_action_enabled": True,
+                },
+                event,
+                0,
+                files_package_id=package,
+            )
+        self.assertIn("name=Blink%20Files%20Stage2%20WORK", payload["actions"])
+        self.assertNotIn("Blink+Files", payload["actions"])
+
     def test_files_action_excludes_weather_astronomy_and_no_files(self):
         for event in (
             self.personal_event(attachments={"owner_id": "event-abc_123", "count": 0, "has_files": False}),

@@ -8,10 +8,10 @@ reading another document first.
 **Snapshot:** 2026-09-13  
 **Project root:** /Users/vitaliiprotsiuk/Desktop/Blink  
 **Owner language:** Russian; technical discussion may be English.  
-**Current Git commit:** ed8ca67 docs: prepare complete Blink Codex handoff  
+**Current Git commit:** bb9d4c1 docs: reconcile Blink Files acceptance handoff; source retest override pending commit
 **Current branch:** main  
 **Production mailbox:** disabled  
-**New ntfy notification for this investigation:** not sent
+**New ntfy notification for this investigation:** one Files-only retest sent to WORK; physical tap pending
 
 ---
 
@@ -97,8 +97,7 @@ agenda.json, local settings/state, event_data/, app bundles, build products,
 backups, and virtual environments are ignored where appropriate. Real user
 PDFs, images, DWG files, and spreadsheets must not enter Git.
 
-The checkout was clean before preparing this document. The latest documented
-verification was:
+The latest documented verification before the retest override was:
 
 - Python default suite: 195 passing;
 - focused mailbox/notification/schedule/watcher suite: 152 passing;
@@ -108,6 +107,12 @@ verification was:
 - plist lint: pass;
 - git diff --check: pass;
 - ./status_watcher.command: healthy watcher with fresh heartbeat.
+
+The owner has decided to keep timing unchanged: reminders retain existing
+presets, integer-minute Custom minutes, and multiple offsets; Blinker retains
+existing presets, integer minutes, and one offset with no Custom value. No new
+timing model, fractional minutes, seconds, or universal timing control is part
+of this task.
 
 The default Python command is:
 
@@ -340,6 +345,7 @@ Stage 2 Mac-side implementation is behind two explicit opt-in controls:
 ~~~text
 BLINK_NTFY_FILES_ACTION_ENABLED=1
 BLINK_TO_PHONE_ROOT=<explicit approved root>
+BLINK_NTFY_FILES_SHORTCUT_NAME=<controlled test override only>
 ~~~
 
 The package is a deterministic, flat, event-specific snapshot generated from
@@ -393,6 +399,9 @@ The source builder's canonical default name is `Blink Files`; the isolated WORK
 Shortcut is a separate acceptance candidate, so any physical retest must
 verify that its action URL names the intended Shortcut before sending or
 reusing a notification.
+
+The source now supports this override only when explicitly set; production
+behavior remains `Blink Files` when it is unset.
 
 Only the matching package may be shown. The Shortcut must ignore unrelated
 files, .manifest.json, and .ready as displayable attachments.
@@ -501,7 +510,10 @@ Observed iPhone behavior:
 6. A later iPhone screenshot confirmed that the full WORK candidate and the
    escaped-pipe regex were present on the phone.
 7. The Mac-generated action URL and package/input contract were verified.
-8. No second push has been sent after this result.
+8. The first retest result had no second push after it; after the WORK tree was
+   corrected, one new Files-only retest was sent explicitly to
+   `Blink Files Stage2 WORK` using the same validated one-file package. The
+   physical tap is still pending, so this is not acceptance.
 
 Therefore package availability and basic iCloud synchronization are proven.
 The unresolved area is the binding/presentation between the filtered Shortcut

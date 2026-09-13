@@ -25,6 +25,7 @@ DONE_ACTION_VERSION = "blink-done-v1"
 DONE_SHORTCUT_NAME_ENV = "BLINK_NTFY_DONE_SHORTCUT_NAME"
 FILES_ACTION_VERSION = "blink-files-v1"
 FILES_SHORTCUT_NAME = "Blink Files"
+FILES_SHORTCUT_NAME_ENV = "BLINK_NTFY_FILES_SHORTCUT_NAME"
 FILES_ACTION_ENABLED_ENV = "BLINK_NTFY_FILES_ACTION_ENABLED"
 
 
@@ -78,13 +79,24 @@ def files_action_enabled(config: dict[str, Any] | None = None) -> bool:
     return os.environ.get(FILES_ACTION_ENABLED_ENV, "").strip().lower() in {"1", "true", "yes"}
 
 
-def build_files_action(package_id: str, *, shortcut_name: str = FILES_SHORTCUT_NAME) -> str:
+def files_shortcut_name(config: dict[str, Any] | None = None) -> str:
+    """Return a safe manual-test override or the canonical production name."""
+    if isinstance(config, dict) and isinstance(config.get("files_shortcut_name"), str):
+        candidate = config["files_shortcut_name"].strip()
+    else:
+        candidate = os.environ.get(FILES_SHORTCUT_NAME_ENV, "").strip()
+    if not candidate or len(candidate) > 128 or any(ord(char) < 32 or ord(char) == 127 for char in candidate):
+        return FILES_SHORTCUT_NAME
+    return candidate
+
+
+def build_files_action(package_id: str, *, shortcut_name: str | None = None) -> str:
     """Build the canonical percent-encoded action for one ToPhone package."""
     if not re.fullmatch(r"blink-files-v1-[0-9a-f]{32}", str(package_id)):
         raise ValueError("invalid ToPhone package id")
     query = urlencode(
         {
-            "name": shortcut_name,
+            "name": shortcut_name if shortcut_name is not None else files_shortcut_name(),
             "input": "text",
             "text": f"{FILES_ACTION_VERSION}|{package_id}",
         },
@@ -136,7 +148,7 @@ def build_event_payload(
         and event.get("source", "personal") == "personal"
         and event.get("done") is not True
     ):
-        actions.append(build_files_action(files_package_id))
+        actions.append(build_files_action(files_package_id, shortcut_name=files_shortcut_name(config)))
     if actions:
         payload["actions"] = "; ".join(actions)
     return payload

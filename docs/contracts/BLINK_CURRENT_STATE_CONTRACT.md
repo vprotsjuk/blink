@@ -96,6 +96,11 @@ one-file and multiple-file branches. The original and backup `Blink Files`
 Shortcuts remain unchanged. Production mailbox remains disabled and
 `Blink_Production/ToMac` remains unused.
 
+For controlled acceptance only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may override
+the Files action target; when unset, the production default remains
+`Blink Files`. The current retest uses the explicit target
+`Blink Files Stage2 WORK` and does not change production Shortcut naming.
+
 The first controlled Files push to `Blink Files Stage2 WORK` was accepted by
 ntfy (HTTP 200), but tapping the action on iPhone opened the Shortcuts library
 instead of Quick Look. The Mac candidate and URL were verified, and a later
@@ -200,12 +205,21 @@ Upcoming -> Active -> Done -> History
 - Snooze, Quiet Hours, and Templates are retired and must not be reintroduced.
 - Reminder offsets are canonical non-negative integer minutes and may include
   arbitrary values or multiple entries. Presets are UI convenience only;
-  custom reminder/blinker values are preserved during editor save, and `0` is
-  represented as `At time`.
+  custom reminder values are preserved during editor save, and `0` is
+  represented as `At time`. Blinker has one integer-minute offset and no
+  Custom value in the current UI.
 - New events default the independent Blinker picker to `At event`
   (`blinker_minutes_before: 0`). Reminders are a separate multi-select; changing
   either control never changes the other.
 - Blinker starts at `event start - blinker_minutes_before` and continues until `Done`.
+
+### Owner timing decision (2026-09-13)
+
+Keep the existing Mac timing UI and data model. Reminders retain their current
+presets, integer-minute `Custom minutes`, and multiple offsets. Blinker retains
+its current presets, integer-minute values, and one offset, with no Custom value
+for now. Do not add fractional minutes, seconds, or a universal timing control;
+timing is not the current Files task.
 
 ## 4. Push Contract
 
