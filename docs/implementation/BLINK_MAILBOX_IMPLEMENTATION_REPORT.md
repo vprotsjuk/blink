@@ -480,4 +480,7 @@ coverage: `5cc53de Add mailbox iteration coverage`. Worker diagnostics:
 passed with native DONE package `20260912163022-101411924`. Phase 4B closeout:
 `0e19104 Close Phase 4B manual acceptance`. Phase 7:
 `16bdf7b Add fast external agenda refresh`. Phase 5 checklist:
-`e7037e5 Prepare Phase 5 Create Shortcut checklist`.
+`e7037e5 Prepare Phase 5 Create Shortcut checklist`. Phase 5 arbitrary-minute
+support and contract tests: `0935e73 Preserve arbitrary mailbox minute values`.
+Phase 5 acceptance closeout and Phase 6 inbox preparation:
+`04ce992 Close Phase 5 and prepare acceptance inbox`.
