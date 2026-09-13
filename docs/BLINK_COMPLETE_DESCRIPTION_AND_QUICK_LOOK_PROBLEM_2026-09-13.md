@@ -677,9 +677,30 @@ This needs no new ntfy push and no Shortcut edit. If it shows the acceptance
 package's three entries and opens the PDF, the acceptance-folder acquisition
 and presentation are proven, leaving WORK's parsing/filter/count path as the
 first unproven boundary. If it errors or does not show the package, the
-failure is at the acceptance-folder acquisition boundary. The owner should
-run this temporary Shortcut once and report the visible result; WORK and the
-canonical/backup Shortcuts must not be edited.
+failure is at the acceptance-folder acquisition boundary. The owner ran this
+temporary Shortcut: its chooser displayed the manifest, `.ready` marker, and
+PDF; after selecting the PDF, Quick Look opened it successfully. This proves
+the acceptance iCloud folder, the `Get file` → `Get Contents of File` path,
+and the resulting file list can reach chooser and Quick Look on the current
+iPhone.
+
+The remaining fault is therefore inside WORK-specific processing, not the
+acceptance folder, general iOS presentation, or the basic folder-contents
+action. The highest-probability boundaries are:
+
+1. the parsed `PackageID` value on iPhone;
+2. dynamic `Filter Files` comparisons for `ReadyName` and `ManifestName`;
+3. the `AttachmentPrefix` comparison;
+4. a count/conditional receiving a different runtime value than expected;
+5. the filtered `Attachments` item type before the chooser.
+
+The next diagnostic should expose four runtime counts on iPhone in one
+temporary diagnostic Shortcut, without Quick Look and without fail-closed
+stops. It should use the fixed known package and show one final text result:
+`AllFiles`, `.ready`, manifest, and attachment counts. No new ntfy push is
+needed for that manual diagnostic, and no production or canonical Shortcut
+may be changed. Only if all four counts are correct should the final WORK
+presentation path be tested again.
 
 ## 12. Exact questions for independent GPT diagnosis
 

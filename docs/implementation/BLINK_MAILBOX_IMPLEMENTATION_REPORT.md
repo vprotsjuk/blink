@@ -650,7 +650,9 @@ repaired 46-action tree. The owner has now confirmed by iPhone editor
 screenshot that the repaired acquisition prefix is present on the phone, so
 the stale-version hypothesis is removed. The unchanged canonical `Blink
 Files` control then displayed its chooser and opened one PDF successfully on
-the current iPhone. General iOS Quick Look presentation works; the remaining
+the current iPhone. The temporary `Blink Files Acquisition Test` also showed
+the three acceptance-package objects and opened the selected PDF. General
+iOS Quick Look and acceptance-folder acquisition work; the remaining
 unverified boundary is the WORK runtime output after `AllFiles` and its
 parsing/filter/count path. No production mailbox was enabled, and no further
 push should be sent before that boundary is diagnosed.

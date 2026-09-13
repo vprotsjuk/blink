@@ -98,11 +98,12 @@ gave `AllFiles = 3`, ready = 1, manifest = 1, and attachments = 1, so the
 package and fail-closed counts do not explain the observed iPhone result. The
 owner has now confirmed by iPhone editor screenshot that the repaired
 acquisition prefix is present on the phone, so the stale-version hypothesis
-is removed. The unchanged canonical `Blink Files` control then displayed its
-chooser and opened one PDF successfully on the current iPhone. General iOS
-Quick Look presentation is therefore working; the remaining diagnostic
-boundary is the WORK parsing/filter/count path after acquisition. The
-production mailbox stays disabled.
+is removed. The unchanged canonical `Blink Files` control and the temporary
+`Blink Files Acquisition Test` both displayed choosers and opened PDFs on the
+current iPhone. General iOS Quick Look, the acceptance folder acquisition,
+and the basic folder-contents path are therefore working. The remaining
+diagnostic boundary is the WORK parsing/filter/count path after acquisition.
+The production mailbox stays disabled.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.

@@ -135,9 +135,12 @@ the repaired 46-action tree. The owner has now confirmed by iPhone editor
 screenshot that the repaired acquisition prefix is present on the phone, so
 the stale-version hypothesis is removed. The unchanged canonical `Blink
 Files` control then displayed its chooser and opened one PDF successfully on
-the current iPhone. General iOS Quick Look presentation works; the remaining
-diagnostic boundary is the WORK parsing/filter/count path after acquisition.
-No further push should be sent before that boundary is diagnosed.
+the current iPhone. The temporary `Blink Files Acquisition Test` also showed
+the three acceptance-package objects and opened the selected PDF. General
+iOS Quick Look, acceptance-folder acquisition, and the basic folder-contents
+path work; the remaining diagnostic boundary is the WORK parsing/filter/count
+path after acquisition. No further push should be sent before that boundary
+is diagnosed.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.

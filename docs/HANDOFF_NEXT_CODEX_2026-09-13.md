@@ -271,10 +271,12 @@ Item in Quick Look`; no fail-closed branch should be selected for this
 package. The pre-repair WORK copy had 42 actions. The owner's subsequent
 iPhone editor screenshot now confirms the repaired acquisition prefix is
 present on the phone, so the stale-version hypothesis is removed. The
-remaining unobserved boundary is the iPhone runtime output after `AllFiles`:
-ready and manifest counts, attachment count, and then presentation of the
-final Quick Look action. No further push should be sent until that boundary
-is diagnosed.
+unchanged canonical `Blink Files` control and the temporary `Blink Files
+Acquisition Test` have now both displayed choosers and opened PDFs on the
+current iPhone. The remaining unobserved boundary is therefore WORK-specific
+runtime output after `AllFiles`: package parsing, dynamic filters, counts, and
+the type passed to `Attachments`. No further push should be sent until that
+boundary is diagnosed.
 
 Do not add another contents action after `Attachments` unless the independent
 review proves its input is the folder and its output is a file list. The old
