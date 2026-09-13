@@ -6,6 +6,38 @@
 
 This document is the canonical human/ChatGPT/Codex description of the current implementation, not a future product proposal. The linked contract and continuation files are shorter operational records; when they appear to differ, this complete specification and the running code are the reference to reconcile.
 
+## Current program status (2026-09-12)
+
+All planned work through Phase 7 is complete and verified:
+
+- Phase 1 persistence locking; Phase 2A/2B mailbox parser, transactions,
+  journal, quarantine, ledger, recovery, and attachment import; Phase 3
+  opt-in watcher worker; Phase 4A/4B ntfy DONE action and real iPhone
+  acceptance; Phase 5 `Blink Create Test` migration/acceptance; Phase 6
+  controlled CREATE/DONE acceptance; and Phase 7 fast external agenda refresh.
+- Early Done is implemented in Today and Upcoming, including future-start
+  events. Completion preserves the scheduled `start`, records actual local
+  `done_at`, clears attention/blinker eligibility, and moves the event to
+  History. Repeated local or remote DONE is idempotent.
+- A newly applied remote DONE sends one short confirmation push with title
+  `✓ Done — <event title>` and scheduled-time context. It has no action button
+  and never uses `clear=true`; duplicate/no-op/stale/malformed/pending/failed
+  commands are silent, and a delivery failure never rolls back completion.
+- Production mailbox integration remains OFF. `BLINK_MAILBOX_ENABLED` and
+  `BLINK_MAILBOX_ROOT` are unset; `Blink_Production/ToMac` is unused. The
+  acceptance inbox is separate and currently empty. iPhone Shortcuts are not
+  modified by the Mac implementation.
+- Verification is green: Python `195/195`, focused mailbox/notification/
+  schedule/watcher `152/152`, Swift test runner, release build, Python compile,
+  plist lint, `git diff --check`, and watcher health check all pass.
+- The originating ntfy notification acknowledgement UX remains OPEN:
+  immediate clear, retention until Mac acknowledgement, or another UX.
+  `clear=true` is not selected.
+
+Latest commits: `92606d2` (implementation), `b1b50d3` (contract
+documentation), `470b78b` (verification checkpoint), and `e2da99b` (plan
+closure). The working tree is clean.
+
 ## 1. What Blink Is
 
 Blink is a local macOS reminder and briefing application. It stores events and settings as local JSON, calculates weather and astronomy on the Mac, sends notifications through ntfy, and controls a physical USB blinker/lamp through the existing watcher process.
