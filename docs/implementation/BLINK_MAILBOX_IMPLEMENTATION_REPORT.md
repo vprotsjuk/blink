@@ -19,6 +19,27 @@ of the latest Done work is current. Production attachment viewing, personal
 Today Morning Briefing, the physical USB adapter, numeric limits, production
 cutover, and production soak remain future gates.
 
+### Stage 1 Early Done acceptance — initial observation and retest
+
+The first owner-reported Early Done attempt for the temporary event
+`stage1-early-done-20260912` appeared to flash the UI and remove the row from
+Upcoming, but the persisted record remained `done: false` with
+`done_at: null`. Its original future `start` was unchanged. Inspection of the
+actual agenda and the Swift `EventSnapshot`/History filter found no exclusion
+for completed future-start events; the completion path and existing regression
+coverage already route `done == true` records directly to History. The
+observed failure therefore represented an action that was not applied to that
+event (a transient/stale UI interaction), not a persistence or History-model
+defect. No production code change was required.
+
+Codex then created and completed the new temporary event
+`stage1-early-done-persist-20260912` through the real installed Blink UI. The
+row disappeared from Upcoming, appeared immediately in History, persisted
+`done: true`, recorded `done_at: 2026-09-12T23:46:34-07:00`, and preserved its
+future `start: 2026-09-15T12:00:00-07:00`. The result remained correct after
+reload, confirming the contract and ruling out a stale-snapshot persistence
+bug. The temporary Codex-created acceptance records are not production data.
+
 ## Approved architecture
 
 The approved baseline is recorded in
