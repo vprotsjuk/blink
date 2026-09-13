@@ -30,9 +30,17 @@ All planned work through Phase 7 is complete and verified:
 - Verification is green: Python `195/195`, focused mailbox/notification/
   schedule/watcher `152/152`, Swift test runner, release build, Python compile,
   plist lint, `git diff --check`, and watcher health check all pass.
-- The originating ntfy notification acknowledgement UX remains OPEN:
-  immediate clear, retention until Mac acknowledgement, or another UX.
-  `clear=true` is not selected.
+- DONE acknowledgement is FINAL: the original notification remains unchanged;
+  a newly applied remote DONE emits one new short confirmation without an
+  action button or `clear=true`; repeats/no-ops/stale/malformed/pending/failed
+  commands are silent.
+
+The authoritative post-Phase-7 roadmap is
+[`docs/implementation/BLINK_REMAINING_ROADMAP.md`](docs/implementation/BLINK_REMAINING_ROADMAP.md).
+Stage 0 documentation reconciliation is complete; Stage 1 manual acceptance
+of the latest Done work is current. Production attachment viewing, personal
+Today Morning Briefing, the physical USB adapter, numeric limits, production
+cutover, and production soak remain explicitly gated future work.
 
 Latest commits: `92606d2` (implementation), `b1b50d3` (contract
 documentation), `470b78b` (verification checkpoint), and `e2da99b` (plan
@@ -76,7 +84,7 @@ The boundaries are deliberate:
 
 The project intentionally keeps the blocks independent. A change to one block must be traced through its explicit dependencies, but unrelated blocks must not be mixed into the same implementation path.
 
-### Future iPhone exchange boundary (manual Phase 4B/5 complete; Phase 6 gated)
+### Production iPhone exchange boundary (manual Phase 4B/5/6 complete; cutover pending)
 
 The future Blink ↔ iPhone exchange is deliberately not part of the current
 production runtime. Manual feasibility testing is complete against the private
@@ -92,8 +100,8 @@ notification transport only. Phase 2B canonical transactions and Phase 3's
 single opt-in watcher worker are implemented, but the production mailbox stays
 disabled unless explicitly enabled with local environment settings; no real
 iCloud root is configured. No public links, HTTP, Photos/Documents access,
-production ntfy Actions, or production Shortcut changes are enabled. Confirmed results, package
-formats, and the remaining design question are in
+production ntfy Actions, or production Shortcut changes are enabled. Confirmed
+results and package formats are in
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
 Confirmed manual results (2026-09-12): iPhone → Mac file transport, Mac →
@@ -135,11 +143,10 @@ without an action button or `clear=true`; duplicate, stale/no-op, malformed,
 pending, and failed commands do not emit a confirmation, and a send failure
 does not roll back completion.
 
-The iPhone DONE notification lifecycle remains an open design question. After
-the button creates a DONE package, it is not yet decided whether the ntfy
-notification disappears immediately, remains until Mac acknowledgement, or
-uses another acknowledgement UX. `clear=true` is not an approved production
-decision.
+The iPhone DONE notification lifecycle is final: the originating notification
+remains unchanged. After a newly applied DONE commits, Mac sends one separate
+short confirmation with no action button and never `clear=true`; duplicate,
+stale, malformed, pending, and failed commands remain silent.
 
 Mac-side Phase 4A now has a production-capable but disabled-by-default ntfy
 DONE action. Eligible personal events use `blink-done-v1|<event_id>` as text
@@ -754,7 +761,8 @@ The remote queue is limited to the supported rolling horizon and is used only fo
 
 The latest recorded verification state is:
 
-- Python test suite: 172 passing (`.venv/bin/python -m unittest -q`).
+- Python test suite: 195 passing (`.venv/bin/python -m unittest -q`).
+- Focused mailbox/notification/schedule/watcher suite: 152 passing.
 - The alternate discovery command
   `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` is not
   runnable in this checkout because there is no `tests/` directory; root-level

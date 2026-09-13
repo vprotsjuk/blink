@@ -12,6 +12,13 @@ PHASE 5 COMPLETE (manual `Blink Create Test` migration and acceptance passed)
 PHASE 6 COMPLETE (controlled acceptance passed; production mailbox remains disabled)
 PHASE 7 COMPLETE (debounced external agenda refresh; 30-second polling retained)
 
+The authoritative post-Phase-7 roadmap is
+[`BLINK_REMAINING_ROADMAP.md`](BLINK_REMAINING_ROADMAP.md). Stage 0
+documentation/contract reconciliation is complete; Stage 1 manual acceptance
+of the latest Done work is current. Production attachment viewing, personal
+Today Morning Briefing, the physical USB adapter, numeric limits, production
+cutover, and production soak remain future gates.
+
 ## Approved architecture
 
 The approved baseline is recorded in
@@ -511,23 +518,22 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
   disabled. The Mac-side DONE action remains opt-in by default; no Shortcut
   or feasibility package was modified by the Mac test.
 
-## Open owner decisions
+## Open owner decisions / gates
 
 - Numeric transport size/package caps remain to be measured and selected.
-- Phase 4B ntfy Actions syntax and iOS Shortcut URL acceptance passed on the
-  real iPhone; only the acknowledgement UX remains open.
-- DONE notification acknowledgement UX remains open; `clear=true` is not
-  selected.
+- The DONE acknowledgement decision is final: the originating notification
+  remains unchanged; a newly applied remote DONE emits one separate short
+  confirmation without an action button or `clear=true`; repeats/no-ops,
+  stale, malformed, pending, and failed commands are silent.
 
 ## Next implementation tasks
 
 1. Keep the production mailbox disabled and never point the importer at the
    archived or historical feasibility inbox.
-2. Resolve the DONE acknowledgement/notification lifecycle separately;
-   `clear=true` remains unselected.
-3. Early Done and post-apply remote DONE confirmation are now implemented;
-   do not begin a new phase or owner-dependent manual acceptance without a
-   separate request.
+2. Stage 1 of `BLINK_REMAINING_ROADMAP.md` is current: perform owner-controlled
+   manual acceptance of Early Done, remote confirmation, and Dock/Attention;
+   stop before Stage 2.
+3. Keep the numeric package/worker limits as a pre-production gate.
 
 ## Last checkpoint
 

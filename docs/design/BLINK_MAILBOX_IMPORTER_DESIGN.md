@@ -1,6 +1,6 @@
 # Blink production Mac-side mailbox importer — design proposal
 
-**Status:** approved architecture baseline; implementation in progress  
+**Status:** historical design proposal; baseline implemented, production cutover pending
 **Date:** 2026-09-12 (revision after architecture review)  
 **Scope:** production design for iPhone `DONE` and `CREATE_EVENT` over the
 private iCloud Shortcuts mailbox.
@@ -9,7 +9,18 @@ This document is deliberately a design artifact. It does not change the
 production contracts, Shortcuts, `watcher.py`, SwiftUI, `agenda.json`, runtime
 files, LaunchAgents, or the feasibility test folders.
 
-### Review revision summary
+> **Current-state note (2026-09-12):** This document preserves the design
+> chronology and is not the current task queue. The mailbox parser, worker,
+> DONE/CREATE transactions, ntfy DONE action, Phase 4B/5/6 acceptance, and
+> Phase 7 refresh are complete. The originating DONE notification contract is
+> final (original unchanged; one post-apply confirmation; no action and no
+> `clear=true`). The remaining post-Phase-7 roadmap, including production
+> attachment viewing and personal Today Morning Briefing, lives in
+> [`docs/implementation/BLINK_REMAINING_ROADMAP.md`](../implementation/BLINK_REMAINING_ROADMAP.md).
+> Sections below that say “future”, “open”, or “manual Phase 4B/6” are
+> historical statements and must not override the current contract.
+
+### Historical review revision summary (superseded by current implementation)
 
 The second audit confirmed that SwiftUI already polls `agenda.json` every 30
 seconds (`ContentView.onReceive`) and refreshes on appearance, so a new
@@ -57,7 +68,7 @@ The real code audit found:
 | GUI attention | `BlinkAppState.refreshAttention()` loads the last-good snapshot; `AttentionManager` drives `DockAttentionOutput`. |
 | Physical blinker | The watcher’s existing event-output path remains the owner. A completed event is excluded from the next watcher delivery/attention calculation; no importer-specific stop path is needed. |
 | Atomic writes | Python uses temp + flush/fsync + `os.replace`; Swift uses a temporary URL and atomic `replaceItem`/move. |
-| Locking/versioning | No shared `flock`/`fcntl` lock and no compare-and-swap document revision were found. |
+| Locking/versioning | Historical snapshot: no shared `flock`/`fcntl` lock and no compare-and-swap document revision were found. Phase 1 locking is now implemented. |
 
 ## 2. Exact existing Create path
 
@@ -640,7 +651,7 @@ agenda/attachment/ledger commit. Failed local writes remain pending and are
 retried; they are not acknowledged as applied. Local quarantine is transport
 diagnostic history, not event truth.
 
-## 18. Ntfy DONE acknowledgement remains open
+## 18. Historical owner decision (superseded): Ntfy DONE acknowledgement
 
 The originating iOS ntfy notification lifecycle is intentionally unresolved:
 
@@ -668,8 +679,9 @@ title `✓ Done — <event title>` and a body containing the optional descriptio
 plus `Scheduled: <local date/time>`, has no action button, and never uses
 `clear=true`. Ledger replays, `noop_done`, `stale_event`, malformed, pending,
 and failed commands do not emit it; delivery failure never rolls back the
-completion. The originating iOS notification lifecycle remains open exactly as
-listed above.
+completion. The originating iOS notification lifecycle remained open in this
+historical design revision; that wording is superseded by the current-state
+note above.
 
 ## 19. Observability and Health proposal
 
@@ -728,8 +740,9 @@ implemented.
 5. **Manual iPhone acceptance:** point a new approved Shortcut at
    `Blink_Production/ToMac`; test DONE and CREATE with no attachment, image,
    and PDF; verify duplicate/restart/retry behavior.
-6. **Separate acknowledgement decision:** only then decide the ntfy/iOS
-   notification lifecycle and any optional acknowledgement signal.
+6. **Separate acknowledgement decision (historical/superseded):** only then
+   decide the ntfy/iOS notification lifecycle and any optional acknowledgement
+   signal.
 
 ## 22. Exact files that WOULD change during implementation
 
@@ -800,10 +813,9 @@ Owner-approved baseline decisions:
    debounced parent-directory observer is approved as a UX optimization; it
    rereads `agenda.json` by pathname after atomic replacement and uses the
    existing reload/shared snapshot path.
-10. The ntfy DONE acknowledgement lifecycle remains OPEN (clear immediately,
-    wait for Mac acknowledgement, or another UX). `clear=true` is not selected;
-    exact ntfy Actions syntax and iOS Shortcut URL acceptance remain a manual
-    acceptance item.
+10. Historical baseline (superseded): the ntfy DONE acknowledgement lifecycle
+    was open (clear immediately, wait for Mac acknowledgement, or another UX).
+    The current owner decision is recorded at the top of this document.
 
 ## 24. Why this does not create a second scheduler, sender, database, or source of truth
 
@@ -931,4 +943,5 @@ implementation has not started:
 - all iCloud wait/read/copy work occurs outside the agenda lock;
 - existing 30-second SwiftUI polling is the correctness fallback;
 - a debounced parent-directory observer is approved as a faster UX path;
-- ntfy acknowledgement lifecycle remains OPEN, and `clear=true` is not chosen.
+- Historical baseline (superseded): ntfy acknowledgement lifecycle remained
+  open, and `clear=true` was not chosen.

@@ -3,6 +3,13 @@
 Date: 2026-09-07
 Backup before work: `backups/blink_pre_active_done_attention_20260907-115528.zip`
 
+> **Historical note (2026-09-12):** This report preserves the original
+> Attention implementation checkpoint. The Dock attention architecture is
+> implemented and covered by the Swift runner, but visual Dock capture and a
+> real USB RGB lamp adapter remain later manual/hardware work. Other entries in
+> the old “Still Unfinished” list (such as launchd installation and astronomy
+> scope) are superseded by the current contract and roadmap.
+
 ## A. What Changed
 
 Added a new personal-event lifecycle layer:
@@ -170,4 +177,3 @@ Not yet verified visually with a recorded Dock capture.
 - Polished packaged/signed macOS app.
 - Real USB RGB lamp adapter after exact hardware model is known.
 - More refined event editor UX and delete confirmation.
-

@@ -5,6 +5,17 @@ production feature enabled.
 **Date:** 2026-09-12
 **Project:** `/Users/vitaliiprotsiuk/Desktop/Blink`
 
+> **Historical/current-state note (2026-09-12):** This file preserves the
+> feasibility and acceptance chronology. Phase 6 controlled CREATE/DONE
+> acceptance is complete, and the DONE acknowledgement decision is final:
+> the originating notification remains unchanged; one separate confirmation
+> follows a newly applied DONE; no action button and no `clear=true`. The
+> authoritative remaining roadmap is
+> [`docs/implementation/BLINK_REMAINING_ROADMAP.md`](../implementation/BLINK_REMAINING_ROADMAP.md).
+> References below to a “future reader”, “open design question”, or “Next
+> stage (Phase 6)” are historical wording. Production attachment viewing and
+> personal Today Morning Briefing remain core, unimplemented roadmap items.
+
 ## Safety boundary
 
 This spike does not modify `watcher.py`, `agenda.json`, production SwiftUI
@@ -181,6 +192,11 @@ owner-owned and outside the fixture/protocol. The future `Blink Files` Shortcut 
 or present a list when there are two or more. Quick Look/standard preview is
 enough. No public links, HTTP, or ntfy are involved.
 
+This remains feasibility-only. Production event-specific attachment viewing,
+the production `ToPhone` location, and the `Files/Open attachments` action are
+tracked as core remaining work in
+[`docs/implementation/BLINK_REMAINING_ROADMAP.md`](../implementation/BLINK_REMAINING_ROADMAP.md).
+
 ## Part 6 — Phase 5 actual CREATE acceptance
 
 The owner migrated the existing `Blink Create Test`; the safety duplicate
@@ -218,11 +234,12 @@ appearance, Quick Look, DONE, and CREATE_EVENT paths listed above. Production
 Blink remains unchanged; these results authorize documentation of feasibility,
 not production integration.
 
-### Open design question: the originating ntfy DONE notification
+### Historical owner question (superseded): the originating ntfy DONE notification
 
 After the user taps DONE, the iPhone creates the DONE package. The Mac importer
-now validates it and calls the normal Blink Done path. It is not yet decided
-what should happen to the original ntfy notification:
+now validates it and calls the normal Blink Done path. At the time of this
+spike, it was not yet decided what should happen to the original ntfy
+notification:
 
 - clear it immediately after the button tap;
 - keep it until Mac confirms successful package receipt and application; or
@@ -235,7 +252,7 @@ scheduled local time, without an action button or `clear=true`. Duplicate,
 no-op, stale, malformed, pending, and failed commands do not emit it, and a
 delivery failure never rolls back completion.
 
-## Next stage (Phase 6 controlled acceptance; production still disabled)
+## Historical next stage (Phase 6 controlled acceptance; completed)
 
 The Mac-side mailbox reader/importer is implemented and may be enabled only for
 a controlled run against the empty `Blink_Acceptance/ToMac` root. It requires

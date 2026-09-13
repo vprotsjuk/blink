@@ -1,5 +1,9 @@
 # Blink: Short Prompt for the Next Codex Task
 
+The authoritative remaining roadmap/checkpoint is
+`docs/implementation/BLINK_REMAINING_ROADMAP.md`; Stage 1 manual acceptance
+is current. Do not implement Stage 2–7 without a new explicit owner task.
+
 **Current checkpoint:** 2026-09-12. Manual iPhone/iCloud feasibility, Phase 4B
 real iPhone DONE-action acceptance, Phase 5 CREATE acceptance, and Phase 7 fast agenda refresh are complete; Phase 1 shared agenda locking, Phase 2A importer core, Phase 2B
 canonical transactions/recovery, Phase 3's opt-in watcher worker, and Phase 4A
@@ -22,9 +26,11 @@ remains accepted for backward compatibility. The combined value is transport
 identity only, never an event ID or event start time. The mailbox is transport
 only; Mac/Blink and local JSON remain the source of truth.
 
-The originating ntfy DONE notification lifecycle is an OPEN DESIGN QUESTION:
-clear immediately, keep until Mac acknowledgement, or use another UX.
-`clear=true` is not selected. Production transport IDs use
+The DONE acknowledgement decision is FINAL: the originating notification
+remains unchanged. After a newly applied remote DONE, Mac sends one separate
+short confirmation without an action button or `clear=true`; repeats, no-ops,
+stale, malformed, pending, and failed commands are silent. Production
+transport IDs use
 `<yyyyMMddHHmmss>-<9-digit-random>` (UUIDv4 remains accepted for compatibility)
 and are never event IDs. Phase 2B must reuse existing Blink Done/Create
 logic, be idempotent, treat duplicate/stale DONE as NO-OP, survive malformed
@@ -41,7 +47,8 @@ future-start events move directly to History with preserved `start` and actual
 `done_at`. Remote DONE sends one short post-apply confirmation without an
 action button or `clear=true`; duplicate/no-op/stale/malformed/pending/failed
 commands remain silent and notification failure does not roll back completion.
-Production iCloud, ntfy Actions, and Shortcuts remain unchanged. See
+Production iCloud and production Shortcuts remain unchanged; DONE action
+delivery remains disabled by default. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
 Phase 6A/6B CREATE acceptance has since passed against `Blink_Acceptance/ToMac`;
@@ -65,6 +72,7 @@ runnable because this checkout has no importable `tests/` directory; root-level
 2. `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`
 3. `docs/HANDOFF.md`
 4. `docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`
+5. `docs/implementation/BLINK_REMAINING_ROADMAP.md`
 
 Это локальное macOS-приложение Blink. Сохраняй границу:
 

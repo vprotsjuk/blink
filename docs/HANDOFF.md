@@ -3,16 +3,18 @@
 **Snapshot:** 2026-09-12
 **Full technical description:** [`BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`](../BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md)  
 **Next Codex prompt:** [`CODEX_NEXT_THREAD_PROMPT.md`](../CODEX_NEXT_THREAD_PROMPT.md)
+**Remaining roadmap:** [`docs/implementation/BLINK_REMAINING_ROADMAP.md`](implementation/BLINK_REMAINING_ROADMAP.md)
 
 ## Goal (current)
-Keep Blink's independent runtime architecture stable while fixing personal-event visibility and making event attention state clear in the app and phone notifications.
+Keep Blink's independent runtime architecture stable while completing the
+post-Phase-7 roadmap. Stage 1 manual acceptance of Early Done, remote DONE
+confirmation, and Dock/Attention is current; production cutover remains gated.
 
 The canonical current-state contract for future agents is [`docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`](contracts/BLINK_CURRENT_STATE_CONTRACT.md). Update it together with this handoff whenever a boundary or user-visible contract changes.
 
 The iPhone ↔ private iCloud exchange remains separate from production, and its
-manual feasibility plus Phase 4B DONE-action acceptance are complete. Its safety boundary, private
-container, mailbox format, observed results, and open design question are
-recorded in
+manual feasibility plus Phase 4B/5/6 acceptance are complete. Its safety
+boundary, private container, mailbox format, and observed results are recorded in
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
 ## Pre-change reconciliation checkpoint (2026-09-10)
@@ -20,7 +22,12 @@ recorded in
 This checkpoint is an audit only; no source code was changed for it.
 
 - **Snooze origin:** the old behavior came from `docs/superpowers/plans/2026-09-07-blink-next-core-architecture.md`, which was created in the initial project snapshot (`81c734f`) and explicitly planned Snooze state, timing, and reminder recalculation. The old `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md` also documented Snooze as a current feature. The current Python and Swift runtime do not implement Snooze behavior or UI; they only remove legacy `snoozed_until`/`snoozed_for_minutes` fields during migration. Therefore the observed conflict is stale TЗ/documentation, not a new runtime implementation restored by this thread. Handoff was unreliable because the full description and one historical plan were allowed to contradict the later owner decision and current code.
-- **Recurring attachment risk:** the current implementation still resolves recurring attachment ownership through one stable `series_id` folder. The new owner decision is stricter: every occurrence must own its own folder and a recurring successor must start without attachments. Before changing that rule, audit `agenda.json`, every `event_data/attachments/*` folder, recurrence tests, and all Swift/Python owner-resolution paths. Migration must copy shared files to each occurrence, update manifests only after verified copies, preserve the source until verification succeeds, and never delete or overwrite user files implicitly. The audit found no live `series_id` events in the current `agenda.json`; the existing live attachment is under a non-recurring event ID, but this does not replace the required code/test migration audit.
+- **Recurring attachment checkpoint (historical, superseded):** an earlier
+  implementation used a shared `series_id` folder. The current contract and
+  code use one event-ID owner folder per occurrence; recurring successors start
+  with no attachments. The idempotent migration helper preserves any legacy
+  source and copies files only when needed. No live recurring `series_id` data
+  currently requires migration.
 - **Git boundary:** `.gitignore` excludes `agenda.json`, local settings/state, `event_data/` (attachments and drafts), `Blink.app/`, build products, backups, and virtualenvs. Source code, contracts, plans, and documentation remain trackable. `git status` is clean and the existing live PDF under `event_data/attachments/` is ignored, not tracked. Before the next commit, repeat `git status --short`, `git ls-files event_data`, and `git check-ignore -v event_data/attachments/*` so no real PDF/JPG/DWG/Excel can enter the public repository.
 - **Current gate:** reconciliation is accepted by the owner. Implementation now follows the current contract: no product Snooze, independent Blinker, per-occurrence attachment ownership, unified Paste, editor-only Drop, and frozen History.
 
@@ -41,6 +48,11 @@ Apple Shortcuts container is
 - repeated Viber PDF share after `Always Allow`;
 - direct-launch regression after attachment logic changes.
 
+The remaining core requirements are production event-specific iPhone attachment
+viewing and the optional personal Today Morning Briefing. The physical USB
+adapter and numeric mailbox/package/worker limits remain separate production
+gates; the full Stage 0–7 sequence is in the linked roadmap.
+
 Real Apple Shortcuts has no native Generate UUID action. The production
 Shortcut transport ID therefore uses `<yyyyMMddHHmmss>-<9-digit-random>`, for
 example `20260912154532-482193775`; UUIDv4 remains accepted for backward
@@ -57,10 +69,10 @@ attachment/event commits, and runs through one opt-in worker inside the
 existing watcher. Production remains disabled unless explicitly enabled with
 local environment settings; no real `Blink_Production/ToMac` root is active.
 
-One design question remains open: after the iPhone DONE button creates a
-package, the originating ntfy notification may disappear immediately, remain
-until Mac acknowledgement, or use another acknowledgement UX. `clear=true` is
-not an approved production decision.
+The DONE acknowledgement decision is final: the originating ntfy notification
+remains unchanged. A newly applied remote DONE sends one separate short
+confirmation without an action button or `clear=true`; repeats, no-ops, stale,
+malformed, pending, and failed commands are silent.
 
 Mac-side Phase 4A DONE action generation is implemented but disabled by
 default via `BLINK_NTFY_DONE_ACTION_ENABLED`. Phase 4B manual iPhone acceptance
@@ -87,7 +99,8 @@ entries were moved with filenames preserved to
 `~/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/Archive/Phase5-20260912211629`.
 `Blink_Acceptance/ToMac` is empty and remains the active Shortcut target.
 Production mailbox/importer remains disabled; do not point it at the archive or
-enable `Blink_Production/ToMac` until the owner explicitly starts Phase 6.
+enable `Blink_Production/ToMac` until the owner explicitly authorizes Stage 4
+production cutover.
 
 Controlled Phase 6A/6B CREATE acceptance subsequently passed against the empty
 acceptance inbox. The reader handled iCloud `dataless` files as `PENDING_SYNC`
@@ -136,7 +149,7 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - Row `Paste`/`Add Files` use a short-lived immediate transaction; editor attachments retain the longer Save/Cancel draft lifecycle.
 
 ## Tried & results (bullets)
-- Python verification -> `Ran 188 tests; OK` (`.venv/bin/python -m unittest -q`).
+- Python verification -> `Ran 195 tests; OK` (`.venv/bin/python -m unittest -q`).
 - Alternate discovery -> not runnable: `ImportError: Start directory is not importable: 'tests'` because this checkout has no importable `tests/` directory; root-level `test_*.py` modules are covered by the default command.
 - Swift verification -> `Swift Blink store tests passed.` and release build completed, including briefing-change persistence coverage.
 - Astronomy regeneration -> 732 day records generated.
@@ -168,19 +181,19 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 ## Next actions (3-7 concrete steps)
 1. Keep the production mailbox disabled after the completed Phase 6 CREATE/DONE
    acceptance and empty-inbox preparation.
-2. Preserve the open originating-notification acknowledgement UX decision:
-   immediate clear, retention until Mac confirmation, or another UX.
-   `clear=true` is not selected.
+2. Preserve the final originating-notification acknowledgement decision: the
+   original notification remains unchanged; only a newly applied remote DONE
+   emits one separate confirmation, without an action button or `clear=true`.
 3. Keep production mailbox disabled; never consume historical feasibility
    packages without a separately approved acceptance run.
-4. Early Done and post-apply remote DONE confirmation are implemented; do not
-   begin another phase without an explicit owner request.
+4. Stage 1 of `docs/implementation/BLINK_REMAINING_ROADMAP.md` is current:
+   perform owner-controlled manual acceptance, then stop before Stage 2.
 
 ## Files touched (paths)
 `watcher.py`, `app/attachment_store.py`, `app/weather_store.py`, `test_watcher.py`, `test_weather_store.py`, `app/agenda_store.py`, `app/notification_format.py`, `test_agenda_store.py`, `test_notification_format.py`, `test_attachment_store.py`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/Models.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AttachmentStore.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift`, `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`, `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `CODEX_NEXT_THREAD_PROMPT.md`, `docs/superpowers/plans/2026-09-09-astronomy-push-format.md`, `docs/superpowers/plans/2026-09-09-event-attachments-and-history-freeze.md`.
 
 ## Commands run (command -> outcome)
-- `.venv/bin/python -m unittest -q` -> 188 tests passed.
+- `.venv/bin/python -m unittest -q` -> 195 tests passed.
 - `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` -> not runnable (`ImportError: Start directory is not importable: 'tests'`; no `tests/` directory in this checkout).
 - `.venv/bin/python -m py_compile watcher.py app/attachment_store.py app/agenda_store.py app/notification_format.py` -> passed.
 - `.venv/bin/python -m py_compile watcher.py app/*.py astronomy/generate_astronomy.py` -> passed.

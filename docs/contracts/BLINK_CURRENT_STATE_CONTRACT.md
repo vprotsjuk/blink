@@ -9,6 +9,10 @@
 
 The complete technical description for ChatGPT is [`BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`](../../BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md). The immediate continuation prompt for a new Codex task is [`CODEX_NEXT_THREAD_PROMPT.md`](../../CODEX_NEXT_THREAD_PROMPT.md).
 
+The authoritative post-Phase-7 remaining roadmap is
+[`docs/implementation/BLINK_REMAINING_ROADMAP.md`](../implementation/BLINK_REMAINING_ROADMAP.md).
+Stage 0 reconciliation is complete; Stage 1 manual acceptance is current.
+
 This is the current implementation contract for future agents. The older master prompt is historical requirements context. This file describes what is currently true and what must not be broken.
 
 ## 1. Non-Negotiable Architecture
@@ -60,8 +64,10 @@ transport IDs therefore use `<yyyyMMddHHmmss>-<9-digit-random>`, for example
 `20260912154532-482193775`; UUIDv4 remains accepted for backward compatibility.
 This combined value is transport/dedupe identity only, never an event ID or
 event start time. The Mac importer uses normal Blink business logic, remains
-idempotent, and preserves the local source of truth. The lifecycle of the originating ntfy DONE notification is unresolved;
-do not treat `clear=true` as an approved decision.
+idempotent, and preserves the local source of truth. The originating ntfy DONE
+notification remains unchanged; a newly applied remote DONE emits one separate
+short confirmation without an action button or `clear=true`, while repeats,
+no-ops, stale, malformed, pending, and failed commands remain silent.
 
 Mac-side DONE action support is implemented but disabled by default. When
 `BLINK_NTFY_DONE_ACTION_ENABLED=1` is explicitly set, eligible personal
@@ -79,6 +85,20 @@ events, and rereads the file through `BlinkStore.loadEventResult()` so the
 normal snapshot, Attention, Dock, and search flow remains canonical. The
 30-second polling fallback remains enabled; observer failure is non-fatal and
 does not write agenda data.
+
+The following are core remaining requirements, not implemented behavior:
+
+- production event-specific iPhone attachment viewing through `ToPhone`, a
+  `Files/Open attachments` action, one-file direct open, multi-file chooser,
+  Quick Look, and safe package cleanup/retry;
+- an optional personal Today Morning Briefing containing every applicable
+  Today event, with persistent enable/disable, watcher-owned delivery,
+  local-date dedupe, wake/timezone/empty-day rules, and Weather/Astronomy
+  coexistence.
+
+The physical USB device adapter and numeric mailbox/package/worker limits are
+separate pre-production gates. The complete staged roadmap is in
+`docs/implementation/BLINK_REMAINING_ROADMAP.md`.
 
 ## 2. Runtime Boundaries
 
@@ -266,7 +286,7 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 
 ## 10. Current Verification Snapshot
 
-- Python: 188 tests passing via `.venv/bin/python -m unittest -q`, including
+- Python: 195 tests passing via `.venv/bin/python -m unittest -q`, including
   explicit mailbox arbitrary-minute and title-validation coverage.
 - Alternate discovery command `.venv/bin/python -m unittest discover -s tests -p
   'test_*.py' -v` is not runnable here because this checkout has no importable

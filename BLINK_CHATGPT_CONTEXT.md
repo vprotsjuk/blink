@@ -25,6 +25,8 @@ If sources differ, use this order:
    implementation decisions.
 4. [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md)
    for the separate iCloud/iPhone spike.
+5. [`docs/implementation/BLINK_REMAINING_ROADMAP.md`](docs/implementation/BLINK_REMAINING_ROADMAP.md)
+   for the authoritative post-Phase-7 roadmap; Stage 1 is current.
 5. [`docs/feasibility/BLINK_NEW_THREAD_HANDOFF_PROMPT.md`](docs/feasibility/BLINK_NEW_THREAD_HANDOFF_PROMPT.md)
    for the immediately preceding handoff checkpoint.
 
@@ -138,8 +140,9 @@ Upcoming -> Active -> Done -> History
   recalculating classification and future reminders.
 - History is frozen. It can only be duplicated as a new event (fresh ID and
   attachment owner) or deleted. It cannot be edited in place.
-- A stale legacy record marked `done=true` with a future start is repaired on
-  load to `done=false`, `done_at=null` and returned to Today/Upcoming.
+- `done=true` remains authoritative even when `start` is in the future:
+  `done_at` is preserved, the original `start` is retained, and the event is
+  classified into History without automatic reopening.
 - Recurrence supports fixed weekly events and `days after Done`; completion may
   create at most one successor.
 - New events default the independent Blinker control to `At event`
@@ -414,27 +417,29 @@ The observed privacy facts are limited to: Photos received `Always Allow`, Viber
 received `Always Allow`, first access showed prompts, and repeated Viber PDF
 sharing showed no further prompt. No internal iOS permission model is inferred.
 
-### Open design question: ntfy DONE notification lifecycle
+### Final DONE acknowledgement contract
 
-After DONE is tapped and the package is written, it remains undecided whether
-the originating notification is cleared immediately, kept until Mac confirms
-successful application, or handled by another acknowledgement UX. `clear=true`
-is not an approved production decision.
+The originating ntfy notification remains unchanged. After a newly applied
+remote DONE commits, Mac sends one separate short confirmation without an
+action button or `clear=true`; duplicate, no-op, stale, malformed, pending,
+and failed commands remain silent.
 
 The manual phase used four test Shortcuts: `Blink Test`, `Blink Files`,
 `Blink DONE Test`, and `Blink Create Test`. Their responsibilities are file
 transport, Mac → iPhone viewing, ntfy DONE transport, and CREATE_EVENT transport.
 
-Current verification snapshot: `.venv/bin/python -m unittest -q` ran 133 tests
-and passed. The alternate discovery command with `-s tests` is not runnable in
+Current verification snapshot: `.venv/bin/python -m unittest -q` ran 195 tests
+and passed. The focused mailbox/notification/schedule/watcher suite ran 152
+tests and passed. The alternate discovery command with `-s tests` is not runnable in
 this checkout because no importable `tests/` directory exists; root-level
 `test_*.py` modules are covered by the default command. Python compilation,
 plist lint, Swift store/UI runner, Swift release build, and
 `./status_watcher.command` also passed on this checkpoint.
 
-The future `Blink Files` Shortcut may read only `ToPhone`, select by
-`occurrence_id`, ignore manifest/ready markers, directly open one file or show
-a list for multiple files. It must not create public links or use HTTP/ntfy.
+Production event-specific attachment viewing remains a core roadmap item:
+`ToPhone` packages must be selected by event, exposed through a Files/Open
+attachments action, open one file directly or show a chooser for multiple
+files, and use Quick Look without public links or HTTP/ntfy. See the roadmap.
 
 ## 13. Safe workflow for the next thread
 
