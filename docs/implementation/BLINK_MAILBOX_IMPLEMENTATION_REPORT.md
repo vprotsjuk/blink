@@ -76,6 +76,11 @@ and the existing local attachment contract.
   supplied; no real iCloud root is configured.
 - Bounded scans call the Phase 2B transaction path and remove exact transport
   files only after local commit.
+- macOS iCloud placeholder reads that return `Errno 11 (Resource deadlock
+  avoided)` are classified as `PENDING_SYNC`; the worker leaves the exact
+  package in place and retries after the bytes become local instead of
+  quarantining it as malformed. Attachment staging and transport cleanup use
+  the same boundary.
 
 ### Phase 4A — Mac ntfy DONE action support
 
@@ -221,6 +226,52 @@ and the existing local attachment contract.
 
 This procedure is documented for the future controlled test only; none of its
 enable commands were run in this checkpoint.
+
+## Phase 6 controlled acceptance — partial result
+
+- **Phase 6A CREATE without attachment — PASS.** With the one-shot worker
+  pointed only at `Blink_Acceptance/ToMac`, the native package
+  `20260912214025-961934815.event.json` plus `.ready` was consumed. Blink
+  created event `event-3b6bfc08-f47a-43e8-9d1a-fd7a7dee1c35` with the exact
+  title/description/start, reminders `[3, 0]`, yellow attention, blinker `3`,
+  `enabled=true`, `requires_done=true`, `done=false`, `recurrence=null`,
+  Mac-owned tags/defaults, and preserved `mailbox_transfer_id`. The open Blink
+  GUI showed the event in Upcoming without an app restart.
+- **Phase 6B CREATE with PDF — PASS.** The package
+  `20260912214413-360011007.event.json` plus matching
+  `20260912214413-360011007.attachment.pdf` and `.ready` was initially held
+  as `PENDING_SYNC` while the iCloud files were `dataless`. After the PDF was
+  opened once in Preview and became local, the worker committed event
+  `event-8acec3e8-352e-4300-813c-5a31efdaa0d7`, moved the 262,885-byte file
+  into its event-ID owner folder, preserved the original display name
+  `234896478`, set the physical-file manifest to `count=1/has_files=true`,
+  and removed the mailbox package only after commit. The GUI showed the event
+  in Today/Active with `📎 1` and no restart.
+- **Phase 6C past-event behavior — OBSERVED.** The PDF event had start
+  `2026-09-12T21:44:00-07:00`, already in the past when loaded. Because it was
+  enabled, unfinished, and `requires_done=true`, Blink classified it as
+  `Today → Active` (not History), retained yellow Attention, and kept the
+  configured 5-minute blinker lead. This is the current lifecycle behavior;
+  no redesign was introduced.
+- **Real DONE acceptance — BLOCKED at transport boundary.** One controlled
+  ntfy request was accepted for event
+  `event-8acec3e8-352e-4300-813c-5a31efdaa0d7` using the encoded
+  `Blink DONE Test` action and no `clear=true`. The iPhone created
+  `20260912215237-901727503.done.json` plus `.ready`, but the existing test
+  Shortcut wrote them to the historical `Blink_Feasibility/ToMac`, not the
+  controlled acceptance inbox. Those files remain untouched; the DONE importer
+  was not pointed at feasibility. A future controlled run requires an
+  owner-approved DONE Shortcut target that writes to `Blink_Acceptance/ToMac`.
+- **Early Done audit — code change still pending.** `BlinkStore.complete` and
+  `EventSnapshot`/Python sectioning already support future-start completion
+  and History by `done=true`, but the Upcoming `EventListView` currently
+  leaves `showsDone` at its default `false`; its rows/context menu therefore
+  still need a small owner-approved change to expose `Done` for future
+  Upcoming events. No parallel completion path was added, and Early-Done
+  implementation tests remain pending the unblocked real DONE acceptance.
+- The controlled mailbox was returned to **OFF** immediately after the DONE
+  blocker. `Blink_Production/ToMac` remains unused and the acceptance inbox is
+  empty.
 
 ## Phase 5 — historical iPhone `Blink Create Test` migration checklist
 
@@ -412,10 +463,11 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
 
 ## Tests
 
-- `.venv/bin/python -m unittest -q` → 185 tests passed.
-- `.venv/bin/python -m unittest -q test_mailbox_importer` → 33 tests passed.
-- `.venv/bin/python -m unittest -q test_notification_format test_ntfy_schedule test_watcher`
-  → 89 tests passed.
+- `.venv/bin/python -m unittest -q` → 188 tests passed.
+- `.venv/bin/python -m unittest -q test_mailbox_importer` → 36 tests passed,
+  including iCloud placeholder `PENDING_SYNC` boundary regressions.
+- `.venv/bin/python -m unittest -q test_mailbox_importer test_notification_format
+  test_ntfy_schedule test_watcher` → 125 tests passed.
 - Previous Phase 4 notification/watcher focused suite remains covered by the
   full run; its prior checkpoint was 88 passing tests.
 - `swift run BlinkSwiftUITestRunner` → all Swift store/UI tests passed,
@@ -462,10 +514,13 @@ Text can never create `<id>.attachment.` or any zero-byte attachment.
 
 ## Next implementation tasks
 
-1. Perform controlled Phase 6 CREATE/DONE mailbox acceptance only after the
-   owner explicitly enables the worker against the empty
-   `Blink_Acceptance/ToMac` inbox.
-2. Keep the Phase 6 enable/disable procedure one-shot and reversible; never
+1. Resolve the DONE acceptance target: provide an owner-approved Shortcut
+   writing to `Blink_Acceptance/ToMac` without modifying the historical
+   feasibility inbox.
+2. Perform the controlled real DONE acceptance only after that target is
+   approved and the worker is explicitly enabled against the empty acceptance
+   inbox.
+3. Keep the Phase 6 enable/disable procedure one-shot and reversible; never
    point the importer at the archived or historical feasibility inbox.
 
 ## Last checkpoint

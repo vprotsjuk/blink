@@ -79,6 +79,18 @@ also passed for no attachment, image, and PDF packages, explicit-offset dates,
 arbitrary integer reminder/blinker values including `[3, 0]` and `3`, empty
 Description, and phone-side rejection of empty Title/invalid reminder input.
 
+Controlled Phase 6A/6B CREATE acceptance also passed against
+`Blink_Acceptance/ToMac`. iCloud files may appear locally as macOS `dataless`
+placeholders; the reader treats `Errno 11 (Resource deadlock avoided)` while
+reading JSON or attachment bytes as `PENDING_SYNC`, leaves the exact package in
+place, and retries once bytes become local. The accepted PDF was committed to
+an event-ID owner folder with `count=1/has_files=true` and the acceptance inbox
+was then cleaned only after commit. A past-start unfinished event was observed
+in Today/Active with Attention enabled. Phase 6 DONE is blocked because the
+existing `Blink DONE Test` Shortcut still writes to historical
+`Blink_Feasibility/ToMac`; those files remain untouched and the controlled
+mailbox was returned to OFF.
+
 The iPhone DONE notification lifecycle remains an open design question. After
 the button creates a DONE package, it is not yet decided whether the ntfy
 notification disappears immediately, remains until Mac acknowledgement, or

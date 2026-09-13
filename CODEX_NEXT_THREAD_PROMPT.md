@@ -40,6 +40,15 @@ controlled Phase 6 mailbox acceptance only after explicit owner authorization.
 Production iCloud, ntfy Actions, and Shortcuts remain unchanged. See
 `docs/implementation/BLINK_MAILBOX_IMPLEMENTATION_REPORT.md`.
 
+Phase 6A/6B CREATE acceptance has since passed against `Blink_Acceptance/ToMac`;
+iCloud `dataless` package bytes are treated as `PENDING_SYNC` and retried. The
+past-start event was observed in Today/Active with Attention enabled. Phase 6
+DONE remains blocked because the existing `Blink DONE Test` Shortcut writes to
+historical `Blink_Feasibility/ToMac`; those files must remain untouched. The
+controlled mailbox is OFF and production remains unused. Next human action is
+to approve/provide a DONE Shortcut target for `Blink_Acceptance/ToMac`, then
+rerun only the controlled DONE acceptance.
+
 Current verification: `.venv/bin/python -m unittest -q` passes the current suite;
 Python compile, plist lint, `./status_watcher.command`, Swift test runner, and
 Swift release build passed. The alternate command with `-s tests` is not

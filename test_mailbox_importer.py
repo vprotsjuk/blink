@@ -1,9 +1,11 @@
+import errno
 import json
 import tempfile
 import unittest
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
 
 from app import mailbox_importer
 
@@ -91,6 +93,52 @@ class MailboxImporterTests(unittest.TestCase):
             parsed = mailbox_importer.parse_package(candidate)
             self.assertEqual(parsed.transfer_id, transport_id)
             self.assertEqual(parsed.attachment_path.name, f"{transport_id}.attachment.pdf")
+
+    def test_iCloud_resource_deadlock_while_staging_attachment_is_pending_sync(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_id = "20260912154500-123456789"
+            write_ready_package(root, package_id, create_payload(package_id, attachment=True), b"pdf")
+            parsed = mailbox_importer.parse_package(mailbox_importer.discover_packages(root)[0])
+            with mock.patch.object(
+                Path,
+                "open",
+                side_effect=OSError(errno.EDEADLK, "Resource deadlock avoided"),
+            ):
+                with self.assertRaises(mailbox_importer.PendingSync):
+                    mailbox_importer.stage_attachment(parsed, root / "blink")
+
+    def test_mailbox_iteration_keeps_pending_package_when_apply_hits_sync_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mailbox = root / "to_mac"
+            mailbox.mkdir()
+            agenda = self._agenda(root, [])
+            package_id = "20260912154501-123456789"
+            write_ready_package(mailbox, package_id, create_payload(package_id))
+            command = mailbox_importer.ParsedCommand(
+                kind="CREATE_EVENT",
+                transport_id=package_id,
+                transfer_id=package_id,
+                title="Pending",
+                description="",
+                start="2026-09-13T09:00:00-07:00",
+                reminder_offsets=(0,),
+                attention_level="green",
+                blinker_minutes_before=0,
+            )
+            with mock.patch.object(mailbox_importer, "parse_package", return_value=command), \
+                 mock.patch.object(
+                     mailbox_importer,
+                     "apply_command",
+                     side_effect=mailbox_importer.PendingSync("attachment bytes are still syncing"),
+                 ):
+                stats = mailbox_importer.process_mailbox_iteration(mailbox, root, agenda, max_packages=1)
+            self.assertEqual(stats["pending"], 1)
+            self.assertEqual(sorted(path.name for path in mailbox.iterdir()), sorted([
+                f"{package_id}.event.json",
+                f"{package_id}.ready",
+            ]))
 
     def test_native_transport_id_requires_exact_shape_and_stem_ownership(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -199,6 +247,20 @@ class MailboxImporterTests(unittest.TestCase):
             candidate = mailbox_importer.discover_packages(root)[0]
             with self.assertRaises(mailbox_importer.PendingSync):
                 mailbox_importer.parse_package(candidate)
+
+    def test_iCloud_resource_deadlock_while_reading_json_is_pending_sync(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package_id = "20260912214500-123456789"
+            write_ready_package(root, package_id, create_payload(package_id))
+            candidate = mailbox_importer.discover_packages(root)[0]
+            with mock.patch.object(
+                Path,
+                "read_text",
+                side_effect=OSError(errno.EDEADLK, "Resource deadlock avoided"),
+            ):
+                with self.assertRaises(mailbox_importer.PendingSync):
+                    mailbox_importer.parse_package(candidate)
 
     def test_no_ready_is_ignored(self):
         with tempfile.TemporaryDirectory() as tmp:

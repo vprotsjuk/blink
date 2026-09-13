@@ -89,8 +89,18 @@ entries were moved with filenames preserved to
 Production mailbox/importer remains disabled; do not point it at the archive or
 enable `Blink_Production/ToMac` until the owner explicitly starts Phase 6.
 
+Controlled Phase 6A/6B CREATE acceptance subsequently passed against the empty
+acceptance inbox. The reader handled iCloud `dataless` files as `PENDING_SYNC`
+when macOS returned `Errno 11 (Resource deadlock avoided)`, then committed the
+PDF package after its bytes became local. The past-start event was observed in
+Today/Active with Attention enabled. Phase 6 DONE is currently blocked: the
+one-shot ntfy request was accepted, but `Blink DONE Test` wrote
+`20260912215237-901727503.done.json` + `.ready` to the historical
+`Blink_Feasibility/ToMac`. Those files remain untouched, and the acceptance
+worker was returned to OFF.
+
 The long historical checkpoint paragraph immediately above contains older
-`120`/`133`/`160`/`162`/`163` test counts; they are superseded by the current `185` result
+`120`/`133`/`160`/`162`/`163` test counts; they are superseded by the current `188` result
 recorded below.
 Checkpoint and source prompt saved. The briefing timing regression is covered: saving Weather or Astronomy after today's configured local time records the change instant and defers that newly configured briefing to the next local day instead of sending immediately; saving before the target still sends today, and ordinary missed targets retain late catch-up. Python verification: 120 passing. Swift test runner and release build pass. The live watcher was restarted with the fix and did not emit another Weather/Astronomy briefing for today's already-past saved targets. Astronomy push rise/set labels now use thin arrows after the matching icon (`☀️ ↑/↓`, `🌙 ↑/↓`) in grouped lines and individual titles; large arrows remain phase-only. Disabled past unfinished events now remain in History, new GUI events default the blinker to `At time`, personal push titles include the event attention color icon, editing a completed event into the future reopens it, and stale completed records with future starts are repaired on load. Enabled overdue unfinished events now pulse in the app until `Done`; Blink's app-owned `Today` tab alternates between normal text and the highest active priority color from every tab. It is app-owned because macOS `TabView.tabItem` ignores dynamic label color. This is UI-only and does not change lifecycle or sending. Event toggle labels are `On`/`Off`, with disabled row text dimmed but its priority dot retained. Astronomy now uses `☀️` for all Sun events and never emits `🌅`. Moon-related messages use `Waxing Moon`/`Waning Moon` on ordinary days and reserve `New Moon`/`Full Moon` for the exact event day; one large `⬆️`/`⬇️` phase arrow appears on ordinary days only, with one countdown, no textual `Moon is …` line, and no repeated Sunset or standalone Moon event name in the body. Thin `↑`/`↓` UI arrows now mean only rise/set; large arrows mean only waxing/waning. The watcher owns the shared formatter; SwiftUI mirrors the approved icon language only. Astronomy also presents a scrollable Weather-style settings surface plus today's Sun/Moon summary. Its upper settings and lower summaries share the same two columns, so Sun and Moon remain vertically aligned. Weather now uses day/night icons for compact temperature and humidity lines; the Astronomy briefing respects `Use Weather briefing time` by either appending to Weather or sending a separate ntfy briefing. The app reads live JSON from `/Users/vitaliiprotsiuk/Desktop/Blink`; an empty UI after a build is an app-process restart issue, not a data-loss state. Watcher remains the only sender.
 
@@ -124,7 +134,7 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 - Row `Paste`/`Add Files` use a short-lived immediate transaction; editor attachments retain the longer Save/Cancel draft lifecycle.
 
 ## Tried & results (bullets)
-- Python verification -> `Ran 185 tests; OK` (`.venv/bin/python -m unittest -q`).
+- Python verification -> `Ran 188 tests; OK` (`.venv/bin/python -m unittest -q`).
 - Alternate discovery -> not runnable: `ImportError: Start directory is not importable: 'tests'` because this checkout has no importable `tests/` directory; root-level `test_*.py` modules are covered by the default command.
 - Swift verification -> `Swift Blink store tests passed.` and release build completed, including briefing-change persistence coverage.
 - Astronomy regeneration -> 732 day records generated.
@@ -157,15 +167,17 @@ Selected Day's Exit button is positioned immediately after the date/weekday bloc
 1. Keep the production mailbox disabled after the completed Phase 5 CREATE
    acceptance and empty-inbox preparation.
 2. Resolve the DONE acknowledgement/notification lifecycle: immediate clear, retention until Mac confirmation, or another UX. `clear=true` is not selected.
-3. When explicitly authorized, run the controlled Phase 6 CREATE/DONE
-   acceptance against only `Blink_Acceptance/ToMac`, using reversible one-shot
-   `BLINK_MAILBOX_ENABLED`/`BLINK_MAILBOX_ROOT` settings.
+3. Obtain an owner-approved DONE Shortcut target that writes to
+   `Blink_Acceptance/ToMac`; never consume historical feasibility packages.
+4. When that target is approved, rerun only the controlled Phase 6 DONE
+   acceptance with reversible one-shot `BLINK_MAILBOX_ENABLED`/
+   `BLINK_MAILBOX_ROOT` settings, then return the worker to OFF.
 
 ## Files touched (paths)
 `watcher.py`, `app/attachment_store.py`, `app/weather_store.py`, `test_watcher.py`, `test_weather_store.py`, `app/agenda_store.py`, `app/notification_format.py`, `test_agenda_store.py`, `test_notification_format.py`, `test_attachment_store.py`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/Models.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/AttachmentStore.swift`, `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift`, `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift`, `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`, `BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`, `CODEX_NEXT_THREAD_PROMPT.md`, `docs/superpowers/plans/2026-09-09-astronomy-push-format.md`, `docs/superpowers/plans/2026-09-09-event-attachments-and-history-freeze.md`.
 
 ## Commands run (command -> outcome)
-- `.venv/bin/python -m unittest -q` -> 185 tests passed.
+- `.venv/bin/python -m unittest -q` -> 188 tests passed.
 - `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` -> not runnable (`ImportError: Start directory is not importable: 'tests'`; no `tests/` directory in this checkout).
 - `.venv/bin/python -m py_compile watcher.py app/attachment_store.py app/agenda_store.py app/notification_format.py` -> passed.
 - `.venv/bin/python -m py_compile watcher.py app/*.py astronomy/generate_astronomy.py` -> passed.

@@ -43,6 +43,17 @@ ntfy Actions, production Shortcut changes, or Photos/Documents access is
 enabled. See
 [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](../feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md).
 
+Controlled Phase 6A/6B CREATE acceptance also passed against
+`Blink_Acceptance/ToMac`. The reader observed iCloud `dataless` files and now
+classifies macOS `Errno 11 (Resource deadlock avoided)` during package or
+attachment reads as `PENDING_SYNC`, preserving the exact package for retry.
+The accepted PDF was committed to a Mac-generated event-ID owner folder only
+after its bytes became local. A past-start event was observed in Today/Active
+until completion. Phase 6 DONE remains blocked because the existing
+`Blink DONE Test` Shortcut writes to historical `Blink_Feasibility/ToMac`; that
+folder is never used by the production/acceptance importer. The controlled
+mailbox is currently disabled.
+
 Real Apple Shortcuts has no native Generate UUID action. Production phone
 transport IDs therefore use `<yyyyMMddHHmmss>-<9-digit-random>`, for example
 `20260912154532-482193775`; UUIDv4 remains accepted for backward compatibility.
@@ -243,7 +254,7 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 
 ## 10. Current Verification Snapshot
 
-- Python: 185 tests passing via `.venv/bin/python -m unittest -q`, including
+- Python: 188 tests passing via `.venv/bin/python -m unittest -q`, including
   explicit mailbox arbitrary-minute and title-validation coverage.
 - Alternate discovery command `.venv/bin/python -m unittest discover -s tests -p
   'test_*.py' -v` is not runnable here because this checkout has no importable

@@ -7,6 +7,7 @@ temporary directories safely.
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import re
@@ -41,6 +42,11 @@ _INTERNAL_CREATE_FIELDS = {
     "reminders_minutes_before",
     "blinker_minutes_before",
 }
+
+
+def _is_iCloud_pending_error(exc: OSError) -> bool:
+    """Return whether macOS reported an iCloud placeholder still syncing."""
+    return exc.errno == errno.EDEADLK
 
 
 class PendingSync(RuntimeError):
@@ -192,7 +198,11 @@ def _load_json(candidate: PackageCandidate) -> dict[str, Any]:
         raise MalformedPackage("package JSON must be a regular non-symlink file")
     try:
         raw = json.loads(candidate.json_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except OSError as exc:
+        if _is_iCloud_pending_error(exc):
+            raise PendingSync("package JSON is still syncing") from exc
+        raise MalformedPackage("package JSON is invalid") from exc
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise MalformedPackage("package JSON is invalid") from exc
     if not isinstance(raw, dict):
         raise MalformedPackage("package JSON must be an object")
@@ -459,11 +469,16 @@ def stage_attachment(command: ParsedCommand, blink_root: Path) -> Path:
     destination = destination_root / source.name
     fd, temporary = tempfile.mkstemp(prefix=f".{source.name}.", suffix=".tmp", dir=destination_root)
     try:
-        with os.fdopen(fd, "wb") as target, source.open("rb") as source_handle:
-            shutil.copyfileobj(source_handle, target)
-            target.flush()
-            os.fsync(target.fileno())
-        os.replace(temporary, destination)
+        try:
+            with os.fdopen(fd, "wb") as target, source.open("rb") as source_handle:
+                shutil.copyfileobj(source_handle, target)
+                target.flush()
+                os.fsync(target.fileno())
+            os.replace(temporary, destination)
+        except OSError as exc:
+            if _is_iCloud_pending_error(exc):
+                raise PendingSync("attachment bytes are still syncing") from exc
+            raise
     finally:
         try:
             os.unlink(temporary)
@@ -480,7 +495,12 @@ def quarantine_package(candidate: PackageCandidate, blink_root: Path, reason: st
         if not _regular_local(source):
             continue
         destination = target / source.name
-        shutil.copy2(source, destination)
+        try:
+            shutil.copy2(source, destination)
+        except OSError as exc:
+            if _is_iCloud_pending_error(exc):
+                raise PendingSync("package bytes are still syncing") from exc
+            raise
         copied.append(source)
     _atomic_write_json(target / "reason.json", {"version": 1, "reason": reason, "transport_id": candidate.transport_id})
     for source in copied:
@@ -731,10 +751,18 @@ def process_mailbox_iteration(
             stats["pending"] += 1
             continue
         except MalformedPackage as exc:
-            quarantine_package(candidate, blink_root, str(exc))
+            try:
+                quarantine_package(candidate, blink_root, str(exc))
+            except PendingSync:
+                stats["pending"] += 1
+                continue
             stats["malformed"] += 1
             continue
-        result = apply_command(command, agenda_path, blink_root, blocking=False)
+        try:
+            result = apply_command(command, agenda_path, blink_root, blocking=False)
+        except PendingSync:
+            stats["pending"] += 1
+            continue
         outcome = result.get("result")
         if outcome == "busy":
             stats["busy"] += 1
@@ -745,4 +773,8 @@ def process_mailbox_iteration(
                 path.unlink()
             except FileNotFoundError:
                 pass
+            except OSError as exc:
+                if _is_iCloud_pending_error(exc):
+                    continue
+                raise
     return stats

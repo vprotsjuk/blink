@@ -243,6 +243,24 @@ business logic; Remote CREATE_EVENT calls the existing event
 creation/persistence path. The mailbox must never become the source of truth or
 a second scheduler/sender. Production `Blink_Production/ToMac` remains unused.
 
+Phase 6A CREATE without attachment and Phase 6B CREATE with a PDF were
+completed against the acceptance root on 2026-09-12. The PDF package
+`20260912214413-360011007` initially arrived with iCloud `dataless` bytes; the
+reader now treats macOS `Errno 11 (Resource deadlock avoided)` during JSON or
+attachment access as `PENDING_SYNC`, leaves the exact package untouched, and
+retries after the bytes become local. Once downloaded, the package was
+committed to a Mac-generated event-ID owner folder and removed only after the
+agenda/attachment commit. The past-start PDF event was observed in Today/Active
+with Attention still enabled, matching the current `requires_done` lifecycle.
+
+The controlled real DONE request was accepted by ntfy, but the existing
+`Blink DONE Test` Shortcut wrote its package
+`20260912215237-901727503.done.json` + `.ready` to the historical
+`Blink_Feasibility/ToMac`, not the acceptance inbox. Those feasibility files
+remain untouched; the DONE importer was not pointed at that path. A future
+DONE acceptance requires an owner-approved Shortcut target for
+`Blink_Acceptance/ToMac`.
+
 ## Reproducibility evidence
 
 The bounded filesystem test created only `AI_TEST_*` files under the dedicated
