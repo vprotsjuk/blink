@@ -627,6 +627,14 @@ PDF attachment. Package ID:
 `blink-files-v1-f5363e8bb0beeba1de7c2cf98215e8c9`. The exact action is:
 `view, Files, shortcuts://run-shortcut?name=Blink%20Files&input=text&text=blink-files-v1%7Cblink-files-v1-f5363e8bb0beeba1de7c2cf98215e8c9`.
 
+The 2026-09-13 controlled push instead targeted the hardened candidate
+`Blink Files Stage2 WORK`. ntfy accepted it with HTTP 200 and the action had
+no `clear=true`, but tapping `Files` on iPhone opened the Shortcuts library
+instead of Quick Look. Mac inspection confirmed the candidate, input contract,
+regex, and attachment decision tree. The iPhone currently shows fewer synced
+Shortcuts than the Mac, so the remaining gate is an exact-name/latest-version
+iCloud sync check. No second push has been sent.
+
 The existing `Blink Files` Shortcut still points at the historical
 `Blink_Feasibility/ToPhone` contract and must be evolved before the physical
 acceptance tap: read `blink-files-v1|<package-id>`, use
