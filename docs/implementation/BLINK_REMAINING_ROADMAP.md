@@ -2,7 +2,7 @@
 
 **Status:** authoritative post-Phase-7 roadmap
 **Snapshot:** 2026-09-13
-**Current stage:** **Stage 2 — iPhone Files acceptance, one-file retest pending**
+**Current stage:** **Stage 2 — iPhone Files acceptance, repaired one-file retest pending**
 
 This file is the single persistent roadmap for work after the completed
 original Phase 7. Running code and
@@ -89,9 +89,12 @@ timing model, fractional minutes, seconds, or a universal timing control.
 
 ### Simplified remaining roadmap
 
-**[CURRENT] Finish Stage 2 Files acceptance.** The one-file Files-only retest
-has been sent explicitly to `Blink Files Stage2 WORK`; physical visible Quick
-Look presentation is pending. Production mailbox stays disabled.
+**[CURRENT] Finish Stage 2 Files acceptance.** The first one-file Files-only
+retest explicitly targeted `Blink Files Stage2 WORK` and completed with a
+checkmark but no chooser/PDF. The WORK acquisition prefix has since been
+repaired to the proven `Get file from Shortcuts at path
+Blink_Acceptance/ToPhone` → `Get Contents of File` pattern. Production
+mailbox stays disabled; a new one-file physical retest is pending.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.

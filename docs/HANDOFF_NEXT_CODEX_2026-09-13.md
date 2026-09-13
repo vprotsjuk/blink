@@ -211,7 +211,8 @@ Split Shortcut Input by literal |
 Get Item at Index 2
 Set Variable PackageID
 
-Get Contents of Shortcuts/Blink_Acceptance/ToPhone
+Get file from Shortcuts at path Blink_Acceptance/ToPhone
+Get Contents of File
 Set Variable AllFiles
 Text [PackageID].ready
 Set Variable ReadyName
@@ -253,8 +254,12 @@ pattern. The final actions remain Quick Look, not `Open Item`.
 The first controlled Files ntfy push was accepted with HTTP 200 and a valid
 package. On iPhone, tapping `Files` opened Shortcuts; the Shortcut completed
 with a checkmark, but no PDF preview appeared. The same PDF opens manually in
-the Files app, so iCloud/package availability is proven. No new push has been
-sent since.
+the Files app, so iCloud/package availability is proven. The owner screenshots
+also confirm that `Blink Files Stage2 WORK` exists and runs. The Mac WORK tree
+was then repaired so its acquisition prefix matches the proven old pattern:
+`Get file from Shortcuts at path Blink_Acceptance/ToPhone` followed by
+`Get Contents of File`, with `AllFiles` bound to `Folder Contents`. This
+repaired tree has not yet been tested by a new phone notification.
 
 Do not add another contents action after `Attachments` unless the independent
 review proves its input is the folder and its output is a file list. The old

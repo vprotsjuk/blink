@@ -8,10 +8,10 @@ reading another document first.
 **Snapshot:** 2026-09-13  
 **Project root:** /Users/vitaliiprotsiuk/Desktop/Blink  
 **Owner language:** Russian; technical discussion may be English.  
-**Current Git commit:** bb9d4c1 docs: reconcile Blink Files acceptance handoff; source retest override pending commit
+**Current Git commit:** 044d4c9 test: target controlled Files acceptance shortcut
 **Current branch:** main  
 **Production mailbox:** disabled  
-**New ntfy notification for this investigation:** one Files-only retest sent to WORK; physical tap pending
+**New ntfy notification for this investigation:** one Files-only retest sent to WORK; physical tap completed, still no preview
 
 ---
 
@@ -99,8 +99,8 @@ PDFs, images, DWG files, and spreadsheets must not enter Git.
 
 The latest documented verification before the retest override was:
 
-- Python default suite: 195 passing;
-- focused mailbox/notification/schedule/watcher suite: 152 passing;
+- Python default suite: 219 passing;
+- focused source/regression suite: 111 passing;
 - Swift test runner: pass;
 - Swift release build: pass;
 - Python compile checks: pass;
@@ -442,7 +442,8 @@ Split Shortcut Input by literal |
 Get Item at Index 2
 Set Variable PackageID
 
-Get Contents of Shortcuts/Blink_Acceptance/ToPhone
+Get file from Shortcuts at path Blink_Acceptance/ToPhone
+Get Contents of File
 Set Variable AllFiles
 Text [PackageID].ready
 Set Variable ReadyName
@@ -510,10 +511,10 @@ Observed iPhone behavior:
 6. A later iPhone screenshot confirmed that the full WORK candidate and the
    escaped-pipe regex were present on the phone.
 7. The Mac-generated action URL and package/input contract were verified.
-8. The first retest result had no second push after it; after the WORK tree was
-   corrected, one new Files-only retest was sent explicitly to
-   `Blink Files Stage2 WORK` using the same validated one-file package. The
-   physical tap is still pending, so this is not acceptance.
+8. One Files-only retest was sent explicitly to `Blink Files Stage2 WORK`
+   using the same validated one-file package. The owner tapped the action;
+   the Shortcut completed with a checkmark, but no chooser or PDF preview
+   appeared. This is not acceptance.
 
 Therefore package availability and basic iCloud synchronization are proven.
 The unresolved area is the binding/presentation between the filtered Shortcut
@@ -525,14 +526,23 @@ editor may expose the corresponding operation under a different name. Adding
 another contents action after Attachments without verifying input/output
 types may convert file references into raw file contents and break Quick Look.
 
-The current candidate was adjusted only in its final branches:
+The current candidate was then repaired at the acquisition boundary. Its
+verified Mac action prefix is now:
+
+- `Get file from Shortcuts at path Blink_Acceptance/ToPhone`;
+- `Get Contents of File` applied to that folder;
+- `Set Variable AllFiles` from `Folder Contents`.
+
+The existing validation and final branches remain unchanged. Before this
+acquisition repair, the candidate was adjusted only in its final branches:
 
 - one file: chooser -> Show Selected Item in Quick Look;
 - multiple files: chooser -> Show Selected Item in Quick Look.
 
 The SQLite action blob and macOS editor confirm that both chooser inputs are
-the filtered `Attachments` File items/references. This change is prepared but
-not physically accepted yet; no second push has been sent.
+the filtered `Attachments` File items/references. The repaired tree has not
+yet been tested by a new phone notification; the previous WORK notification
+was sent before this repair and cannot validate it.
 
 ## 12. Exact questions for independent GPT diagnosis
 

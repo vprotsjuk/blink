@@ -123,9 +123,11 @@ the exact package, open only the matching file set in Quick Look, and never
 read unrelated ToPhone artifacts. Physical iPhone acceptance is the remaining
 Stage 2 gate; no phone-to-Mac round trip or extra Home Screen icon is
 introduced. The isolated `Blink Files Stage2 WORK` candidate currently uses
-`Choose from Attachments` → `Show Selected Item in Quick Look` in both the
-one-file and multiple-file branches; this is still pending real-device
-acceptance.
+the proven acquisition prefix `Get file from Shortcuts at path
+Blink_Acceptance/ToPhone` → `Get Contents of File` → `Set Variable AllFiles`,
+then `Choose from Attachments` → `Show Selected Item in Quick Look` in both
+the one-file and multiple-file branches. This repaired tree is still pending
+real-device acceptance.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.
@@ -796,7 +798,7 @@ The remote queue is limited to the supported rolling horizon and is used only fo
 
 The latest recorded verification state is:
 
-- Python test suite: 195 passing (`.venv/bin/python -m unittest -q`).
+- Python test suite: 219 passing (`.venv/bin/python -m unittest -q`).
 - Focused mailbox/notification/schedule/watcher suite: 152 passing.
 - The alternate discovery command
   `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` is not

@@ -107,9 +107,15 @@ instead of Quick Look. The Mac candidate and URL were verified, and a later
 iPhone screenshot confirmed that the full candidate and escaped-pipe regex are
 present there, and the Shortcut showed a completion checkmark after the tap.
 The PDF opened manually from Files, proving package availability, while the
-iOS Quick Look action produced no preview. The WORK candidate now uses
+iOS Quick Look action produced no preview. The owner has now confirmed the
+same result in the visible iPhone Shortcuts screen: WORK runs to a checkmark,
+but no chooser or PDF appears. The WORK candidate's acquisition prefix was
+repaired to the proven `Get file from Shortcuts at path
+Blink_Acceptance/ToPhone` → `Get Contents of File` pattern, with `AllFiles`
+bound to `Folder Contents`. The WORK candidate still uses
 `Choose from Attachments` followed by `Show Selected Item in Quick Look` in
-both count branches; the original and backup Shortcuts remain unchanged.
+both count branches; the original and backup Shortcuts remain unchanged. A
+new phone push is required to test this repaired acquisition boundary.
 SQLite/editor inspection confirms the filtered values are File
 items/references. No production mailbox was enabled. The unresolved gate is
 the physical iPhone result: the run must visibly present the PDF rather than

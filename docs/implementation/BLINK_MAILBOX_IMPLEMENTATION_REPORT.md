@@ -635,13 +635,15 @@ regex, and attachment decision tree. A later iPhone screenshot confirmed that
 the full candidate and escaped-pipe regex are present there, and the Shortcut
 showed a completion checkmark after the tap. The PDF opened manually from
 Files, proving package availability, but the iOS Quick Look action produced no
-preview. The WORK candidate was therefore adjusted only in its final branches
-to use `Choose from Attachments` followed by `Show Selected Item in Quick Look`
-for both one-file and multiple-file counts. SQLite/editor inspection confirms
-the filtered values are File items/references, not raw bytes. The original and
-backup Shortcuts remain unchanged. Physical iPhone retest is still pending;
-the previous run completed with a checkmark without presenting the PDF, while
-the same PDF opened manually in Files. No second push has been sent.
+preview. The owner has now confirmed the same result in the visible iPhone
+Shortcuts screen: WORK runs to a checkmark, but no chooser or PDF appears.
+SQLite/editor inspection then found that the WORK acquisition action differed
+from the proven old chain. The WORK tree was repaired to use `Get file from
+Shortcuts at path Blink_Acceptance/ToPhone` followed by `Get Contents of File`,
+with `AllFiles` bound to `Folder Contents`; its validation and final Quick Look
+branches were preserved. The original and backup Shortcuts remain unchanged.
+A new physical push is required to test this repaired tree. No production
+mailbox was enabled.
 
 The existing `Blink Files` Shortcut still points at the historical
 `Blink_Feasibility/ToPhone` contract and must be evolved before the physical
