@@ -37,6 +37,7 @@ Blink.app/
 .venv/
 backups/
 docs/checkpoints/
+.worktrees/
 memory_os_benchmark/
 personal_mapping_experiment/
 personal_mapping_experiment_*.zip
