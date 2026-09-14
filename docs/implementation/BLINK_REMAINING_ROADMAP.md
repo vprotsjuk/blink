@@ -1,169 +1,148 @@
-# Blink Remaining Roadmap and Compaction Checkpoint
+# Blink — authoritative roadmap
 
-**Status:** authoritative post-Phase-7 roadmap
-**Snapshot:** 2026-09-13
-**Current stage:** **Stage 2 — iPhone Files acceptance, repaired one-file retest pending**
+**Snapshot:** 2026-09-14
+**Status:** Acceptance Files one-file flow passed physically; production cutover is not yet complete.
+**Authority:** this roadmap, [`BLINK_CURRENT_STATE_CONTRACT.md`](../contracts/BLINK_CURRENT_STATE_CONTRACT.md), and [`BLINK_SHORTCUT_TREES_2026-09-14.md`](BLINK_SHORTCUT_TREES_2026-09-14.md) describe current state. Older reports preserve history only.
 
-This file is the single persistent roadmap for work after the completed
-original Phase 7. Running code and
-[`docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`](../contracts/BLINK_CURRENT_STATE_CONTRACT.md)
-remain the source of truth for implemented behavior. Historical design and
-feasibility documents preserve chronology but never override this roadmap.
+## Product target
 
-## Verified completed state
+Blink creates and manages personal events on the Mac and sends ntfy actions to
+the iPhone. The Mac is the source of truth. The final phone UX is one Home
+Screen entry `Blink`; `Share → Blink` creates an event from one shared file.
+`Done` and `Files` are separate internal notification actions.
 
-- Original Phases 1–7 are complete, including mailbox parser/transactions,
-  opt-in watcher worker, native transport IDs, `%20` URL encoding, Phase 4B
-  DONE acceptance, Phase 5 CREATE acceptance, Phase 6 controlled CREATE/DONE
-  acceptance, and Phase 7 agenda refresh.
-- Early Done is implemented for eligible unfinished personal events in Today
-  and Upcoming, including future-start events. It preserves `start`, records
-  `done_at`, moves the event to History, clears Attention/blinker eligibility,
-  and is idempotent.
-- A newly applied remote DONE sends one short confirmation titled
-  `✓ Done — <event title>`, with optional description and scheduled time. The
-  original notification remains unchanged; there is no action button and no
-  `clear=true`. Replays, no-ops, stale, malformed, pending, and failed DONE
-  commands are silent.
-- Production mailbox remains disabled. `BLINK_MAILBOX_ENABLED` and
-  `BLINK_MAILBOX_ROOT` are unset; `Blink_Acceptance/ToMac` is separate and
-  empty; `Blink_Production/ToMac` is unused.
-- Production default DONE Shortcut name remains `Blink DONE`; the optional
-  `BLINK_NTFY_DONE_SHORTCUT_NAME` override is for controlled tests only.
-- Current verification before the latest retest change: Python `218/218`,
-  focused Python `111/111`, Swift release build PASS, compile PASS,
-  `git diff --check` PASS, and healthy watcher. The latest source change adds
-  an opt-in Files Shortcut-name override and has its focused regression test
-  passing; the full suite is the next repository checkpoint.
-- CREATE mailbox transport v2 is implemented at the Mac importer boundary as a
-  flat Shortcut-friendly schema; v1 remains backward-compatible and both
-  normalize into the same canonical CREATE transaction.
+## Current verified state
 
-## Core remaining requirements
+- SwiftUI, `agenda.json`, local event attachments, importer, watcher, weather,
+  astronomy, lifecycle, Done handling, and ntfy formatting are implemented.
+- CREATE/DONE transport is implemented and has controlled Acceptance coverage.
+- Files staging is implemented with a flat integrity package and an atomic,
+  package-scoped `ToPhoneView` containing only real attachment basenames.
+- The Acceptance Files candidate was physically tested on iPhone: green ntfy
+  `Files` button → Shortcuts → chooser with the original filename → PDF in
+  Quick Look. A one-file result is accepted; multi-file acceptance is open.
+- `Done` and `Files` are independent ntfy actions. `Done` carries EventID;
+  `Files` carries PackageID. No `clear=true` is used.
+- Production mailbox and `Blink_Production/ToMac` remain disabled/unused.
+- The physical USB RGB lamp is available but intentionally not connected yet.
 
-1. Production event-specific attachment viewing: Mac-owned event attachments
-   staged through production `ToPhone`, a `Files/Open attachments` action,
-   one-file direct open, multi-file chooser, Quick Look, and safe
-   cleanup/retry/idempotency. The feasibility path is proven; production is
-   not implemented.
-2. Optional personal Today Morning Briefing containing every applicable Today
-   event with importance, title, optional description, and scheduled date/time.
-   It needs persistent enable/disable, watcher-owned delivery, local-time
-   configuration, one-per-date dedupe, wake handling, timezone and empty-day
-   rules, and coexistence with Weather/Astronomy.
-3. Real USB RGB lamp/device adapter and physical acceptance remain a separate
-   hardware task; do not invent a protocol before the device is known.
-4. Numeric mailbox/package/worker limits remain a pre-production safety gate.
-5. The final production iPhone entry point must be one Home Screen icon
-   `Blink` for direct event creation. `Share -> Blink` must use the same
-   unified production CREATE flow and support at most one attachment. DONE,
-   Files, and Open attachments remain notification actions/internal Shortcuts,
-   not separate Home Screen icons. The icon is deferred until Stage 4 after
-   the unified production Shortcut is finalized.
+## Working Shortcut contracts
 
-## Stages
+The exact current trees, status, inputs, and sync evidence are in
+[`BLINK_SHORTCUT_TREES_2026-09-14.md`](BLINK_SHORTCUT_TREES_2026-09-14.md).
 
-### Stage 0 — documentation and contract reconciliation — COMPLETE
+```text
+Blink
+  direct launch or Share input
+  -> validate/normalize fields
+  -> build CREATE_EVENT payload
+  -> write Acceptance/ToMac (later Production/ToMac)
 
-Synchronize current-state documents with running code and the final DONE
-acknowledgement decision; preserve historical chronology; establish this
-roadmap and compaction recovery pointer.
+Blink DONE
+  blink-done-v1|<event-id>
+  -> write DONE payload to ToMac, .ready last
 
-### Stage 1 — manual acceptance of latest Done work — COMPLETE
+Blink Files
+  blink-files-v1|<package-id>
+  -> get package-scoped ToPhoneView folder
+  -> Get Contents of Folder
+  -> Choose from List
+  -> Show Selected Item in Quick Look
+```
 
-Early Done, remote DONE confirmation, unchanged original notification,
-duplicate/no-op silence, and Dock/Attention visual behavior were accepted on
-the real installed Mac/iPhone path. Production mailbox remains disabled.
+The last tree is the physically proven one-file path. The first two still
+require final clean-tree verification and representative physical acceptance
+under their canonical Production names before cutover.
 
-## Owner timing decision — 2026-09-13
+## Permanent synchronization gate
 
-Keep the existing Mac timing UI essentially unchanged. Do not introduce a new
-timing model, fractional minutes, seconds, or a universal timing control.
+After any Mac-side Shortcut tree change:
 
-- Reminders keep the existing presets, `Custom minutes`, integer minutes, and
-  multiple reminder offsets.
-- Blinker keeps the existing presets, integer minutes, and one blinker offset;
-  it has no Custom value for now because Mac does not currently expose one.
-- This decision is recorded only; timing work is not part of the current Files
-  acceptance task.
+```text
+edit/build tree
+  -> harmless real edit and Save in Mac Shortcuts GUI
+  -> wait for iCloud
+  -> open Edit on iPhone and compare the complete action body/build marker
+  -> only then run or send an ntfy action
+```
 
-### Simplified remaining roadmap
+Name synchronization alone is not evidence of body synchronization. Adding
+and removing `Stop Shortcut` proved the mechanism but is not a production
+procedure. The recurring `{"detail":"Bad Request"}` messages were Codex
+connection/tool failures, not evidence of a Shortcuts or file failure.
 
-**[CURRENT] Localize Stage 2 Files failure.** A second one-file Files-only
-push explicitly targeted `Blink Files Stage2 WORK` after repairing its
-acquisition prefix to the proven `Get file from Shortcuts at path
-Blink_Acceptance/ToPhone` → `Get Contents of File` pattern. It again completed
-with a checkmark but no chooser/PDF. Mac-side evaluation of the same package
-gave `AllFiles = 3`, ready = 1, manifest = 1, and attachments = 1, so the
-package and fail-closed counts do not explain the observed iPhone result. The
-owner has now confirmed by iPhone editor screenshot that the repaired
-acquisition prefix is present on the phone, so the stale-version hypothesis
-is removed. The unchanged canonical `Blink Files` control and the temporary
-`Blink Files Acquisition Test` both displayed choosers and opened PDFs on the
-current iPhone. General iOS Quick Look, the acceptance folder acquisition,
-and the basic folder-contents path are therefore working. The remaining
-diagnostic boundary is the WORK parsing/filter/count path after acquisition.
-The production mailbox stays disabled. The temporary `Blink Files
-Acquisition Test` is now renamed `Blink Files Runtime Diagnostic`; it reads
-the fixed known package and displays `AllFiles` plus literal-vs-dynamic counts
-for ready, manifest, and attachment filters, without Quick Look or
-fail-closed stops. The next owner action is one manual run of that diagnostic
-on the iPhone; no new ntfy push is needed.
-The first diagnostic run produced only a blank `Cancel`/`Done` sheet because
-its aggregate result used an unsupported variable handoff. That output was
-repaired to use direct `Count` action outputs; the next run is the valid
-runtime measurement.
-The diagnostic is now simplified to four actions: acceptance-folder get,
-folder contents, one count, and a one-line result. The next owner action is
-one run of this count probe; do not retry the former 32-action version.
-Both iPhone and Mac Shortcuts `iCloud Sync` settings are confirmed ON. The
-remaining check is whether the iPhone has the four-action body, not whether
-the iCloud Drive app list contains Shortcuts.
-An earlier partial iPhone screenshot was mistakenly read as showing the
-synchronized four-action count probe. The latest complete editor screenshot
-still displays the previous long tree (`PackageID` and `Filter AllFiles`),
-despite the synchronized new name.
-The owner then showed the iPhone editor still displaying the previous long
-tree (`PackageID` and `Filter AllFiles`), despite the synchronized new name.
-The Mac count probe and iPhone action body therefore differ; do not run or
-rebuild the production trees until a normal UI save produces body equality.
+## Staged execution plan
 
-**[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
-2+ file package and perform one physical Files tap proving package isolation.
+### Stage 0 — documentation reconciliation — IN PROGRESS
 
-**[NEXT] Combined Done + Files acceptance.** Verify both ntfy actions are
-independent after Files itself passes.
+Keep the roadmap, current contract, status report, and tree inventory aligned.
+Mark diagnostic and candidate chronology as historical. Keep the plan at
+`docs/superpowers/plans/2026-09-14-blink-production-reconciliation.md`.
 
-**[NEXT] Today Morning Briefing.** Add the personal briefing flow with the
-existing Mac-owned scheduling/source-of-truth rules.
+### Stage 1 — software contract gate — NEXT
 
-**[NEXT] Final phone setup.** Finalize one Home Screen entry `Blink`, Share →
-Blink, and final Shortcut names/paths.
+- Verify separate `Done`/`Files` actions and canonical names.
+- Verify reminder presets `1440, 720, 300, 60, 30, 10, 5, 0`, multiple
+  reminders, non-negative integer custom values, and independent blinker.
+- Do not silently restore `[30, 0]` after the user clears reminders.
+- Verify transport IDs have exactly nine random digits and are never event IDs.
+- Verify deterministic `__01__`, `__02__` attachment ordering and safe original
+  basenames.
 
-**[REQUIRED AFTER ACCEPTANCE] Cleanup.** Inventory all Blink Shortcuts and
-iCloud roots, remove obsolete Test/WORK/proof/acceptance clutter only after
-accepted replacements exist, and retain intentional recovery backups until
-replacement is proven. Inventory and cleanup of the repository must also be
-performed without deleting canonical data, source code, runtime state, or
-authoritative documentation.
+### Stage 2 — clean Acceptance Shortcut trees
 
-**[LATER] USB RGB lamp integration.** Keep hardware work separate.
+Build isolated, marked candidates for `Blink`, `Blink DONE`, and `Blink Files`.
+After every change use the permanent synchronization gate. Keep the production
+mailbox off. Physically test representative direct CREATE, Share CREATE, DONE,
+one-file Files, multi-file Files, and one event with both independent buttons.
 
-## Compaction recovery
+### Stage 3 — Acceptance → Production cutover
 
-Before any future task, read this file plus the canonical description, current
-contract, HANDOFF, implementation report, and next-thread prompt. Check
-`git log --oneline -20`, `git status --short`, and `git diff`. If the stage or
-production gate is unclear, stop and reconcile documents/source before acting.
+Do not merely rename candidates. Explicitly migrate and verify `ToMac`, `ToPhone`
+and `ToPhoneView` paths, replace candidate names/URLs with `Blink`, `Blink DONE`
+and `Blink Files`, GUI-save-touch, confirm complete iPhone trees, and run a
+small Production smoke test. Enable production controls only after all three
+canonical trees pass.
 
-Do not implement Stage 2–7 from this roadmap without an explicit owner task.
+### Stage 4 — final phone UX
 
-### Confirmed Shortcuts sync protocol (2026-09-13)
+Place only `Blink` on the Home Screen. Keep `Blink DONE` and `Blink Files` as
+notification/internal actions. The intermediate Shortcuts screen is accepted
+for now because the proven private `shortcuts://run-shortcut` path opens it;
+removing it is a later optional optimization.
 
-Direct Mac database edits do not reliably cause the Shortcuts application to
-publish the changed action tree to iCloud. A normal UI edit/save does: the
-owner added and then removed a temporary `Stop Shortcut` action, after which
-the new body appeared on iPhone immediately. Therefore each future Mac-side
-Shortcut change must be followed by a harmless UI edit/save, then iPhone
-editor verification, before a run or push. Production mailbox remains OFF;
-canonical `Blink Files` and `Blink Files BACKUP Stage2` remain protected.
+### Stage 5 — Today Morning Briefing
+
+Add an optional daily briefing for every applicable Today event, with
+importance, title, optional description, scheduled date/time, local-time
+rules, dedupe, empty-day behavior, wake handling, and Weather/Astronomy
+coexistence. It must use the existing watcher sender and have a persistent
+enable/disable control. Do not add a second scheduler or sender.
+
+### Stage 6 — cleanup
+
+Before deletion inventory Shortcuts, iCloud roots, and project/runtime paths as
+`KEEP / DELETE / WHY`. Remove obsolete tests, backups, diagnostics, and
+acceptance clutter only after Production replacement passes. Never remove user
+attachments, source, tests, runtime state, authoritative docs, or the only
+working fallback prematurely.
+
+### Stage 7 — RGB lamp, last
+
+Identify the lamp's exact model, power, and control interface; add a separate
+fail-safe adapter; connect it only to accepted Blink/Attention state; run a
+separate hardware smoke test and document rollback. It must not become a second
+sender, scheduler, or source of truth.
+
+## Verification gate
+
+Run focused tests for touched modules, then the full Python suite, Swift
+compile/tests/release build, and `git diff --check`. For each Shortcut change
+retain the iPhone Edit-tree evidence and physical result in the tree inventory.
+
+## Recovery after compact
+
+Read this roadmap, the current contract, the tree inventory, the current status
+report, and the active implementation plan. Check `git status --short`, recent
+commits, and document contradictions before acting. Do not resume old “run the
+32-action diagnostic” instructions; those are historical.

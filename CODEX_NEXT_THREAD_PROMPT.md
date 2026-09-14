@@ -1,5 +1,9 @@
 # Blink: Short Prompt for the Next Codex Task
 
+> **Superseded pointer (2026-09-14):** Read the current roadmap, contract, and
+> Shortcut inventory first. This older prompt is retained for context and must
+> not override those documents.
+
 For the complete current-state handoff and the exact request to send to a new
 ChatGPT analysis thread, read
 `docs/HANDOFF_NEXT_CODEX_2026-09-13.md`.

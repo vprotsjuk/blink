@@ -1,5 +1,10 @@
 # Blink — complete program description and unresolved iPhone Quick Look problem
 
+> **Historical record.** Current behavior and next actions are defined by
+> `docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`,
+> `docs/implementation/BLINK_REMAINING_ROADMAP.md`, and
+> `docs/implementation/BLINK_SHORTCUT_TREES_2026-09-14.md`.
+
 **Document purpose:** standalone context for an independent GPT/ChatGPT thread.
 The new thread should understand the Blink program, its safety boundaries, the
 current iPhone file-viewing design, and the exact unresolved problem without

@@ -1,5 +1,12 @@
 # Blink Work Handoff
 
+> **Execution pointer (2026-09-14):** This file is retained for chronology.
+> Do not use its older “next action” or diagnostic instructions. Read the
+> authoritative [current contract](contracts/BLINK_CURRENT_STATE_CONTRACT.md),
+> [roadmap](implementation/BLINK_REMAINING_ROADMAP.md), and
+> [Shortcut inventory](implementation/BLINK_SHORTCUT_TREES_2026-09-14.md)
+> before acting.
+
 **Snapshot:** 2026-09-12
 **Full technical description:** [`BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`](../BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md)  
 **Next Codex prompt:** [`CODEX_NEXT_THREAD_PROMPT.md`](../CODEX_NEXT_THREAD_PROMPT.md)

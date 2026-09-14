@@ -1,5 +1,9 @@
 # Blink Mailbox Implementation Report
 
+> **Historical implementation report.** Use the current contract and roadmap
+> for present status and execution gates. Candidate/diagnostic instructions
+> below are not current run instructions.
+
 ## Current status
 
 PHASE 1 COMPLETE  

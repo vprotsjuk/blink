@@ -1,5 +1,13 @@
 # Blink — полный статус, ошибки и план развития
 
+> **Current-state notice (2026-09-14):** This report is a historical status
+> record. For execution, use [`BLINK_REMAINING_ROADMAP.md`](BLINK_REMAINING_ROADMAP.md),
+> [`BLINK_CURRENT_STATE_CONTRACT.md`](../contracts/BLINK_CURRENT_STATE_CONTRACT.md),
+> and [`BLINK_SHORTCUT_TREES_2026-09-14.md`](BLINK_SHORTCUT_TREES_2026-09-14.md).
+> The current roadmap corrects the earlier Stage-2 diagnostic wording and
+> requires final physical acceptance of clean `Blink`, `Blink DONE`, and
+> `Blink Files` before Production cutover.
+
 **Дата:** 14 сентября 2026 года  
 **Статус:** one-file Files flow принят; multi-file acceptance, production cutover, cleanup и лампа ещё впереди.
 
@@ -247,3 +255,27 @@ Production cutover
         ↓
 Подключение лампы
 ```
+
+## 11. Актуализация 14 сентября 2026
+
+Документация reconciled после фактической проверки Mac Shortcuts. Единый
+план находится в
+`docs/superpowers/plans/2026-09-14-blink-production-reconciliation.md`,
+а точные текущие деревья и inventory — в
+`docs/implementation/BLINK_SHORTCUT_TREES_2026-09-14.md`.
+
+В библиотеке Mac обнаружено 17 Shortcut-объектов; чистых production-имён
+`Blink`, `Blink DONE`, `Blink Files` пока нет. Поэтому переименование и
+cleanup отложены до прохождения acceptance всех трёх деревьев.
+
+Проверки после reconciliation:
+
+- focused Python: 92 теста, PASS;
+- полный Python suite: 219 тестов, 1 skipped, PASS;
+- Swift release build: PASS;
+- Swift contract runner: PASS;
+- `git diff --check`: PASS.
+
+Это не означает, что физические CREATE/DONE/Files production-тесты уже
+пройдены: one-file Files принят, multi-file и финальные canonical trees ещё
+являются рабочими этапами roadmap.
