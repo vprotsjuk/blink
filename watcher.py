@@ -21,6 +21,7 @@ from typing import Any, Callable
 
 from app import agenda_store, location_store, watcher_lifecycle, weather_store
 from app import ntfy_schedule
+from app import personal_briefing
 from app import attachment_store
 from app import mailbox_importer
 from app import to_phone_store
@@ -1057,7 +1058,16 @@ def load_state(path: Path | None = None) -> dict[str, Any]:
     if not isinstance(raw, dict) or not isinstance(raw.get("delivered"), dict):
         LOGGER.warning("Using empty state because watcher_state.json is missing or invalid")
         return {"version": 1, "delivered": {}}
-    return {"version": 1, "delivered": dict(raw["delivered"])}
+    personal_state = raw.get("personal_briefing")
+    if not isinstance(personal_state, dict):
+        personal_state = {}
+    result = {
+        "version": 1,
+        "delivered": dict(raw["delivered"]),
+    }
+    if "personal_briefing" in raw:
+        result["personal_briefing"] = dict(personal_state)
+    return result
 
 
 def save_state_atomic(path: Path, state: dict[str, Any]) -> None:
@@ -1517,6 +1527,66 @@ def load_weather_config(path: Path | None = None) -> dict[str, Any]:
     return default
 
 
+def load_personal_briefing_config(path: Path | None = None) -> dict[str, Any]:
+    """Load the optional personal Today briefing without changing old installs."""
+    raw = load_json_file(path or project_path("personal_briefing/personal_briefing_config.json"))
+    if not isinstance(raw, dict):
+        return {"version": 1, "enabled": False, "time": "06:30"}
+    time_text = str(raw.get("time", "06:30")).strip()
+    return {
+        "version": 1,
+        "enabled": raw.get("enabled") is True,
+        "time": time_text or "06:30",
+    }
+
+
+def send_personal_briefing_notification(config: dict[str, Any], item: dict[str, Any]) -> bool:
+    """Send the already-rendered personal briefing through the normal ntfy sender."""
+    request = build_ntfy_request(
+        config=config,
+        title="TODAY",
+        message=str(item["message"]),
+        priority=str(config.get("default_priority", "default")),
+        tags=["personal", "briefing"],
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            status = response.getcode()
+    except urllib.error.HTTPError as exc:
+        LOGGER.error("Personal briefing failure: HTTP %s: %s", exc.code, _http_error_detail(exc))
+        return False
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        LOGGER.error("Personal briefing failure: %s", exc)
+        return False
+    return 200 <= status < 300
+
+
+def process_personal_briefing(
+    config: dict[str, Any],
+    state: dict[str, Any],
+    events: list[dict[str, Any]],
+    now: datetime,
+    location: dict[str, Any],
+    *,
+    briefing_config_path: Path | None = None,
+    send_func: Callable[[dict[str, Any], dict[str, Any]], bool] = send_personal_briefing_notification,
+) -> dict[str, Any]:
+    """Evaluate and deliver the optional local-time personal briefing."""
+    briefing_config = load_personal_briefing_config(briefing_config_path)
+    briefing_state = dict(state.get("personal_briefing", {}))
+    timezone_name = str(location.get("timezone", "America/Los_Angeles"))
+    briefing_state = personal_briefing.process(
+        briefing_config,
+        briefing_state,
+        events,
+        now,
+        timezone_name,
+        lambda decision: send_func(config, decision),
+    )
+    state["personal_briefing"] = briefing_state
+    return state
+
+
 def load_weather_state(path: Path | None = None) -> dict[str, Any]:
     state_path = path or project_path("weather/weather_state.json")
     raw = load_json_file(state_path)
@@ -1768,6 +1838,7 @@ def main() -> int:
             )
             events = load_notification_events(config)
             state = load_state(state_path)
+            process_personal_briefing(config, state, events, now, location)
             run_weather_cycle(config, now)
             state = run_astronomy_briefing_cycle(config, state, now)
             save_state_atomic(state_path, state)
