@@ -136,6 +136,9 @@ Its first run showed only a blank `Cancel`/`Done` sheet, so it did not yet
 measure runtime values. The aggregate output was corrected to direct
 `ActionOutput` references from the seven `Count` actions; the next run is the
 valid diagnostic observation.
+It has now been reduced to a four-action count probe (`Get file` → `Get
+Contents` → `Count` → one-line `Show Result`). Run only this simplified probe
+after synchronization; do not run the former long diagnostic.
 SQLite/editor inspection confirms the filtered values are File items/
 references. No production mailbox was enabled. The unresolved gate is still
 physical iPhone viewing.

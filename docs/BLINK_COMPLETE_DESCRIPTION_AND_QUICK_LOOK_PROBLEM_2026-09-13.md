@@ -723,6 +723,21 @@ direct `ActionOutput` references to the seven `Count` actions, matching the
 established Shortcuts token format. This is a narrow diagnostic-output
 correction, not a WORK behavior change.
 
+Because the 32-action probe could not produce a usable result, the temporary
+diagnostic was reduced to a four-action count probe:
+
+~~~text
+Get file from Shortcuts at path Blink_Acceptance/ToPhone
+-> Get Contents of File
+-> Count Folder Contents
+-> Show Result: AllFiles count = <Count>
+~~~
+
+This is the next physical diagnostic. A displayed count proves the raw list
+can reach `Count`; a hang isolates the boundary to `Count` or result
+presentation. No filter, variable, WORK, canonical, backup, production, or
+ntfy behavior is involved.
+
 ## 12. Exact questions for independent GPT diagnosis
 
 Please independently diagnose the issue from the facts above. Do not assume

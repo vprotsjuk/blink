@@ -288,6 +288,9 @@ The first run showed only a blank `Cancel`/`Done` sheet, so it was not a
 runtime measurement. Its aggregate result was corrected to direct
 `ActionOutput` references from the seven `Count` actions; the next manual run
 is the valid observation.
+The diagnostic is now simplified to four actions (`Get file` → `Get Contents`
+→ `Count` → one-line `Show Result`). Run only this count probe after sync; its
+expected output is `AllFiles count = <number>`.
 
 Do not add another contents action after `Attachments` unless the independent
 review proves its input is the folder and its output is a file list. The old

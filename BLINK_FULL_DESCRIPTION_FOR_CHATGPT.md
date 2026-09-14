@@ -149,6 +149,10 @@ Its first iPhone run showed a blank `Cancel`/`Done` sheet because the
 aggregate result used an unsupported variable handoff. The diagnostic was
 corrected to pass direct `Count` action outputs to `Show Result`; no WORK or
 production behavior was changed.
+The long probe was then reduced to a four-action count probe: get the
+acceptance folder, get its contents, count the result, and show one line. The
+next physical observation must use only this simplified probe, which avoids
+filters, variables, Quick Look, and WORK.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.

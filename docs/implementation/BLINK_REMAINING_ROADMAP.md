@@ -113,6 +113,9 @@ The first diagnostic run produced only a blank `Cancel`/`Done` sheet because
 its aggregate result used an unsupported variable handoff. That output was
 repaired to use direct `Count` action outputs; the next run is the valid
 runtime measurement.
+The diagnostic is now simplified to four actions: acceptance-folder get,
+folder contents, one count, and a one-line result. The next owner action is
+one run of this count probe; do not retry the former 32-action version.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.
