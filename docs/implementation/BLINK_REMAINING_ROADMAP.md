@@ -73,16 +73,17 @@ connection/tool failures, not evidence of a Shortcuts or file failure.
 
 ## Staged execution plan
 
-### Stage 0 — documentation reconciliation — IN PROGRESS
+### Stage 0 — documentation reconciliation — COMPLETE
 
 Keep the roadmap, current contract, status report, and tree inventory aligned.
 Mark diagnostic and candidate chronology as historical. Keep the plan at
 `docs/superpowers/plans/2026-09-14-blink-production-reconciliation.md`.
 
-### Stage 1 — software contract gate — NEXT
+### Stage 1 — software contract gate — BASELINE VERIFIED
 
-- Verify separate `Done`/`Files` actions and canonical names.
-- Verify reminder presets `1440, 720, 300, 60, 30, 10, 5, 0`, multiple
+- Separate `Done`/`Files` action formatting and canonical defaults are covered
+  by the existing tests.
+- Reminder presets `1440, 720, 300, 60, 30, 10, 5, 0`, multiple
   reminders, non-negative integer custom values, and independent blinker.
 - Do not silently restore `[30, 0]` after the user clears reminders.
 - Verify transport IDs have exactly nine random digits and are never event IDs.
