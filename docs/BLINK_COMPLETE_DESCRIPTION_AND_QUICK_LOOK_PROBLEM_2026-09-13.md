@@ -746,6 +746,13 @@ the remaining sync question is payload/version equality, not whether the
 Shortcuts iCloud switch is disabled. The next safe check is the iPhone editor's
 action tree: it must show the four-action count probe before its runtime result
 can be interpreted.
+The owner then supplied an iPhone editor screenshot showing the synchronized
+four-action body itself: `Get file` at `Blink_Acceptance/ToPhone` → `Get
+Contents of File` → `Set variable AllFiles to Folder Contents` → `Count Items
+in AllFiles`. This proves the current minimal probe reached the iPhone, not
+just its renamed card. Earlier physical WORK failures must therefore be
+treated as potentially stale-version tests until the corresponding WORK body
+is likewise verified in the iPhone editor.
 
 ## 12. Exact questions for independent GPT diagnosis
 

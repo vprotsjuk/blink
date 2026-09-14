@@ -142,6 +142,10 @@ after synchronization; do not run the former long diagnostic.
 The iPhone and Mac Shortcuts iCloud Sync switches are both confirmed ON. Do
 not infer body synchronization from the Shortcut name alone; verify the
 iPhone editor contains exactly the four count-probe actions.
+The iPhone editor has since confirmed the exact four-action count-probe body
+and correct acceptance path. The next run can therefore be interpreted as a
+runtime test of the folder contents; prior WORK failures remain version-
+ambiguous unless their WORK action tree is verified on-device.
 SQLite/editor inspection confirms the filtered values are File items/
 references. No production mailbox was enabled. The unresolved gate is still
 physical iPhone viewing.

@@ -294,6 +294,9 @@ expected output is `AllFiles count = <number>`.
 Both Mac and iPhone Shortcuts iCloud Sync settings are confirmed ON. Verify
 the iPhone editor shows the four-action count probe; the name alone is not
 enough evidence that the action body synchronized.
+The iPhone editor has now shown the exact four-action count-probe body and
+correct acceptance path. Run this synchronized probe once; do not infer
+anything from the older WORK runs until WORK's own body is verified.
 
 Do not add another contents action after `Attachments` unless the independent
 review proves its input is the folder and its output is a file list. The old

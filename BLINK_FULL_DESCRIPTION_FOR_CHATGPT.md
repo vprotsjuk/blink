@@ -156,6 +156,10 @@ filters, variables, Quick Look, and WORK.
 Both Mac and iPhone Shortcuts iCloud Sync settings were subsequently verified
 ON. The iCloud Drive app list is not the Shortcuts sync control; body/version
 equality must be checked in the iPhone editor.
+The iPhone editor subsequently confirmed the exact four-action count probe
+and `Blink_Acceptance/ToPhone` path. This removes synchronization ambiguity
+for the probe itself, while earlier WORK pushes remain stale-version-ambiguous
+until WORK's body is verified on-device.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.

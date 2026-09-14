@@ -119,6 +119,10 @@ one run of this count probe; do not retry the former 32-action version.
 Both iPhone and Mac Shortcuts `iCloud Sync` settings are confirmed ON. The
 remaining check is whether the iPhone has the four-action body, not whether
 the iCloud Drive app list contains Shortcuts.
+The iPhone editor now visibly contains the synchronized four-action count
+probe with the correct `Blink_Acceptance/ToPhone` path. The stale-body concern
+is removed for this probe; its one physical run should now measure folder
+contents rather than synchronization state.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.
