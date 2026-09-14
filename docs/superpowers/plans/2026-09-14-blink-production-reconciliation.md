@@ -23,7 +23,7 @@
 
 ---
 
-### Task 1: Reconcile authoritative documentation
+### Task 1: Reconcile authoritative documentation — COMPLETE
 
 **Files:**
 - Modify: `docs/implementation/BLINK_REMAINING_ROADMAP.md`
@@ -44,7 +44,7 @@
 - [x] Step 6: Run `rg -n "current|NEXT|CURRENT|Stage 2|Production|Blink Files" docs` and resolve every current-state contradiction found in the four authoritative files.
 - [x] Step 7: Run `git diff --check`.
 
-### Task 2: Verify and harden software contracts before new Shortcut builds
+### Task 2: Verify and harden software contracts before new Shortcut builds — VERIFIED BASELINE
 
 **Files:**
 - Inspect/modify: `app/notification_format.py`
@@ -60,10 +60,10 @@
 - Preserve `build_event_payload`, `build_done_action`, `build_files_action`, `prepare_snapshot`, and importer compatibility.
 - Any new validation must return a user-visible validation error rather than silently changing user input.
 
-- [ ] Step 1: Add/confirm tests for separate `Done` and `Files` actions and canonical names.
-- [ ] Step 2: Add/confirm tests for exact nine-digit transport random values where generation exists.
-- [ ] Step 3: Add/confirm tests for empty reminder selection semantics and independent blinker values.
-- [ ] Step 4: Add/confirm tests for deterministic attachment order and original safe basenames in `ToPhoneView`.
+- [x] Step 1: Add/confirm tests for separate `Done` and `Files` actions and canonical names.
+- [x] Step 2: Add/confirm tests for exact nine-digit transport random values where generation exists.
+- [x] Step 3: Add/confirm tests for empty reminder selection semantics and independent blinker values.
+- [x] Step 4: Add/confirm tests for deterministic attachment order and original safe basenames in `ToPhoneView`.
 - [x] Step 5: Run focused Python and Swift tests; stop and investigate any failure before changing implementation.
 
 ### Task 3: Build and accept clean Acceptance Shortcuts
