@@ -648,7 +648,9 @@ Mac-side evaluation immediately before the push produced `AllFiles = 3`,
 ready = 1, manifest = 1, and attachments = 1. The Mac database contains the
 repaired 46-action tree. The owner has now confirmed by iPhone editor
 screenshot that the repaired acquisition prefix is present on the phone, so
-the stale-version hypothesis is removed. The unchanged canonical `Blink
+the stale-version hypothesis was incorrectly considered removed. The latest
+complete iPhone editor screenshot shows the old long tree, so the stale-body
+issue remains open. The unchanged canonical `Blink
 Files` control then displayed its chooser and opened one PDF successfully on
 the current iPhone. The temporary `Blink Files Acquisition Test` also showed
 the three acceptance-package objects and opened the selected PDF. General

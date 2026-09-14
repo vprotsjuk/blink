@@ -121,7 +121,8 @@ package evaluation was `AllFiles = 3`, ready = 1, manifest = 1, and
 attachments = 1, so no fail-closed count branch should have stopped the
 Shortcut. The Mac database contains the repaired 46-action WORK tree, and the
 owner's iPhone editor screenshot now confirms the repaired acquisition prefix
-is present on the phone. The stale-version hypothesis is removed. The
+was incorrectly considered present on the phone. The latest complete editor
+screenshot shows the old long tree, so the stale-body issue remains open. The
 unchanged canonical `Blink Files` control and the temporary `Blink Files
 Acquisition Test` have both displayed choosers and opened PDFs successfully
 on the current iPhone, proving the general iOS presentation path, acceptance
@@ -142,10 +143,15 @@ after synchronization; do not run the former long diagnostic.
 The iPhone and Mac Shortcuts iCloud Sync switches are both confirmed ON. Do
 not infer body synchronization from the Shortcut name alone; verify the
 iPhone editor contains exactly the four count-probe actions.
-The iPhone editor has since confirmed the exact four-action count-probe body
-and correct acceptance path. The next run can therefore be interpreted as a
-runtime test of the folder contents; prior WORK failures remain version-
-ambiguous unless their WORK action tree is verified on-device.
+An earlier partial iPhone screenshot was mistakenly read as confirmation of
+the exact four-action count-probe body. The latest complete editor screenshot
+shows the older long diagnostic with the same name, while Mac contains the
+four-action probe. The next run cannot yet be interpreted as a count-probe
+runtime test; prior WORK failures remain version-ambiguous.
+The apparent four-action confirmation was incomplete: the latest iPhone
+editor screenshot shows the older long diagnostic tree with `PackageID` and
+filters. Treat the name as synchronized metadata only; action-body equality
+is still unproven and no physical run should be requested.
 SQLite/editor inspection confirms the filtered values are File items/
 references. No production mailbox was enabled. The unresolved gate is still
 physical iPhone viewing.
@@ -390,6 +396,16 @@ After a release build, copy the release executable into `Blink.app/Contents/MacO
 - Manual visual walkthrough is still required for compact window layouts, modal/backdrop behavior, search positioning, native notification rendering, and physical lamp behavior.
 
 When a new requirement conflicts with this contract, stop and ask before changing a boundary. Update this file, `docs/HANDOFF.md`, and the relevant full report in the same change.
+
+### Shortcut action-body synchronization
+
+The Shortcut name and action body must be treated as separate synchronized
+artifacts. Direct edits to the Mac Shortcuts database may leave the Mac
+Shortcuts UI/iCloud publisher unaware of the new body. A harmless normal UI
+edit/save (currently: add and remove a temporary `Stop Shortcut` action) was
+shown to publish the body to iPhone immediately. Until this is automated,
+perform that UI save and verify the complete action tree in the iPhone editor
+after every Mac-side Shortcut change; only then run acceptance or send a push.
 
 ### Selected Day contract
 

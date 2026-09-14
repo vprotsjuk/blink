@@ -133,7 +133,9 @@ ready = 1, manifest = 1, and attachments = 1; therefore the Mac package and
 fail-closed count branches do not explain the failure. The Mac database has
 the repaired 46-action tree. The owner has now confirmed by iPhone editor
 screenshot that the repaired acquisition prefix is present on the phone, so
-the stale-version hypothesis is removed. The unchanged canonical `Blink
+the stale-version hypothesis was incorrectly considered removed. The latest
+complete iPhone editor screenshot shows the old long tree, so the stale-body
+issue remains open. The unchanged canonical `Blink
 Files` control then displayed its chooser and opened one PDF successfully on
 the current iPhone. The temporary `Blink Files Acquisition Test` also showed
 the three acceptance-package objects and opened the selected PDF. General
@@ -156,10 +158,20 @@ filters, variables, Quick Look, and WORK.
 Both Mac and iPhone Shortcuts iCloud Sync settings were subsequently verified
 ON. The iCloud Drive app list is not the Shortcuts sync control; body/version
 equality must be checked in the iPhone editor.
-The iPhone editor subsequently confirmed the exact four-action count probe
-and `Blink_Acceptance/ToPhone` path. This removes synchronization ambiguity
-for the probe itself, while earlier WORK pushes remain stale-version-ambiguous
-until WORK's body is verified on-device.
+An earlier partial iPhone screenshot was mistakenly read as confirmation of
+the exact four-action count probe. The latest complete editor screenshot
+shows the old long diagnostic despite the synchronized name. The probe is
+present on Mac but not yet verified on iPhone; earlier WORK pushes remain
+stale-version-ambiguous until the body is verified on-device.
+The latest iPhone editor screenshot disproved the apparent body equality: it
+still shows the old long diagnostic with `PackageID` and `Filter AllFiles`,
+while Mac has the four-action count probe. The name synchronized but the
+action tree did not, confirming a stale-body synchronization boundary.
+The owner then proved the mechanism: adding and removing a temporary `Stop
+Shortcut` action through the normal Mac Shortcuts UI forced a save, and the
+new body appeared on iPhone immediately. Direct database edits therefore
+cannot be considered published until a normal UI save and iPhone editor
+verification have occurred.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.

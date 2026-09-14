@@ -119,10 +119,14 @@ one run of this count probe; do not retry the former 32-action version.
 Both iPhone and Mac Shortcuts `iCloud Sync` settings are confirmed ON. The
 remaining check is whether the iPhone has the four-action body, not whether
 the iCloud Drive app list contains Shortcuts.
-The iPhone editor now visibly contains the synchronized four-action count
-probe with the correct `Blink_Acceptance/ToPhone` path. The stale-body concern
-is removed for this probe; its one physical run should now measure folder
-contents rather than synchronization state.
+An earlier partial iPhone screenshot was mistakenly read as showing the
+synchronized four-action count probe. The latest complete editor screenshot
+still displays the previous long tree (`PackageID` and `Filter AllFiles`),
+despite the synchronized new name.
+The owner then showed the iPhone editor still displaying the previous long
+tree (`PackageID` and `Filter AllFiles`), despite the synchronized new name.
+The Mac count probe and iPhone action body therefore differ; do not run or
+rebuild the production trees until a normal UI save produces body equality.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.
@@ -153,3 +157,13 @@ contract, HANDOFF, implementation report, and next-thread prompt. Check
 production gate is unclear, stop and reconcile documents/source before acting.
 
 Do not implement Stage 2–7 from this roadmap without an explicit owner task.
+
+### Confirmed Shortcuts sync protocol (2026-09-13)
+
+Direct Mac database edits do not reliably cause the Shortcuts application to
+publish the changed action tree to iCloud. A normal UI edit/save does: the
+owner added and then removed a temporary `Stop Shortcut` action, after which
+the new body appeared on iPhone immediately. Therefore each future Mac-side
+Shortcut change must be followed by a harmless UI edit/save, then iPhone
+editor verification, before a run or push. Production mailbox remains OFF;
+canonical `Blink Files` and `Blink Files BACKUP Stage2` remain protected.

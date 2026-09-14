@@ -297,6 +297,10 @@ enough evidence that the action body synchronized.
 The iPhone editor has now shown the exact four-action count-probe body and
 correct acceptance path. Run this synchronized probe once; do not infer
 anything from the older WORK runs until WORK's own body is verified.
+The latest iPhone editor screenshot shows the old long diagnostic tree with
+`PackageID` and `Filter AllFiles`, not the four-action probe. The name synced
+without the body; stop physical testing until the action tree is synchronized
+through a normal Shortcuts UI save.
 
 Do not add another contents action after `Attachments` unless the independent
 review proves its input is the folder and its output is a file list. The old

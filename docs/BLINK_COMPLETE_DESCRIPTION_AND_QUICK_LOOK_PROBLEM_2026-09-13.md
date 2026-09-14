@@ -746,13 +746,20 @@ the remaining sync question is payload/version equality, not whether the
 Shortcuts iCloud switch is disabled. The next safe check is the iPhone editor's
 action tree: it must show the four-action count probe before its runtime result
 can be interpreted.
-The owner then supplied an iPhone editor screenshot showing the synchronized
-four-action body itself: `Get file` at `Blink_Acceptance/ToPhone` → `Get
-Contents of File` → `Set variable AllFiles to Folder Contents` → `Count Items
-in AllFiles`. This proves the current minimal probe reached the iPhone, not
-just its renamed card. Earlier physical WORK failures must therefore be
-treated as potentially stale-version tests until the corresponding WORK body
-is likewise verified in the iPhone editor.
+An earlier partial iPhone screenshot was mistakenly read as showing the
+synchronized four-action body. The latest complete editor screenshot shows
+that the Runtime Diagnostic still contains the older long tree. The current
+minimal probe is verified on Mac only, not on iPhone. Earlier physical WORK
+failures must therefore be treated as potentially stale-version tests until
+the corresponding body is verified in the iPhone editor.
+The owner then corrected that reading: a later iPhone editor screenshot
+showed the Runtime Diagnostic still contains the older long tree, including
+`PackageID`, `Filter AllFiles`, and the `.ready` predicate. The Mac database
+currently contains the reduced four-action count probe, while the iPhone has
+the same name but not the same action body. This is direct evidence that name
+metadata can synchronize before the action tree, and that the prior immediate
+test-after-edit workflow was invalid. No further physical run is meaningful
+until the four-action body is visible on the iPhone.
 
 ## 12. Exact questions for independent GPT diagnosis
 
@@ -851,3 +858,20 @@ Return an evidence-based diagnosis with:
 
 Do not declare the issue fixed until the PDF is visibly presented on the
 physical iPhone.
+
+## 16. Confirmed Shortcuts sync finding (2026-09-13)
+
+The owner performed a decisive UI-save test on the Mac. Codex had changed the
+local Shortcut action body, but the Mac Shortcuts application did not notice
+the direct database change reliably, so iCloud synchronized the Shortcut name
+without promptly publishing the new action tree. The owner added `Stop
+Shortcut` at the end through the normal Shortcuts UI, ran it once, removed that
+temporary block, and the edited body then appeared on the iPhone immediately.
+
+This explains the observed stale-body runs. It does not prove that every
+earlier runtime behavior was correct; it means those tests were not valid
+evidence until the iPhone editor showed the intended body. Until a reliable
+UI-save automation exists, every Mac-side Shortcut change requires one
+harmless normal UI edit/save and an iPhone editor verification before any
+physical test or ntfy push. The temporary `Stop Shortcut` block was removed;
+no canonical, backup, or production Shortcut was changed by this diagnostic.
