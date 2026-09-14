@@ -291,6 +291,9 @@ is the valid observation.
 The diagnostic is now simplified to four actions (`Get file` → `Get Contents`
 → `Count` → one-line `Show Result`). Run only this count probe after sync; its
 expected output is `AllFiles count = <number>`.
+Both Mac and iPhone Shortcuts iCloud Sync settings are confirmed ON. Verify
+the iPhone editor shows the four-action count probe; the name alone is not
+enough evidence that the action body synchronized.
 
 Do not add another contents action after `Attachments` unless the independent
 review proves its input is the folder and its output is a file list. The old

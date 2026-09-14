@@ -738,6 +738,15 @@ can reach `Count`; a hang isolates the boundary to `Count` or result
 presentation. No filter, variable, WORK, canonical, backup, production, or
 ntfy behavior is involved.
 
+The owner verified the device settings after an apparent sync delay: iPhone
+`Settings → Shortcuts → iCloud Sync` is ON, and Mac `Shortcuts → Settings →
+General → iCloud Sync` is also ON. The iPhone `iCloud Drive → Apps Syncing to
+iCloud Drive` list is a separate setting and does not list Shortcuts. Therefore
+the remaining sync question is payload/version equality, not whether the
+Shortcuts iCloud switch is disabled. The next safe check is the iPhone editor's
+action tree: it must show the four-action count probe before its runtime result
+can be interpreted.
+
 ## 12. Exact questions for independent GPT diagnosis
 
 Please independently diagnose the issue from the facts above. Do not assume

@@ -153,6 +153,9 @@ The long probe was then reduced to a four-action count probe: get the
 acceptance folder, get its contents, count the result, and show one line. The
 next physical observation must use only this simplified probe, which avoids
 filters, variables, Quick Look, and WORK.
+Both Mac and iPhone Shortcuts iCloud Sync settings were subsequently verified
+ON. The iCloud Drive app list is not the Shortcuts sync control; body/version
+equality must be checked in the iPhone editor.
 For a controlled acceptance retest only, `BLINK_NTFY_FILES_SHORTCUT_NAME` may
 override the action target; when unset, the production default remains
 `Blink Files`.

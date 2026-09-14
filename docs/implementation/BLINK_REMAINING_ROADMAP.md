@@ -116,6 +116,9 @@ runtime measurement.
 The diagnostic is now simplified to four actions: acceptance-folder get,
 folder contents, one count, and a one-line result. The next owner action is
 one run of this count probe; do not retry the former 32-action version.
+Both iPhone and Mac Shortcuts `iCloud Sync` settings are confirmed ON. The
+remaining check is whether the iPhone has the four-action body, not whether
+the iCloud Drive app list contains Shortcuts.
 
 **[NEXT] Multi-file Files acceptance.** Only after one-file success, prepare a
 2+ file package and perform one physical Files tap proving package isolation.

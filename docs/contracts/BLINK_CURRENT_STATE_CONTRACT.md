@@ -139,6 +139,9 @@ valid diagnostic observation.
 It has now been reduced to a four-action count probe (`Get file` → `Get
 Contents` → `Count` → one-line `Show Result`). Run only this simplified probe
 after synchronization; do not run the former long diagnostic.
+The iPhone and Mac Shortcuts iCloud Sync switches are both confirmed ON. Do
+not infer body synchronization from the Shortcut name alone; verify the
+iPhone editor contains exactly the four count-probe actions.
 SQLite/editor inspection confirms the filtered values are File items/
 references. No production mailbox was enabled. The unresolved gate is still
 physical iPhone viewing.
