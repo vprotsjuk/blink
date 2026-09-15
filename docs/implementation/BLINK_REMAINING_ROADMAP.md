@@ -246,6 +246,10 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
 - Fractional Blinker `1.5` physically rejected on iPhone with no new Acceptance
   payload or `.ready`
 - Documentation/contract checkpoint committed and pushed as `bef8fb5`
+- Gray Mac `Start blinking` fixed and live-verified in the fresh release
+  executable: an existing event remains editable when its old `1 day before`
+  lead is no longer available, and `60 min before` can be selected. The test
+  draft was cancelled without changing the user's event.
 
 ### CURRENT
 
@@ -270,11 +274,6 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   Share `>1` rejection, and representative text preservation
 - Files live-banner JPEG+PDF multi-file Acceptance
 - Combined Done + Files acceptance
-- Existing-event Blinker UI regression: stale elapsed `1 day before` must be
-  replaceable by a future `60 min before` in the live Mac editor
-- Code fix now carries the existing-event flag explicitly into the editor;
-  Swift regression/build gates pass, but live UI acceptance remains open until
-  the freshly rebuilt Blink.app exposes a responsive editor window.
 - Same-ID freshness investigation and explicit semantic decision before
   Production (no implementation change until decided)
 - Coherent Git commit/push after each accepted block; mandatory checkpoints

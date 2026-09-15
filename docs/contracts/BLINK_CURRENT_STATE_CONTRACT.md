@@ -43,11 +43,11 @@ locale-sensitive.
 Lead-time availability constrains new and duplicated events. When editing an
 existing non-frozen event, the intended contract is that the Mac editor keeps
 old reminder/blinker values editable even after their lead time has elapsed, so
-the user can correct them and save the same event ID. This is not currently
-product-accepted: live evidence shows a stale `1 day before` Blinker can leave
-`Start blinking` disabled and block replacement with a future `60 min before`.
-Final acceptance must use that exact live UI scenario after Shortcut
-convergence. History remains frozen and cannot be edited.
+the user can correct them and save the same event ID. The explicit existing-
+event flag fix is live-verified in the rebuilt editor: a stale `1 day before`
+value no longer disables the picker, and `60 min before` can be selected. A
+saved same-ID acceptance run remains part of final product acceptance. History
+remains frozen and cannot be edited.
 
 ## Transport contract
 
