@@ -213,6 +213,7 @@ public struct ContentView: View {
     @State private var weatherCache: WeatherCache?
     @State private var reminderConfig = defaultReminderConfig()
     @State private var editorEvent: EditableEvent?
+    @State private var editorIsExistingEvent = false
     @State private var editorAttachmentWorkspace: AttachmentWorkspace?
     @State private var editorDraftID: String?
     @State private var editorIsDirty = false
@@ -353,7 +354,7 @@ public struct ContentView: View {
                         editorModalHeader(in: proxy.size, event: event)
                         EventEditorView(
                             event: event,
-                            isExistingEvent: events.contains { $0.id == event.id },
+                            isExistingEvent: editorIsExistingEvent,
                             reminderConfig: reminderConfig,
                             calendarEvents: events.filter { $0.isPersonal },
                             // Keep the preview backed by the project-local workspace even
@@ -608,7 +609,7 @@ public struct ContentView: View {
             newEvent: { openEditor(EditableEvent.blank()) },
             edit: { event in
                 guard !eventIsHistoryFrozen(event) else { return }
-                openEditor(EditableEvent(event: event))
+                openEditor(EditableEvent(event: event), isExistingEvent: true)
             },
             duplicate: { event in
                 openEditor(duplicateEditableEvent(from: event))
@@ -689,8 +690,9 @@ public struct ContentView: View {
         exitSelectedDay()
     }
 
-    private func openEditor(_ event: EditableEvent, workspace: AttachmentWorkspace? = nil, draftID: String? = nil) {
+    private func openEditor(_ event: EditableEvent, workspace: AttachmentWorkspace? = nil, draftID: String? = nil, isExistingEvent: Bool = false) {
         editorIsDirty = false
+        editorIsExistingEvent = isExistingEvent
         let resolvedWorkspace = workspace ?? AttachmentWorkspace(root: store.root)
         let resolvedDraftID: String?
         if let draftID {
@@ -712,6 +714,7 @@ public struct ContentView: View {
         editorEvent = nil
         editorAttachmentWorkspace = nil
         editorDraftID = nil
+        editorIsExistingEvent = false
         editorIsDirty = false
     }
 

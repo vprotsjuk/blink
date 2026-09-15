@@ -887,7 +887,8 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains("hasUnsavedChangesOtherThanDate"), "Calendar double-click should preserve dirty-edit safety")
     try expect(source.contains("Custom minutes"), "Editor should expose custom minute controls")
     try expect(source.contains("normalizedReminderOffsets"), "Editor should normalize and preserve custom minute values")
-    try expect(source.contains("isExistingEvent: events.contains { $0.id == event.id }"), "Editor should know whether it is editing an existing event")
+    try expect(source.contains("editorIsExistingEvent"), "Editor should preserve the existing-event flag from the edit action")
+    try expect(source.contains("isExistingEvent: editorIsExistingEvent"), "Editor should use the explicit existing-event flag")
     try expect(source.contains("isEventTimingOffsetEditable("), "Editor should apply the existing-event timing editability contract")
 }
 

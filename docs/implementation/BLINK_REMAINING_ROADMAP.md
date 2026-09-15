@@ -272,6 +272,9 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
 - Combined Done + Files acceptance
 - Existing-event Blinker UI regression: stale elapsed `1 day before` must be
   replaceable by a future `60 min before` in the live Mac editor
+- Code fix now carries the existing-event flag explicitly into the editor;
+  Swift regression/build gates pass, but live UI acceptance remains open until
+  the freshly rebuilt Blink.app exposes a responsive editor window.
 - Same-ID freshness investigation and explicit semantic decision before
   Production (no implementation change until decided)
 - Coherent Git commit/push after each accepted block; mandatory checkpoints
