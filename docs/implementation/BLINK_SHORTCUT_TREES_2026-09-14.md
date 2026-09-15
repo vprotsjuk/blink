@@ -192,6 +192,21 @@ locale-sensitive Number -> Text -> regex conversion and preserve valid `0` and
 positive integers. No accepted Reminder, Date/Time, serialization, or
 `.ready` behavior may be removed.
 
+Physical iPhone evidence after Mac save/sync:
+
+- `Test B0` with Blinker `0` created
+  `20260915151902-696741911.event.json` and `.ready`; the payload contains
+  `reminder_intent.offsets_minutes_before=[0]`, explicit `-07:00`, and
+  `blinker_intent.minutes_before=0`.
+- `Test B17` with Blinker `17` created
+  `20260915151925-946819941.event.json` and `.ready`; the payload contains
+  `blinker_intent.minutes_before=17`.
+- `Test B15` with `1.5` and `Test Bneg` with `-1` returned to the Shortcuts
+  library without creating a new `.event.json` or `.ready` pair.
+
+This closes the Gate B runtime check; representative CREATE and physical
+Share Sheet multi-item acceptance remain open.
+
 ### CREATE validation contract — preserve during cleanup
 
 The physically accepted `Blink Create Test` is the source tree for this
@@ -377,9 +392,9 @@ boundary over an iCloud sync backlog`.
 | Reminder `17.5` | rejected | rejected | unchanged |
 | Reminder `abc` | rejected | rejected | unchanged |
 | Reminder mixed symbols/text | rejected | rejected | unchanged |
-| Blinker valid integer | accepted | accepted by integer contract/parser | native Round equality; physical acceptance pending |
+| Blinker valid integer | accepted | accepted by integer contract/parser | iPhone accepted for 0 and 17; fresh pairs verified |
 | Blinker letters | rejected | rejected by transport/parser; phone UI gate | Ask for Number/regex rejection; no coercion |
-| Blinker decimal | rejected | transport rejects; phone UI gate | native Round equality → Stop; physical acceptance pending |
+| Blinker decimal | rejected | transport rejects; phone UI gate | iPhone 1.5 returned without fresh pair |
 | direct launch, no attachment | accepted | physically accepted | unchanged |
 | Share one PDF | accepted | physically accepted / parser green | unchanged |
 | Share one image | accepted | physically accepted / parser green | unchanged |

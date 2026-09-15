@@ -150,8 +150,9 @@ Mark diagnostic and candidate chronology as historical. Keep the plan at
 - CREATE Gate A is implemented in the active candidate and verified
   after Mac save/re-open: reject Share `Count > 1` before `First Item`.
   Gate B is now physically present in the active candidate: native Round-to-
-  Integer followed by exact equality and an explicit Stop branch. It still
-  requires physical runtime acceptance on the phone.
+  Integer followed by exact equality and an explicit Stop branch. iPhone
+  acceptance passed for Blinker `0` and `17` (fresh payload pairs) and for
+  rejection of `1.5` and `-1` (no fresh payload).
 
 ### Stage 2 — synchronize and physically accept frozen candidates
 
