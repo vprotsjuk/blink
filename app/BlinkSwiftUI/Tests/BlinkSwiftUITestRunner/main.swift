@@ -578,6 +578,44 @@ func testReminderOffsetsRespectEventLeadTime() throws {
     try expect(!isReminderOffsetAvailable(300, eventStart: start, now: now), "5 hour reminder should be unavailable")
 }
 
+func testExistingEventTimingOptionsRemainEditableAfterLeadTime() throws {
+    let start = parseISODate("2026-09-07T13:30:00-07:00")!
+    let now = parseISODate("2026-09-07T13:00:00-07:00")!
+    try expect(!isEventTimingOffsetEditable(60, eventStart: start, isExistingEvent: false, now: now), "New event should reject a reminder lead that no longer fits")
+    try expect(isEventTimingOffsetEditable(60, eventStart: start, isExistingEvent: true, now: now), "Existing event should allow changing to a currently unavailable preset")
+    try expect(isEventTimingOffsetEditable(1440, eventStart: start, isExistingEvent: true, now: now), "Existing event should keep its old blinker value editable")
+}
+
+func testExistingEventTimingEditKeepsIDAndUpdatesAttentionStart() throws {
+    let root = try temporaryRoot()
+    let agenda = root.appendingPathComponent("agenda.json")
+    try """
+    {"version":1,"events":[{"id":"timing","title":"Timing","start":"2099-09-12T12:00:00-07:00","reminders_minutes_before":[1440],"enabled":true,"requires_done":true,"done":false,"attention_level":"yellow","blinker_minutes_before":1440}]}
+    """.write(to: agenda, atomically: true, encoding: .utf8)
+
+    let store = BlinkStore(root: root)
+    guard let loaded = store.loadEvents().first else {
+        throw TestFailure(description: "Existing timing event should load")
+    }
+    var event = EditableEvent(event: loaded)
+    event.reminderOffsets = [60]
+    event.blinkerMinutesBefore = 60
+    try store.save(event)
+
+    let object = try readJSONObject(agenda)
+    let events = object["events"] as? [[String: Any]] ?? []
+    try expect(events.count == 1, "Editing timing should not duplicate the event")
+    try expect(events.first?["id"] as? String == "timing", "Editing timing should preserve the event ID")
+    try expect(events.first?["reminders_minutes_before"] as? [Int] == [60], "Edited reminders should be persisted")
+    try expect(events.first?["blinker_minutes_before"] as? Int == 60, "Edited blinker value should be persisted")
+
+    guard let reloaded = BlinkStore(root: root).loadEvents().first else {
+        throw TestFailure(description: "Saved timing event should reload")
+    }
+    let start = parseISODate(reloaded.start)!
+    try expect(abs(attentionStartDate(event: reloaded, start: start).timeIntervalSince(start.addingTimeInterval(-60 * 60))) < 0.5, "Attention should use the edited blinker timing")
+}
+
 func testEditableEventPreservesUnavailableReminderOffsets() throws {
     let event = EditableEvent(
         id: "soon",
@@ -849,6 +887,8 @@ func testEventEditorLayoutContracts() throws {
     try expect(source.contains("hasUnsavedChangesOtherThanDate"), "Calendar double-click should preserve dirty-edit safety")
     try expect(source.contains("Custom minutes"), "Editor should expose custom minute controls")
     try expect(source.contains("normalizedReminderOffsets"), "Editor should normalize and preserve custom minute values")
+    try expect(source.contains("isExistingEvent: events.contains { $0.id == event.id }"), "Editor should know whether it is editing an existing event")
+    try expect(source.contains("isEventTimingOffsetEditable("), "Editor should apply the existing-event timing editability contract")
 }
 
 func testSelectedDayFilteringUsesLocalDateAndDeterministicSort() throws {
@@ -1578,6 +1618,8 @@ let tests: [(String, () throws -> Void)] = [
     ("loads astronomy schedule status", testLoadsAstronomyScheduleStatus),
     ("event date time label includes date and time", testEventDateTimeLabelIncludesDateAndTime),
     ("reminder offsets respect event lead time", testReminderOffsetsRespectEventLeadTime),
+    ("existing event timing options remain editable after lead time", testExistingEventTimingOptionsRemainEditableAfterLeadTime),
+    ("existing event timing edit keeps ID and updates attention start", testExistingEventTimingEditKeepsIDAndUpdatesAttentionStart),
     ("editable event preserves unavailable reminder offsets", testEditableEventPreservesUnavailableReminderOffsets),
     ("loads reminder config with fallback", testLoadsReminderConfigWithFallback),
     ("save weather config toggle preserves morning time", testSaveWeatherConfigTogglePreservesMorningTime),

@@ -1354,6 +1354,16 @@ public func isReminderOffsetAvailable(_ minutes: Int, eventStart: Date, now: Dat
     return minutes <= minutesUntilStart
 }
 
+public func isEventTimingOffsetEditable(
+    _ minutes: Int,
+    eventStart: Date,
+    isExistingEvent: Bool,
+    now: Date = Date()
+) -> Bool {
+    guard minutes >= 0 else { return false }
+    return isExistingEvent || isReminderOffsetAvailable(minutes, eventStart: eventStart, now: now)
+}
+
 public func attentionStartDate(event: BlinkEvent) -> Date? {
     guard let start = parseISODate(event.start) else { return nil }
     return attentionStartDate(event: event, start: start)

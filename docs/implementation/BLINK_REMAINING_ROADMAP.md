@@ -25,6 +25,8 @@ Screen entry `Blink`; `Share → Blink` creates an event from one shared file.
   `Files` carries PackageID. No `clear=true` is used.
 - Production mailbox and `Blink_Production/ToMac` remain disabled/unused.
 - The physical USB RGB lamp is available but intentionally not connected yet.
+- Existing-event reminder/blinker editing now remains usable after a lead time
+  has elapsed; the same-ID persistence and Attention timing regression is green.
 
 ## Working Shortcut contracts
 
@@ -85,6 +87,8 @@ Mark diagnostic and candidate chronology as historical. Keep the plan at
   by the existing tests.
 - Reminder presets `1440, 720, 300, 60, 30, 10, 5, 0`, multiple
   reminders, non-negative integer custom values, and independent blinker.
+- Existing non-frozen events may change an old or newly selected timing value;
+  new/duplicate events still enforce the available lead-time constraint.
 - Do not silently restore `[30, 0]` after the user clears reminders.
 - Verify transport IDs have exactly nine random digits and are never event IDs.
 - Verify deterministic `__01__`, `__02__` attachment ordering and safe original

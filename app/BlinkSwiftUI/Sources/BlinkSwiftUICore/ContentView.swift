@@ -353,6 +353,7 @@ public struct ContentView: View {
                         editorModalHeader(in: proxy.size, event: event)
                         EventEditorView(
                             event: event,
+                            isExistingEvent: events.contains { $0.id == event.id },
                             reminderConfig: reminderConfig,
                             calendarEvents: events.filter { $0.isPersonal },
                             // Keep the preview backed by the project-local workspace even
@@ -1605,6 +1606,7 @@ struct EventEditorView: View {
     @State private var customReminderText = ""
     @State private var customBlinkerText = ""
     private let original: EditableEvent
+    let isExistingEvent: Bool
     let reminderConfig: ReminderConfig
     let calendarEvents: [BlinkEvent]
     let attachmentWorkspace: AttachmentWorkspace?
@@ -1617,6 +1619,7 @@ struct EventEditorView: View {
 
     init(
         event: EditableEvent,
+        isExistingEvent: Bool,
         reminderConfig: ReminderConfig,
         calendarEvents: [BlinkEvent],
         attachmentWorkspace: AttachmentWorkspace?,
@@ -1631,6 +1634,7 @@ struct EventEditorView: View {
         self._timeText = State(initialValue: clockTimeText(hour: event.hour, minute: event.minute))
         self._stagedAttachmentCount = State(initialValue: event.attachments?.count ?? 0)
         self.original = event
+        self.isExistingEvent = isExistingEvent
         self.reminderConfig = reminderConfig
         self.calendarEvents = calendarEvents
         self.attachmentWorkspace = attachmentWorkspace
@@ -2048,7 +2052,7 @@ struct EventEditorView: View {
     }
 
     private func isReminderAvailable(_ offset: Int) -> Bool {
-        isReminderOffsetAvailable(offset, eventStart: draft.startDate())
+        isEventTimingOffsetEditable(offset, eventStart: draft.startDate(), isExistingEvent: isExistingEvent)
     }
 
     private func pruneUnavailableReminders() {

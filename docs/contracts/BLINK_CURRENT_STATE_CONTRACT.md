@@ -35,6 +35,11 @@ only; clearing all reminders must never silently restore it.
 Blinker is independent from reminders and uses one non-negative integer minute
 offset. If the Mac UI exposes a custom blinker, the phone mirrors it.
 
+Lead-time availability constrains new and duplicated events. When editing an
+existing non-frozen event, the Mac editor keeps old reminder/blinker values
+editable even after their lead time has elapsed, so the user can correct them
+and save the same event ID. History remains frozen and cannot be edited.
+
 ## Transport contract
 
 CREATE accepts v1/v2 and at most one incoming attachment. Native Shortcut

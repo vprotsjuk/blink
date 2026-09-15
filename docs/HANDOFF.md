@@ -39,9 +39,18 @@ Done:
   production replacement passes.
 - A new personal Today Morning Briefing WIP is present and its six focused
   tests pass. It is disabled by default and is not yet exposed in SwiftUI.
+- The Mac editor timing correction is implemented: existing non-frozen events
+  can change old reminder/blinker values after their lead time has elapsed;
+  same-ID persistence and Attention-start regression tests pass.
 
-Current WIP (uncommitted):
+Relevant implementation areas:
 
+- `app/BlinkSwiftUI/Sources/BlinkSwiftUICore/ContentView.swift` and
+  `Models.swift`: existing-event timing editability contract.
+- `app/BlinkSwiftUI/Tests/BlinkSwiftUITestRunner/main.swift`: regression tests
+  for timing editability, same-ID save, and Attention start.
+- `BLINK_UNDERSTANDING.md`: Russian-language architecture and current-state
+  explanation requested for this project review.
 - `app/personal_briefing.py`: pure formatting, local-time due decision,
   dedupe, empty-day behavior, and delivery-state helpers.
 - `watcher.py`: loads optional
