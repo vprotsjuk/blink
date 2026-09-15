@@ -34,11 +34,20 @@ only; clearing all reminders must never silently restore it.
 
 Blinker is independent from reminders and uses one non-negative integer minute
 offset. If the Mac UI exposes a custom blinker, the phone mirrors it.
+The active CREATE candidate uses native numeric validation: it rounds the
+number to Integer and requires equality with the original value, combined with
+a native `>= 0` check. Thus fractions, letters, signs, and mixed symbols cannot
+be silently coerced into a valid minute value, and the validation is not
+locale-sensitive.
 
 Lead-time availability constrains new and duplicated events. When editing an
-existing non-frozen event, the Mac editor keeps old reminder/blinker values
-editable even after their lead time has elapsed, so the user can correct them
-and save the same event ID. History remains frozen and cannot be edited.
+existing non-frozen event, the intended contract is that the Mac editor keeps
+old reminder/blinker values editable even after their lead time has elapsed, so
+the user can correct them and save the same event ID. This is not currently
+product-accepted: live evidence shows a stale `1 day before` Blinker can leave
+`Start blinking` disabled and block replacement with a future `60 min before`.
+Final acceptance must use that exact live UI scenario after Shortcut
+convergence. History remains frozen and cannot be edited.
 
 ## Transport contract
 
@@ -84,8 +93,75 @@ Blink Files
   -> Show Selected Item in Quick Look
 ```
 
-Files one-file Acceptance passed physically. CREATE and DONE need final clean
-tree verification and representative physical Acceptance under canonical names.
+The active CREATE candidate must reject Share input with more than one item
+before `First Item` is selected. Its current Gate A implementation is
+`Count Items in Shortcut Input` → `If Count > 1` → clear alert → `Stop this
+shortcut`; the single-item and direct-launch paths remain unchanged. The
+Blinker contract is still independently gated: its Shortcut input must reject
+fractions, letters, negatives, and malformed text rather than coercing them.
+
+Files one-file Acceptance passed physically. CREATE Gate A (Share `>1`) and
+Gate B (integer Blinker) are implemented and programmatically verified. Gate
+B's fractional rejection has now also been physically exercised on iPhone
+(`1.5` stopped with no new payload or `.ready`), but full CREATE product
+Acceptance still requires the representative direct, single-attachment,
+multi-item, and text-preservation cases. DONE needs final clean-tree verification and
+representative physical Acceptance under its canonical name. The Mac editor
+Blinker regression remains an independent CURRENT gate.
+
+The known-good CREATE transport was physically re-established on 2026-09-15:
+untouched `Blink Create Test` produced fresh
+`20260915021144-935344778.event.json` plus `.ready` in the exact
+`Blink_Acceptance/ToMac` mailbox. The payload preserved explicit `-07:00`
+time, Reminder `[0]`, Blinker `17`, and the required 9-digit suffix. This
+proves the transport and iCloud materialization path are currently available;
+the remaining no-payload result is candidate-only and must be debugged against
+that oracle.
+
+## Fast CREATE logic oracle
+
+`app/create_shortcut_simulator.py` and
+`test_create_shortcut_simulator.py` model the pure logical portion of the
+CREATE Shortcut: validation, variables, branches, v1 JSON, transport names,
+and output ordering. They intentionally do not model Apple-specific behavior
+such as Share Sheet delivery, iCloud sync, Mirroring, Quick Look, or ntfy.
+Those boundaries still require the real Shortcut and physical acceptance.
+
+These simulators are the primary development/test harness for the three
+Shortcut roles, but are never runtime dependencies. The required sequence is:
+simulator/profile verification → minimal physical Shortcut edit →
+Apple-specific acceptance. The gray Mac `Start blinking` state remains a real
+open UI bug and is not cleared by passing model/unit tests.
+
+The simulator boundary is exactly the three product Shortcuts, not the current
+development inventory:
+
+| Product role | Physical oracle/profile | Simulator boundary |
+|---|---|---|
+| `Blink` | `Blink Create Test`; candidate `Blink Create Stage2 WORK` | input/attachment branch, prompts, validation, variables, JSON, filenames, `.ready` order |
+| `Blink DONE` | `Blink DONE Test` | `blink-done-v1|<event-id>` validation, command JSON, filenames, `.ready` order; no event lookup/update |
+| `Blink Files` | accepted `Blink Files` / candidate `Blink Files Stage2 VIEW TEST` | PackageID validation, `ToPhoneView/<PackageID>`, folder contents, chooser, Quick Look selection |
+
+Test/Stage2/WORK/Candidate/BACKUP/Invoke/Diagnostic names are comparison
+profiles or historical evidence only. They do not create additional product
+models. Trace entries in the simulator name the corresponding physical
+Shortcut action groups; Apple-only delivery and presentation remain physical
+gates.
+
+## Open question — same-ID notification freshness
+
+An event edited without changing its Event ID should conceptually keep that ID
+while future pushes use its current title, date/time, reminders, and
+attachments. It is not yet established whether already queued notification
+snapshots may be delivered after such an edit. Queue/scheduler changes are
+deferred until a separate investigation proves the failure mode and defines
+the required cancellation or re-resolution semantics.
+
+The historical `20260914222838-949257520` payload (Unicode title `Еуые`,
+Blinker `17`) is not evidence for the later user-labelled `Test 17` run; no
+new payload was found for that run. A fresh valid CREATE run must be correlated
+to a newly written `.event.json` and `.ready` pair before the direct path is
+marked physically accepted.
 
 ## Sync and release gates
 

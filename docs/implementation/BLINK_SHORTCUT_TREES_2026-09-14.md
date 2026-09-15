@@ -8,7 +8,7 @@ evidence separately from desired production contracts.
 
 | User-facing target | Purpose | ntfy input | Status |
 |---|---|---|---|
-| Blink | CREATE from direct launch or Share | CREATE payload | clean final tree/physical acceptance still required |
+| Blink | CREATE from direct launch or Share | CREATE payload | Gate A/B implemented + programmatically verified; iPhone sync and physical acceptance still required |
 | Blink DONE | apply a DONE command on Mac | blink-done-v1|<event-id> | controlled Acceptance exists; canonical production acceptance still required |
 | Blink Files | open event attachments on iPhone | blink-files-v1|<package-id> | one-file Acceptance passed physically; multi-file open |
 
@@ -22,14 +22,10 @@ The physically accepted Acceptance candidate is package-scoped:
     Choose from List
     Show Selected Item in Quick Look
 
-The installed Mac candidate currently also has the standard Shortcuts
-completion/output guard after Quick Look:
-
-    Stop and output -> Quick Look
-    If there’s nowhere to output -> Do Nothing
-
-That guard is part of the currently installed candidate; it is not evidence
-that a production tree has been cut over.
+The current Mac candidate has the input fail-closed guard before the package
+lookup and then ends directly at Quick Look. The obsolete `.ready`, manifest,
+technical-prefix, count, and duplicate chooser branches were removed from the
+candidate; they remain only in preserved fallback/evidence shortcuts.
 
 The chooser receives the folder contents, not the flat package root. It shows
 only original safe basenames, for example Appointment Schedule (1).pdf.
@@ -49,23 +45,19 @@ target `Blink Files Stage2 WORK`. iPhone Mirroring displayed the notification
 and accepted the tap, but opened the Shortcuts library without running the
 shortcut/chooser. A subsequent physical tap reproduced the boundary
 definitively: Shortcuts opened `Blink Files Stage2 WORK`, it finished with a
-checkmark, and no chooser or Quick Look appeared. Thus the failure is inside
-the running tree after launch, not the ntfy URL or package staging.
+checkmark, and no chooser or Quick Look appeared. Thus the failure was inside
+the old running tree after launch, not the ntfy URL or package staging.
 
 The original 47-action tree remains preserved and was restored to its original
 flat `Blink_Acceptance/ToPhone` path. An isolated Mac-only experiment,
-`Blink Files Stage2 VIEW TEST`, was created from a duplicate. It uses the
-dynamic path `Blink_Acceptance/ToPhoneView/<PackageID>/`, skips the flat
-package marker checks for the view-only test, and filters view contents by
-file extension. A separate two-action `Blink Files VIEW INVOKE TEST` helper
-was created to pass the validated package marker into that copy locally;
-The helper is visible in the iPhone library. iPhone Edit view confirmed the
-dynamic `ToPhoneView/` + blue `PackageID` + `/` path and
-`Get contents of File` → `Folder Contents`. Running the helper reached the
-iOS privacy prompt that asks to allow one shortcut to run another; the prompt
-is intentionally left for the owner to confirm. Neither experiment is a
-production target or a replacement for the preserved original until an
-end-to-end physical run proves the chooser.
+`Blink Files Stage2 VIEW TEST`, was created from a duplicate. It now has 14
+actions: the dynamic path `Blink_Acceptance/ToPhoneView/<PackageID>/`,
+`Get Contents of Folder`, one chooser, and Quick Look, with only the PackageID
+input guard retained. Its build marker is
+`FILES-FINAL-DYNAMIC-20260914 | GUI-SAVED`. Earlier helper and duplicate invoke
+experiments are not production targets. End-to-end iPhone/live-banner
+acceptance is still pending, so this candidate is not yet cut over to the
+canonical `Blink Files` name.
 
 ## CREATE tree contract
 
@@ -74,14 +66,303 @@ end-to-end physical run proves the chooser.
     Collect zero or more Reminders using integer-minute validation
     Collect one independent Blinker value using integer-minute validation
     Normalize local date/time with timezone
-    Build CREATE_EVENT v2 flat payload
+    Build CREATE_EVENT v1 flat payload
     Write package to selected ToMac root
     Write .ready last
 
-The tree must reject more than one shared attachment. It must preserve Unicode,
-multiline text, date/time, reminders, blinker, and importance. The exact action
-names and complete iPhone body must be recorded after the clean candidate is
-built; no unverified physical result is claimed here.
+The production tree must reject more than one shared attachment. It must preserve Unicode,
+multiline text, date/time, reminders, blinker, and importance. The exact Mac
+candidate additions are recorded below; the complete iPhone body and physical
+Share/banner result remain separate acceptance evidence.
+
+### Accepted CREATE source — exact inspected action groups
+
+On 2026-09-14 the Mac Shortcuts GUI was inspected from top to bottom for the
+untouched `Blink Create Test` source (93 actions in the current library
+snapshot). The observed order and responsibility map is:
+
+1. **Input/attachment branch:** receive `Images and 2 more` from Share Sheet;
+   continue when there is no input; when `Shortcut Input` has a value, get its
+   first item, set `Attachment`, read `Name` into `OriginalFilename`, read
+   `File Extension` into `OriginalExtension`, and set `HasAttachment` to text
+   `true`. The otherwise branch sets `Attachment`, `OriginalFilename`, and
+   `OriginalExtension` to empty Text and `HasAttachment` to text `false`.
+2. **Title:** ask for Text with prompt `Title`; set `Title`; `Match \\S` in
+   `Title`; stop when the match has no value.
+3. **Description:** ask for optional Text with prompt `Description (optional)`;
+   set `Description` directly to `Ask for Input`. No sanitizing or replacement
+   action is present.
+4. **Start:** ask for Date and Time with prompt `Event start date and time`;
+   set `EventDateTime` directly to `Ask for Input`.
+5. **Importance:** choose menu `Attention level` with exactly `green`,
+   `yellow`, and `red`; set `AttentionLevel` from `Menu Result`.
+6. **Reminders:** ask for Text with the comma-separated reminder prompt; set
+   `ReminderOffsetsText`; split by comma; repeat each item; match
+   `^\\s*\\d+\\s*$`; stop on failed match; get numbers; accept only numbers
+   `>= 0`; add them to `ReminderOffsets`; stop if the final list has no value.
+7. **Blinker:** ask for Number with prompt `Blinker lead time in minutes
+   before start (default 0)`; set `BlinkerMinutesBefore`; convert it with
+   `Get text from BlinkerMinutesBefore`; match the full text against `^\d+$`,
+   stopping when the match has no value; then retain the original independent
+   `>= 0` check. This rejects fractions and malformed values without coercion.
+8. **Transport/time values:** format `Current Date`; generate a random number
+   from `100000000` through `999999999`; combine into `TransferID`; format
+   `EventDateTime` into `EventDateTimeISO`; format current date into
+   `CreatedAtISO`.
+9. **Attachment serialization:** if `HasAttachment` is text `true`, construct
+   `AttachmentJSON` with basename from `TransferID` plus the attachment
+   extension and `original_filename` from `OriginalFilename`; otherwise set
+   `AttachmentJSON` to empty Text.
+10. **Payload and writes:** build the visible JSON Text template containing
+    `type: CREATE_EVENT`, `transfer_id`, `title`, `description`, `start`,
+    `reminder_intent.offsets_minutes`, `attention_level`,
+    `blinker_intent.minutes_before`, and `created_at`; set the file name to
+    `TransferID.event.json`; save to `Shortcuts`; when attached, save the
+    attachment under `TransferID.attachment.OriginalExtension`; save `READY`
+    as `TransferID.ready`; stop the Shortcut.
+
+The visible payload template in this accepted source currently says
+`"version": 1`. The importer contract accepts v1/v2, so this is recorded as
+actual source evidence and is not silently reclassified as v2. No dedicated
+build-marker Comment was visible in the inspected source; the five visible
+Comments are prompts/section separators for Title, Description, Date/Time,
+Reminders, and Blinker. The source remains untouched and is the rollback
+reference for work on `Blink Create Stage2 WORK`.
+
+This inspection confirms two boundaries in the untouched source rather than
+silently changing the rollback reference: it visibly uses `First Item` without
+a separate multi-item Share rejection, and its Blinker path visibly checks only
+`>= 0`. The active candidate addresses the first boundary below; the source
+remains unchanged and the second boundary is still open.
+
+### CREATE Stage2 WORK audit checkpoint
+
+The active `Blink Create Stage2 WORK` candidate was inspected before editing.
+It retained the same visible input, field collection, reminder, Blinker,
+serialization, attachment, and `.ready` write path as the accepted source, but
+had 94 actions rather than 93. After its reachable `Stop this shortcut`, it
+contained an additional unreachable `Dictionary` action with eight items,
+including visible diagnostic-looking values `version=2`, `type=CREATE_EVENT`,
+`reminder_offsets`, `blinker_minutes_before`, `transfer_id`, and `title`.
+That block was removed from the candidate only. After Mac GUI save-touch, the
+candidate re-opened in the library as 93 actions and its reachable tail again
+matches the accepted source, including the `version: 1` JSON Text template and
+the `.ready` write. `Blink Create Test` remained untouched at 93 actions.
+
+### CREATE Gate A — Share Sheet more-than-one rejection
+
+Gate A was applied only to `Blink Create Stage2 WORK`, one behavioral change at
+a time. The candidate now begins its input handling with:
+
+1. `Count Items in Shortcut Input`.
+2. `If Count is greater than 1`.
+3. `Show Alert` — `Blink accepts at most one attachment.`.
+4. `Stop this shortcut`.
+5. `Otherwise`, followed by the pre-existing input path and its
+   `Get First Item` behavior for the single-item case.
+
+The Mac editor was saved and the candidate was re-opened from the library as
+98 actions. The visible order confirms the rejection actions are inside the
+new true branch, before the original single-attachment branch; the accepted
+source remains 93 actions and untouched. A focused macOS `shortcuts run` smoke
+with two real file inputs returned `Running was cancelled`, which is the
+expected stop-path result, before Title/serialization could run. No CREATE
+payload was produced by that rejection path. This proves the candidate's Gate
+A behavior at the Shortcut/runtime level; physical iPhone Share Sheet/banner
+acceptance remains a later gate.
+
+Gate B remained isolated from Gate A and was applied only after the Gate A
+check.
+
+### CREATE Gate B — Blinker integer rejection
+
+Gate B was then applied as a separate behavioral change to the same candidate.
+The old regex branch was removed only here and replaced with native numeric
+validation immediately after the Blinker input assignment:
+
+1. `Round BlinkerMinutesBefore to Integer`.
+2. `If All are true`, requiring `Rounded Number is BlinkerMinutesBefore` and
+   `BlinkerMinutesBefore is greater than or equal to 0`.
+3. `Otherwise` -> `Stop this shortcut`.
+
+This rejects fractions without locale-sensitive Number -> Text -> regex
+conversion and preserves valid `0` and positive integers. The Mac library now
+reports 100 actions for the candidate. No accepted Reminder, Date/Time,
+serialization, or `.ready` behavior was intentionally removed.
+
+### CREATE validation contract — preserve during cleanup
+
+The physically accepted `Blink Create Test` is the source tree for this
+contract. Files cleanup did not change it. Validation is product behavior, not
+temporary Shortcut complexity:
+
+- **Title:** required; empty and whitespace-only values stop the Shortcut.
+  The `Match \S` check must not strip valid Unicode, emoji, punctuation, or
+  other non-whitespace characters.
+- **Description:** optional text is passed through unchanged, including
+  multiline paragraphs, Unicode, emoji, quotes, backslashes, punctuation, and
+  newlines.
+- **Reminders:** one or more comma-separated, non-negative integer minutes;
+  presets remain `1440, 720, 300, 60, 30, 10, 5, 0`; Custom accepts integers
+  only. Negative, fractional, alphabetic, and mixed-symbol values stop the
+  Shortcut and must never be rounded or coerced to zero.
+- **Blinker:** exactly one independent, non-negative integer-minute value with
+  the same preset/Custom semantics as the Mac editor. Invalid text, letters,
+  negatives, and fractions must stop the Shortcut; it must not silently become
+  another value. The untouched source uses `Ask for Number` plus `>= 0`; the
+  active candidate uses native Round-to-Integer equality plus native `>= 0`.
+  Physical
+  iPhone/UI evidence remains an acceptance gate before CREATE production
+  cutover.
+- **Attachments:** direct launch with no attachment remains valid. Share Sheet
+  accepts the supported file/image/PDF types and at most one item; a folder,
+  empty direct input, or a second item must not be treated as a valid single
+  attachment. The current source's `First Item` branch is preserved after the
+  candidate's explicit Count > 1 rejection; physical iPhone Share evidence is
+  still required before production cutover.
+- **Date/time:** keep the explicit UTC-offset/timezone representation; do not
+  replace it with naive date serialization.
+- **Transport ID:** format is exactly `yyyyMMddHHmmss-<9-digit-random>`, with
+  random range `100000000..999999999`.
+
+### CREATE behavior matrix
+
+`Before` is the accepted `Blink Create Test` tree plus the Mac importer tests.
+`After` is the current 100-action `Blink Create Stage2 WORK` candidate
+after the isolated Gate A and Gate B edits. The candidate is implemented and
+programmatically verified; physical iPhone rows still need dedicated
+acceptance evidence before product acceptance or production cutover.
+
+### iPhone sync checkpoint — 2026-09-15
+
+### CREATE transport recovery — 2026-09-15 02:11
+
+The known-good transport was physically restored through the untouched
+`Blink Create Test` oracle. With Mirroring connected, a fresh direct run using
+Title `Transport Recovery Test`, empty Description, explicit-offset start
+`2026-09-23T02:06:00-07:00`, green Attention, Reminder `0`, and Blinker `17`
+created both files in the exact Acceptance mailbox:
+`20260915021144-935344778.event.json` and
+`20260915021144-935344778.ready`. The JSON preserves the title, offset,
+Reminder `[0]`, Blinker `17`, and a 9-digit random suffix. The `.ready` and
+`.event.json` have the same materialization second. This proves the current
+failure was not an iCloud backlog and that the proven Save/publication path is
+available again.
+
+The same physical direct flow was then run against `Blink Create Stage2 WORK`
+with a valid title and Reminder `0`. The Shortcut returned to the library, but
+no fresh candidate pair appeared in `Blink_Acceptance/ToMac`. This is now a
+candidate-only differential failure; Gate A/B and iCloud are no longer valid
+general explanations. The candidate remains frozen while its reachable
+Gate-B-to-save path is compared against the untouched oracle.
+
+### Three-role simulator parity — 2026-09-15
+
+The simulator is intentionally limited to the three product roles, with
+historical Shortcut names represented only as profiles. The known-good fresh
+CREATE payload `20260915021144-935344778.event.json` was fed back through the
+CREATE simulator; `accepted=True` and the produced payload matched the real
+JSON exactly, including title, explicit offset, `created_at`, reminders,
+Blinker, and transport ID. A real historical DONE package was likewise
+replayed through the DONE simulator and matched its JSON and filenames. The
+existing Acceptance `ToPhoneView` package containing `485 Notice.jpeg` and
+`Appointment Scheduled (1).pdf` was replayed through the Files simulator and
+produced the same two visible files and selected-file path.
+
+These are parity checks of logical/transport output only. They do not promote
+the simulator over physical Apple acceptance: Share Sheet delivery, iCloud
+materialization, ntfy deep links, and Quick Look remain real-device gates.
+
+The candidate was opened in iPhone Mirroring under the same name. The live
+iPhone editor visibly showed Gate A in the synced body: `Count Items in
+Shortcut Input` → `If Count is greater than 1` → alert `Blink accepts at most
+one attachment.` → `Stop this shortcut`, before the original `First Item`
+branch. This proves sync of Gate A, not product Acceptance. Mirroring lost its
+connection while scrolling toward the Blinker block. The current 100-action
+candidate is now visible in the iPhone library after the latest Mac save-touch;
+Mac-side Gate B tree evidence is verified, while physical CREATE cases remain
+open.
+
+Gate B was then physically exercised through the live CREATE flow: after valid
+Title, empty optional Description, default Date/Time, green Importance, and
+valid Reminder `30`, the Blinker field received `1.5`. Pressing `Done` ended
+the Shortcut and returned to the Shortcuts library without continuing CREATE.
+No new file appeared in the Acceptance `ToMac` mailbox, and no `.ready` was
+created. This is physical rejection evidence for fractional Blinker input.
+
+A subsequent non-fractional run was initially inconclusive while iCloud state
+was being inspected. The mailbox contains an older
+`20260914222838-949257520.event.json` plus its `.ready`, preserving Unicode
+Title `Еуые`, explicit `-07:00` start offset, Reminder `[0]`, Blinker `17`,
+and the required 9-digit transport suffix. The user later identified that
+payload as an older run, not the later `Test 17` run; the later run produced no
+new file in `ToMac`. Therefore this payload is retained as historical evidence
+only, not as physical acceptance of the current 100-action candidate. A fresh
+valid run must be correlated by timestamp and title before acceptance.
+
+After the Mac save-touch at approximately 23:00, a fresh controlled iPhone
+run at approximately 23:05 used Title `17`, empty Description, green
+Attention, Reminder `0`, and Blinker `0`. The Shortcut returned to the library,
+but `ToMac` still contained no new `.event.json`/`.ready` pair. This confirms
+that the valid direct path remains unresolved despite the Mac tree being saved
+at 100 actions; do not advance to attachment or Files acceptance yet.
+
+### Differential CREATE checkpoint — 2026-09-15 12:10–12:12
+
+The current candidate was launched on iPhone with valid Blinker `0` and
+completed back to the Shortcuts library, but produced no new
+`.event.json`/`.ready` pair. Untouched `Blink Create Test` was then run with
+the same direct-launch shape, Reminder `0`, and Blinker `0`; it also returned
+to the library without a new mailbox pair. The failure is therefore not
+currently attributable to the new native Gate B condition. CREATE
+transport/write-path or iCloud mailbox routing remains the active differential
+investigation; no candidate bypass or source edit is authorized.
+
+The Mac Shortcuts Save action was independently opened on the untouched source
+and resolved to the real `Blink_Acceptance/ToMac` folder, not a similarly named
+local folder. Finder then showed that folder with an iCloud transfer in
+progress (`Uploading 2 items`) while still listing only historical entries;
+the local filesystem likewise contained no files from either fresh run. This
+narrows the failure to iCloud materialization/transfer or the final Save
+publication boundary, rather than Gate B logic. No source Shortcut was edited
+during this inspection.
+
+CloudDocs evidence was then narrowed to the exact private Shortcuts container:
+`brctl status iCloud~is~workflow~my~workflows` reports `caught-up` and
+`has-synced-down`, with no pending item listed. Earlier `bird`/`cloudd` upload
+activity and one retry after `BRCloudDocsErrorDomain Code=140`
+(`un-acked in-flight diffs`) remain historical clues, but they do not explain
+the absent fresh files after the container returned to caught-up. The
+authoritative status is therefore: `CREATE transport failure under
+investigation; current evidence favors the final Shortcut Save/publication
+boundary over an iCloud sync backlog`.
+
+| Case | Expected | Before | After |
+|---|---|---|---|
+| empty Title | rejected | rejected | unchanged |
+| whitespace-only Title | rejected | rejected | unchanged |
+| normal Unicode Title | preserved | accepted/preserved | unchanged |
+| multiline Description | preserved | accepted/preserved | unchanged |
+| Reminder `17` | accepted | accepted | unchanged |
+| Reminder `0` | accepted | accepted | unchanged |
+| Reminder `-1` | rejected | rejected | unchanged |
+| Reminder `17.5` | rejected | rejected | unchanged |
+| Reminder `abc` | rejected | rejected | unchanged |
+| Reminder mixed symbols/text | rejected | rejected | unchanged |
+| Blinker valid integer | accepted | accepted by integer contract/parser | regex matches; original `>= 0` path remains |
+| Blinker letters | rejected | rejected by transport/parser; phone UI gate | Ask for Number/regex rejection; no coercion |
+| Blinker decimal | rejected | transport rejects; phone UI gate | full-match `^\d+$` rejects before `>= 0` |
+| direct launch, no attachment | accepted | physically accepted | unchanged |
+| Share one PDF | accepted | physically accepted / parser green | unchanged |
+| Share one image | accepted | physically accepted / parser green | unchanged |
+| Share more than one item | rejected clearly | source used `First Item`; no explicit rejection | candidate rejects via Count > 1 → alert → Stop; macOS two-file smoke cancelled as expected |
+| special characters/newlines | survive serialization | parser green | unchanged |
+| explicit-offset Date/Time | preserved | parser green | unchanged |
+| native transport ID | exact 14 digits + 9 random digits | tree/parser green | unchanged |
+
+The matrix is intentionally not reduced to an action-count claim. A future
+CREATE cleanup must prove every protected behavior before deleting or merging
+its corresponding validation block.
 
 ## DONE tree contract
 
@@ -169,8 +450,10 @@ be applied or deleted before the Acceptance importer/cleanup audit:
 
 ## Mac library snapshot
 
-The Shortcuts library currently contains 20 entries. Blink-related entries
-observed on 2026-09-14 are:
+The original snapshot contained 20 entries. The current Mac recheck contains
+26 entries because several experimental duplicates were created during the
+subsequent investigation. The original list remains historical; the current
+execution inventory is recorded below.
 
 | Name | Classification |
 |---|---|
@@ -193,3 +476,40 @@ observed on 2026-09-14 are:
 The four `Начальные команды` entries are unrelated Apple starter shortcuts.
 No entry is deleted or renamed until the Acceptance matrix passes and a final
 KEEP/DELETE/WHY inventory is approved by the Production gate.
+
+## Current execution inventory
+
+This is the working inventory after the latest Mac Shortcuts recheck. “Delete
+now” means disposable agent-created experiment only; it is not permission to
+delete an accepted fallback or any transport file. GUI deletion still needs a
+separate action-time confirmation.
+
+| Shortcut | Keep now | Delete now | Delete after cutover | Reason |
+|---|---:|---:|---:|---|
+| Blink Create Test | yes |  |  | physically accepted CREATE source |
+| Blink Create Stage2 WORK | yes |  | yes | current CREATE work candidate |
+| Blink Create Test BACKUP | yes |  | yes | CREATE rollback fallback |
+| Blink DONE Test | yes |  |  | physically accepted DONE source |
+| Blink DONE Test BACKUP Stage2 | yes |  | yes | DONE rollback fallback |
+| Blink Files Candidate — CHOOSER-ACCEPTANCE-20260913-A \| GUI-SAVED | yes |  | yes | accepted one-file fallback |
+| Blink Files Candidate — CHOOSER-ACCEPTANCE-20260913-A \| GUI-SAVED 2 | yes |  | yes | direct two-file chooser proof |
+| Blink Files Stage2 VIEW TEST | yes |  | yes | one active dynamic-path candidate |
+| Blink Files Stage2 WORK | yes |  | yes | rollback/evidence for old failure |
+| Blink Files | yes |  | yes | historical fallback |
+| Blink Files BACKUP Stage2 | yes |  | yes | Files rollback fallback |
+| RU Fix (Selected Text) and Apple starters | yes |  |  | unrelated user/system shortcuts |
+| Blink Nested Invoke TEST 20260915 |  | yes |  | nested UI experiment concluded |
+| Blink Files VIEW INVOKE TEST |  | yes |  | helper experiment concluded |
+| Blink Files Acceptance DYNAMIC 20260915 |  | yes |  | duplicate old flat 47-action model |
+| Blink Files Acceptance PACKAGEPATH 20260916 |  | yes |  | duplicate old flat 47-action model |
+| Blink Files Acceptance MULTI 20260915 |  | yes |  | empty/suspect experimental duplicate |
+| Blink Files Acceptance FIXED INVOKE 20260915 |  | yes |  | empty/suspect experimental duplicate |
+| Blink Files Runtime Diagnostic — DIRECT-NAME-ACCEPTANCE-20260913-A \| GUI-SAVED |  | yes |  | historical diagnostic |
+| Blink Test |  | yes |  | obsolete test |
+| Blink JSON Serialization Test |  | yes |  | obsolete test |
+| Blink Files Candidate — CHOOSER-ACCEPTANCE-20260913-A \| GUI-SAVED 1 |  | yes |  | duplicate accepted candidate |
+
+The current Files implementation chunk is to simplify the existing VIEW TEST
+candidate in place. No new Shortcut is required. The old 47-action Stage2
+candidate remains only until the simplified dynamic candidate passes the
+physical acceptance matrix; it is not a design to extend.

@@ -279,3 +279,36 @@ cleanup отложены до прохождения acceptance всех трё�
 Это не означает, что физические CREATE/DONE/Files production-тесты уже
 пройдены: one-file Files принят, multi-file и финальные canonical trees ещё
 являются рабочими этапами roadmap.
+
+## 12. Acceptance boundary: Files Stage2, 14 сентября 2026
+
+Физически подтверждено на iPhone через Shortcuts:
+
+- package-scoped папка
+  `Blink_Acceptance/ToPhoneView/blink-files-v1-b7125ae665b167365d197f0bb7785b2c`
+  содержит `485 Notice.jpeg` и `Appointment Scheduled (1).pdf`;
+- прямой 5-action Shortcut с жёстким путём к этой папке показывает chooser
+  `Which one?` с обоими файлами;
+- значит, iCloud-файлы, чтение папки и Quick Look сами по себе рабочие.
+
+Отдельно подтверждено поведение вложенного запуска: `Run Shortcut` из
+другого Shortcut выполняется (зелёная галочка), но UI дочернего Shortcut
+(Show Alert / Quick Look) не возвращается наружу. Поэтому helper/injector не
+может служить физическим доказательством отображения chooser; acceptance
+Files должен запускаться непосредственно из ntfy.
+
+Для Stage2-кандидатов зафиксирована граница отказа: старое дерево читает
+`ToPhone`, затем отбрасывает вложения по имени, построенному из
+`PackageID`; для package-scoped `ToPhoneView` такой prefix не совпадает с
+реальными basename, и `AttachmentCount` становится 0, после чего Shortcut
+тихо останавливается. Наличие `.ready`/`.manifest.json` в этой папке также не
+предполагается: package-scoped view содержит только attachment files.
+
+Следующий безопасный шаг — прямой iPhone-тест acceptance Stage2 с тем же
+ntfy action и GUI-touch после публикации дерева. Production mailbox,
+canonical names и старое рабочее дерево до этого не менять.
+
+В ходе этого прогона тестовое уведомление дошло до ntfy и показало кнопку
+`Files` в ленте. Нажатие кнопки внутри открытой ленты не передало управление
+в Shortcuts; это не смешивается с ранее подтверждённым live-banner запуском
+из шторки уведомлений и требует отдельной проверки именно live banner.
