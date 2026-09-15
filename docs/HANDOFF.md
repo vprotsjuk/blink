@@ -42,6 +42,10 @@ Done:
 - The Mac editor timing correction is implemented: existing non-frozen events
   can change old reminder/blinker values after their lead time has elapsed;
   same-ID persistence and Attention-start regression tests pass.
+- The multi-file Acceptance package is now staged and validated with two
+  original filenames. The mirrored notification tap opened Shortcuts but did
+  not reproduce the shortcut chooser; physical multi-file Acceptance remains
+  open and the five `Blink_Acceptance/ToMac` DONE pairs are explicitly stale.
 
 Relevant implementation areas:
 
@@ -153,7 +157,7 @@ Authoritative documentation:
 
 - `python3 -m unittest -q test_personal_briefing.py` -> 6 passed after WIP
   implementation.
-- `python3 -m unittest -q` -> 225 passed, 1 skipped.
+- `python3 -m unittest -q` -> 227 passed.
 - `swift run -c release BlinkSwiftUITestRunner` -> all Swift contract tests
   passed.
 - `swift build -c release` -> release build passed.

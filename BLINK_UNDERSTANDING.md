@@ -221,6 +221,12 @@ event_data/
 оригинальным именем → Quick Look PDF. Multi-file acceptance и полный переход к
 чистым production-деревьям ещё не завершены.
 
+Mac-side builder теперь также создаёт package-scoped `ToPhoneView` атомарно:
+для multi-file пакета в нём остаются только исходные безопасные имена файлов.
+Контролируемый двухфайловый пакет уже создан и проверен программно; его
+физический запуск на iPhone ещё ожидает tap, который Mirroring не смог
+воспроизвести.
+
 ## 6. iPhone → Mac обмен
 
 iPhone Shortcuts — это transport adapters, а не вторая база событий. CREATE и
@@ -345,7 +351,7 @@ Watcher использует проектный `.venv/bin/python`. `status_watc
 
 Результат проверок кода:
 
-- `.venv/bin/python -m unittest -q` — 225 тестов, `OK`;
+- `.venv/bin/python -m unittest -q` — 227 тестов, `OK`;
 - `swift run -c release BlinkSwiftUITestRunner` — все Swift contract tests
   прошли;
 - `swift build -c release` — release build прошёл;

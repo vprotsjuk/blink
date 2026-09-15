@@ -57,6 +57,28 @@ class ToPhoneStoreTests(unittest.TestCase):
             self.assertEqual(len(manifest["files"]), 2)
             self.assertIsNotNone(to_phone_store.validate_package(root, package))
 
+    def test_prepare_snapshot_writes_attachment_only_view_with_original_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "ToPhone"
+            source = Path(tmp) / "attachments" / "event-123"
+            source.mkdir(parents=True)
+            (source / "Appointment Scheduled (1).pdf").write_bytes(b"pdf bytes")
+            (source / "Photo.jpg").write_bytes(b"jpg bytes")
+            result = to_phone_store.prepare_snapshot(
+                root, self.event(), 30,
+                source_root=Path(tmp) / "attachments",
+                now=datetime.now(timezone.utc),
+            )
+            view = to_phone_store.view_package_root(root, result.package_id)
+            self.assertEqual(
+                [path.name for path in sorted(view.iterdir())],
+                ["Appointment Scheduled (1).pdf", "Photo.jpg"],
+            )
+            self.assertEqual((view / "Appointment Scheduled (1).pdf").read_bytes(), b"pdf bytes")
+            self.assertNotIn(".ready", " ".join(path.name for path in view.iterdir()))
+            self.assertNotIn("manifest", " ".join(path.name for path in view.iterdir()))
+            self.assertNotIn("__01__", " ".join(path.name for path in view.iterdir()))
+
     def test_no_files_produces_no_ready_package(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "ToPhone"
@@ -102,6 +124,20 @@ class ToPhoneStoreTests(unittest.TestCase):
             second = to_phone_store.prepare_snapshot(root, self.event(), 30, **kwargs)
             self.assertEqual(first.source_hash, second.source_hash)
             self.assertEqual(next(path for path in root.iterdir() if "__01__" in path.name).read_bytes(), b"old")
+
+    def test_cleanup_removes_derived_view_with_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "ToPhone"
+            source = Path(tmp) / "attachments" / "event-123"
+            source.mkdir(parents=True)
+            (source / "Permit.pdf").write_bytes(b"pdf")
+            old = datetime.now(timezone.utc) - timedelta(days=10)
+            result = to_phone_store.prepare_snapshot(
+                root, self.event(), 30, source_root=Path(tmp) / "attachments", now=old
+            )
+            to_phone_store.mark_delivered(root, result.package_id, old)
+            to_phone_store.cleanup(root, datetime.now(timezone.utc), ttl_seconds=3600)
+            self.assertFalse(to_phone_store.view_package_root(root, result.package_id).exists())
 
     def test_invalid_package_stem_and_traversal_are_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -136,6 +136,85 @@ def _package_paths(root: Path, package: str) -> list[Path]:
     return [path for path in Path(root).iterdir() if path.name == f"{package}.ready" or path.name == f"{package}.manifest.json" or path.name.startswith(f"{package}__")]
 
 
+def view_root(root: Path) -> Path:
+    """Return the derived attachment-only view root beside the flat package root."""
+    return Path(root).parent / "ToPhoneView"
+
+
+def view_package_root(root: Path, package: str) -> Path:
+    """Return the package-scoped derived view directory."""
+    return view_root(root) / str(package)
+
+
+def _remove_view_package(root: Path, package: str) -> None:
+    shutil.rmtree(view_package_root(root, package), ignore_errors=True)
+
+
+def _view_is_valid(root: Path, package: str, manifest: dict[str, Any]) -> bool:
+    view = view_package_root(root, package)
+    records = manifest.get("files")
+    if not view.is_dir() or not isinstance(records, list) or not records:
+        return False
+    expected: list[str] = []
+    for record in records:
+        if not isinstance(record, dict):
+            return False
+        try:
+            name = _safe_basename(record["original_name"])
+            size = int(record["size"])
+            checksum = str(record["sha256"])
+        except (KeyError, TypeError, ValueError):
+            return False
+        if name in expected:
+            return False
+        expected.append(name)
+        path = view / name
+        try:
+            if path.is_symlink() or not path.is_file() or path.stat().st_size != size or _sha256(path) != checksum:
+                return False
+        except OSError:
+            return False
+    try:
+        return sorted(path.name for path in view.iterdir()) == sorted(expected)
+    except OSError:
+        return False
+
+
+def refresh_view(root: Path, package: str, manifest: dict[str, Any]) -> Path:
+    """Atomically refresh one derived view from a validated flat package."""
+    package_root = view_package_root(root, package)
+    records = manifest.get("files")
+    if not isinstance(records, list) or not records:
+        raise ValueError("manifest must contain attachment records")
+    names: set[str] = set()
+    view_root_path = view_root(root)
+    view_root_path.mkdir(parents=True, exist_ok=True)
+    tmp = view_root_path / f".{package}.{os.getpid()}.tmp"
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir()
+    try:
+        for record in records:
+            if not isinstance(record, dict):
+                raise ValueError("manifest attachment record must be an object")
+            name = _safe_basename(record.get("original_name"))
+            if name in names:
+                raise ValueError("manifest attachment names must be unique")
+            names.add(name)
+            transport = record.get("transport_name")
+            if not isinstance(transport, str) or not transport.startswith(f"{package}__"):
+                raise ValueError("manifest transport name does not match package")
+            source = Path(root) / transport
+            if source.is_symlink() or not source.is_file():
+                raise ValueError("validated package attachment is missing")
+            destination = tmp / name
+            shutil.copy2(source, destination)
+        shutil.rmtree(package_root, ignore_errors=True)
+        os.replace(tmp, package_root)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return package_root
+
+
 def _remove_package(root: Path, package: str) -> None:
     for path in _package_paths(root, package):
         try:
@@ -163,13 +242,17 @@ def prepare_snapshot(
     existing = validate_package(root, package)
     if immutable:
         if existing is not None:
+            if not _view_is_valid(root, package, existing):
+                refresh_view(root, package, existing)
             return SnapshotResult(package, True, True, existing, existing.get("source_hash"))
+        _remove_view_package(root, package)
         return SnapshotResult(package, False, False, None, None)
 
     files = _source_files(Path(source_root), event)
     if not files:
         if not immutable:
             _remove_package(root, package)
+            _remove_view_package(root, package)
             state["packages"].pop(package, None)
             _save_state(root, state)
         return SnapshotResult(package, False, False, None, None)
@@ -178,6 +261,8 @@ def prepare_snapshot(
     if existing is not None and existing.get("source_hash") == source_hash:
         state["packages"].setdefault(package, {"status": "queued", "prepared_at": now.isoformat()})
         _save_state(root, state)
+        if not _view_is_valid(root, package, existing):
+            refresh_view(root, package, existing)
         return SnapshotResult(package, True, True, existing, source_hash)
 
     manifest = {
@@ -233,6 +318,7 @@ def prepare_snapshot(
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         shutil.rmtree(backup_dir, ignore_errors=True)
+    refresh_view(root, package, manifest)
     return SnapshotResult(package, True, True, manifest, source_hash)
 
 
@@ -303,6 +389,7 @@ def cleanup(root: Path, now: datetime, ttl_seconds: int) -> list[str]:
         if (now - delivered_at).total_seconds() < max(int(ttl_seconds), 0):
             continue
         _remove_package(root, package)
+        _remove_view_package(root, package)
         state["packages"].pop(package, None)
         removed.append(package)
     if removed:

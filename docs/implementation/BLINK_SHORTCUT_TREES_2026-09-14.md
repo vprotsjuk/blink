@@ -36,6 +36,20 @@ only original safe basenames, for example Appointment Schedule (1).pdf.
 Manifest, .ready, package IDs, technical prefixes, and unrelated packages are
 never copied into the view folder.
 
+## Live multi-file Acceptance checkpoint
+
+On 2026-09-14 a new controlled package was generated from the personal event
+`event-0f6edc58-50f4-48fb-9423-15ddb499d876` at reminder offset `10`:
+`blink-files-v1-b7125ae665b167365d197f0bb7785b2c`. The flat package validated
+with two files, and its derived view contains only `485 Notice.jpeg` and
+`Appointment Scheduled (1).pdf`.
+
+The notification was sent to the existing Acceptance subscription with the
+target `Blink Files Stage2 WORK`. iPhone Mirroring displayed the notification
+and accepted the tap, but opened the Shortcuts library without running the
+shortcut/chooser. This is a Mirroring-vs-physical behavior difference, so
+multi-file physical Acceptance remains OPEN and requires one physical tap.
+
 ## CREATE tree contract
 
     Receive Shortcut Input (direct launch or Share)
@@ -125,6 +139,16 @@ Candidate, Test, BACKUP, Stage2 WORK, Runtime Diagnostic, and Feasibility
 shortcuts are not production targets. Keep the working fallback until the
 canonical production replacement passes. Cleanup requires a separate inventory
 with KEEP / DELETE / WHY.
+
+The five visible `.done.json` + `.ready` pairs in
+`Blink_Acceptance/ToMac` are explicitly stale Acceptance artifacts and must not
+be applied or deleted before the Acceptance importer/cleanup audit:
+
+    20260913023352-385630113
+    20260913213223-646956164
+    20260913213317-748777692
+    20260913213646-153651294
+    20260913214022-944321537
 
 ## Mac library snapshot
 
