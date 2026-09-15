@@ -245,6 +245,7 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
 - Integer Blinker validation implemented and programmatically verified
 - Fractional Blinker `1.5` physically rejected on iPhone with no new Acceptance
   payload or `.ready`
+- Documentation/contract checkpoint committed and pushed as `bef8fb5`
 
 ### CURRENT
 

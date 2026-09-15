@@ -256,6 +256,20 @@ candidate-only differential failure; Gate A/B and iCloud are no longer valid
 general explanations. The candidate remains frozen while its reachable
 Gate-B-to-save path is compared against the untouched oracle.
 
+### Latest candidate transport retest — 2026-09-15
+
+After Mirroring was reconnected, the current Mac editor run of `Blink Create
+Stage2 WORK` reached the end of the reachable body (the visible tail contained
+the `READY` text and `Stop this shortcut`) and was stopped cleanly. The exact
+Acceptance `ToMac` mailbox still contained only the earlier oracle pair
+`20260915021144-935344778`; no new candidate `.event.json` or `.ready` was
+materialized. This is additional evidence for the candidate-only failure, but
+not iPhone physical acceptance: the Mac run is a separate execution boundary.
+No Shortcut object was deleted or replaced. The recovery rule is now explicit:
+if one more stable differential comparison does not expose a concrete
+reachable defect, restore this candidate from untouched `Blink Create Test`
+and reapply only the Acceptance path, Gate A, and Gate B deltas.
+
 ### Three-role simulator parity — 2026-09-15
 
 The simulator is intentionally limited to the three product roles, with
