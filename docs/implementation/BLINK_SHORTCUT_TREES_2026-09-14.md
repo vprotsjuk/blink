@@ -8,7 +8,7 @@ evidence separately from desired production contracts.
 
 | User-facing target | Purpose | ntfy input | Status |
 |---|---|---|---|
-| Blink | CREATE from direct launch or Share | CREATE payload | Gate A/B implemented + programmatically verified; iPhone sync and physical acceptance still required |
+| Blink | CREATE from direct launch or Share | CREATE payload | Gate A/B implemented; direct, one-image, and two-image iPhone paths verified; final representative text/Files acceptance remains |
 | Blink DONE | apply a DONE command on Mac | blink-done-v1|<event-id> | controlled Acceptance exists; canonical production acceptance still required |
 | Blink Files | open event attachments on iPhone | blink-files-v1|<package-id> | one-file Acceptance passed physically; multi-file open |
 
@@ -168,8 +168,8 @@ source remains 93 actions and untouched. A focused macOS `shortcuts run` smoke
 with two real file inputs returned `Running was cancelled`, which is the
 expected stop-path result, before Title/serialization could run. No CREATE
 payload was produced by that rejection path. This proves the candidate's Gate
-A behavior at the Shortcut/runtime level; physical iPhone Share Sheet/banner
-acceptance remains a later gate.
+A behavior at the Shortcut/runtime level; physical iPhone Share Sheet evidence
+is recorded below.
 
 Gate B was then applied only to this candidate as the next isolated change.
 
@@ -206,6 +206,13 @@ Physical iPhone evidence after Mac save/sync:
 
 This closes the Gate B runtime check; representative CREATE and physical
 Share Sheet multi-item acceptance remain open.
+
+One-image Share Sheet acceptance then exposed the expected iOS privacy gate:
+`Allow “Blink Create Stage2 WORK” to save 1 photo to a file?`. After choosing
+`Always Allow`, the run completed and produced the fresh pair
+`20260915160605-559478233.event.json` plus `.ready`, alongside
+`20260915160605-559478233.attachment.jpeg`. The JSON preserved the selected
+image's `original_filename` (`IMG_3618`) and the independent Blinker `0`.
 
 ### CREATE validation contract — preserve during cleanup
 
@@ -245,10 +252,9 @@ temporary Shortcut complexity:
 ### CREATE behavior matrix
 
 `Before` is the accepted `Blink Create Test` tree plus the Mac importer tests.
-`After` is the current 99-action `Blink Create Stage2 WORK` candidate after
-the isolated Gate A edit only. Gate B is not yet applied; physical iPhone rows
-still need dedicated
-acceptance evidence before product acceptance or production cutover.
+`After` is the current 104-action `Blink Create Stage2 WORK` candidate after
+Gates A+B. Physical iPhone evidence covers valid Blinker `0`/`17`, rejection
+of `1.5`/`-1`, two-image rejection, and one-image acceptance.
 
 ### iPhone sync checkpoint — 2026-09-15
 
@@ -397,8 +403,8 @@ boundary over an iCloud sync backlog`.
 | Blinker decimal | rejected | transport rejects; phone UI gate | iPhone 1.5 returned without fresh pair |
 | direct launch, no attachment | accepted | physically accepted | unchanged |
 | Share one PDF | accepted | physically accepted / parser green | unchanged |
-| Share one image | accepted | physically accepted / parser green | unchanged |
-| Share more than one item | rejected clearly | source used `First Item`; no explicit rejection | candidate rejects via Count > 1 → alert → Stop; macOS two-file smoke cancelled as expected |
+| Share one image | accepted | parser green; physical pair verified | fresh event + attachment + ready pair verified |
+| Share more than one item | rejected clearly | source used `First Item`; no explicit rejection | macOS and iPhone Photos paths show alert → Stop; no payload |
 | special characters/newlines | survive serialization | parser green | unchanged |
 | explicit-offset Date/Time | preserved | parser green | unchanged |
 | native transport ID | exact 14 digits + 9 random digits | tree/parser green | unchanged |
