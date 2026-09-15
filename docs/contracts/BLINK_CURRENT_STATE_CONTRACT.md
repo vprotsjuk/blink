@@ -102,7 +102,9 @@ fractions, letters, negatives, and malformed text rather than coercing them.
 
 Files one-file Acceptance passed physically. CREATE Gate A (Share `>1`) is
 implemented in the current 99-action candidate and verified in the saved Mac
-tree. Gate B (integer Blinker) remains the next isolated physical edit; the
+tree. Gate B (integer Blinker) is now present in the candidate as native
+Round-to-Integer plus exact equality and an explicit Stop branch; physical
+runtime acceptance remains open. The
 untouched source still provides the rollback/oracle. Full CREATE product
 Acceptance still requires the representative direct, single-attachment,
 multi-item, and text-preservation cases. DONE needs final clean-tree verification and

@@ -162,7 +162,7 @@ a time. The candidate now begins its input handling with:
    `Get First Item` behavior for the single-item case.
 
 The Mac editor was saved and the candidate was re-opened from the library as
-99 actions. The visible order confirms the rejection actions are inside the
+99 actions at that checkpoint. The visible order confirms the rejection actions are inside the
 new true branch, before the original single-attachment branch; the accepted
 source remains 93 actions and untouched. A focused macOS `shortcuts run` smoke
 with two real file inputs returned `Running was cancelled`, which is the
@@ -171,21 +171,23 @@ payload was produced by that rejection path. This proves the candidate's Gate
 A behavior at the Shortcut/runtime level; physical iPhone Share Sheet/banner
 acceptance remains a later gate.
 
-Gate B is intentionally not present yet. It remains the next isolated change
-after this Gate A save/sync checkpoint.
+Gate B was then applied only to this candidate as the next isolated change.
 
-### CREATE Gate B — Blinker integer rejection (not yet applied)
+### CREATE Gate B — Blinker integer rejection
 
-The old regex branch has not been changed in the current candidate. The next
-isolated edit will replace it only in `Blink Create Stage2 WORK` with native
-numeric validation immediately after the Blinker input assignment:
+The candidate now uses native numeric validation immediately after the Blinker
+input assignment. The untouched source was not changed. The saved candidate
+contains 104 actions and the new sequence is:
 
 1. `Round BlinkerMinutesBefore to Integer`.
-2. `If All are true`, requiring `Rounded Number is BlinkerMinutesBefore` and
-   `BlinkerMinutesBefore is greater than or equal to 0`.
+2. `If Rounded Number is BlinkerMinutesBefore`.
 3. `Otherwise` -> `Stop this shortcut`.
 
-This is the planned Gate B shape: it must reject fractions without
+The pre-existing non-negative gate remains in the surrounding Blinker path, so
+the combined behavior is integer equality plus `>= 0` without Number -> Text ->
+regex conversion.
+
+This is the implemented Gate B shape: it must reject fractions without
 locale-sensitive Number -> Text -> regex conversion and preserve valid `0` and
 positive integers. No accepted Reminder, Date/Time, serialization, or
 `.ready` behavior may be removed.
@@ -375,9 +377,9 @@ boundary over an iCloud sync backlog`.
 | Reminder `17.5` | rejected | rejected | unchanged |
 | Reminder `abc` | rejected | rejected | unchanged |
 | Reminder mixed symbols/text | rejected | rejected | unchanged |
-| Blinker valid integer | accepted | accepted by integer contract/parser | unchanged; Gate B pending |
+| Blinker valid integer | accepted | accepted by integer contract/parser | native Round equality; physical acceptance pending |
 | Blinker letters | rejected | rejected by transport/parser; phone UI gate | Ask for Number/regex rejection; no coercion |
-| Blinker decimal | rejected | transport rejects; phone UI gate | current source behavior retained; native Gate B pending |
+| Blinker decimal | rejected | transport rejects; phone UI gate | native Round equality → Stop; physical acceptance pending |
 | direct launch, no attachment | accepted | physically accepted | unchanged |
 | Share one PDF | accepted | physically accepted / parser green | unchanged |
 | Share one image | accepted | physically accepted / parser green | unchanged |

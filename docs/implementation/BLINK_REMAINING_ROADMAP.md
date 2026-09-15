@@ -147,15 +147,16 @@ Mark diagnostic and candidate chronology as historical. Keep the plan at
 - Verify transport IDs have exactly nine random digits and are never event IDs.
 - Verify deterministic `__01__`, `__02__` attachment ordering and safe original
   basenames.
-- CREATE Gate A is implemented in the active 99-action candidate and verified
+- CREATE Gate A is implemented in the active candidate and verified
   after Mac save/re-open: reject Share `Count > 1` before `First Item`.
-  Gate B is the next isolated edit; do not claim it is present until the
-  native integer validation is physically visible in the candidate tree.
+  Gate B is now physically present in the active candidate: native Round-to-
+  Integer followed by exact equality and an explicit Stop branch. It still
+  requires physical runtime acceptance on the phone.
 
 ### Stage 2 — synchronize and physically accept frozen candidates
 
 The current candidates are frozen for acceptance: `Blink Create Stage2 WORK`
-(99 actions, Gate A only), `Blink Files Stage2 VIEW TEST` (14 actions), and the accepted
+(104 actions, Gates A+B), `Blink Files Stage2 VIEW TEST` (14 actions), and the accepted
 DONE source/candidate. Verify the CREATE tree/body on iPhone after iCloud sync,
 then physically test direct CREATE, one shared attachment, Share `>1` rejection,
 fractional Blinker rejection, representative text preservation, DONE, the
@@ -266,7 +267,8 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   Differential debugging is limited to the candidate's reachable path.
 - CREATE candidate restored from untouched `Blink Create Test` in-place; source
   remains 93 actions and untouched. Gate A is now reapplied and saved in the
-  candidate at 99 actions. Gate B must be applied next, followed by save/sync
+  candidate at 104 actions. Gate B is applied and must now be physically
+  save/sync-verified
   verification.
 - iCloud sync/tree verification of the frozen CREATE candidate
 - Remaining physical CREATE acceptance: fresh direct valid CREATE correlated
