@@ -47,8 +47,25 @@ with two files, and its derived view contains only `485 Notice.jpeg` and
 The notification was sent to the existing Acceptance subscription with the
 target `Blink Files Stage2 WORK`. iPhone Mirroring displayed the notification
 and accepted the tap, but opened the Shortcuts library without running the
-shortcut/chooser. This is a Mirroring-vs-physical behavior difference, so
-multi-file physical Acceptance remains OPEN and requires one physical tap.
+shortcut/chooser. A subsequent physical tap reproduced the boundary
+definitively: Shortcuts opened `Blink Files Stage2 WORK`, it finished with a
+checkmark, and no chooser or Quick Look appeared. Thus the failure is inside
+the running tree after launch, not the ntfy URL or package staging.
+
+The original 47-action tree remains preserved and was restored to its original
+flat `Blink_Acceptance/ToPhone` path. An isolated Mac-only experiment,
+`Blink Files Stage2 VIEW TEST`, was created from a duplicate. It uses the
+dynamic path `Blink_Acceptance/ToPhoneView/<PackageID>/`, skips the flat
+package marker checks for the view-only test, and filters view contents by
+file extension. A separate two-action `Blink Files VIEW INVOKE TEST` helper
+was created to pass the validated package marker into that copy locally;
+The helper is visible in the iPhone library. iPhone Edit view confirmed the
+dynamic `ToPhoneView/` + blue `PackageID` + `/` path and
+`Get contents of File` → `Folder Contents`. Running the helper reached the
+iOS privacy prompt that asks to allow one shortcut to run another; the prompt
+is intentionally left for the owner to confirm. Neither experiment is a
+production target or a replacement for the preserved original until an
+end-to-end physical run proves the chooser.
 
 ## CREATE tree contract
 
@@ -152,7 +169,7 @@ be applied or deleted before the Acceptance importer/cleanup audit:
 
 ## Mac library snapshot
 
-The Shortcuts library currently contains 17 entries. Blink-related entries
+The Shortcuts library currently contains 20 entries. Blink-related entries
 observed on 2026-09-14 are:
 
 | Name | Classification |
@@ -166,6 +183,8 @@ observed on 2026-09-14 are:
 | Blink DONE Test BACKUP Stage2 | fallback backup |
 | Blink Files | historical/canonical fallback; preserve |
 | Blink Files Stage2 WORK | work candidate |
+| Blink Files Stage2 VIEW TEST | isolated dynamic-view experiment; preserve for rollback/evidence |
+| Blink Files VIEW INVOKE TEST | isolated local-input helper; test only |
 | Blink Files BACKUP Stage2 | fallback backup |
 | Blink Files Runtime Diagnostic — DIRECT-NAME-ACCEPTANCE-20260913-A \| GUI-SAVED | historical diagnostic |
 | Blink Test | test |

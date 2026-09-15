@@ -35,8 +35,10 @@ Done:
 - The recurring `{"detail":"Bad Request"}` messages were Codex
   connection/tool failures, not Shortcuts or iCloud evidence.
 - The working Mac library still contains historical/test clutter and no clean
-  canonical production trio. Do not rename/delete these objects until the
-  production replacement passes.
+  canonical production trio. The original Files Stage2 tree is retained, and
+  the new VIEW TEST / VIEW INVOKE TEST objects are diagnostic only. Do not
+  rename/delete or promote these objects until the production replacement
+  passes.
 - A new personal Today Morning Briefing WIP is present and its six focused
   tests pass. It is disabled by default and is not yet exposed in SwiftUI.
 - The Mac editor timing correction is implemented: existing non-frozen events
@@ -44,8 +46,13 @@ Done:
   same-ID persistence and Attention-start regression tests pass.
 - The multi-file Acceptance package is now staged and validated with two
   original filenames. The mirrored notification tap opened Shortcuts but did
-  not reproduce the shortcut chooser; physical multi-file Acceptance remains
-  open and the five `Blink_Acceptance/ToMac` DONE pairs are explicitly stale.
+  not reproduce the shortcut chooser. A physical tap then reproduced the
+  failure: `Blink Files Stage2 WORK` opened, finished with a checkmark, and
+  showed no chooser or Quick Look. The original 47-action tree is preserved
+  and restored to `Blink_Acceptance/ToPhone`; an isolated dynamic
+  `ToPhoneView/<PackageID>` experiment and a local-input helper exist for
+  rollback-safe diagnosis only. Physical multi-file Acceptance remains open,
+  and the five `Blink_Acceptance/ToMac` DONE pairs are explicitly stale.
 
 Relevant implementation areas:
 
@@ -112,7 +119,13 @@ Not complete:
   `Get contents of File`, while the intended contract says folder contents.
   Before production rebuild, inspect the complete phone body and preserve the
   physically proven behavior; do not infer from a truncated AX label.
-- The current Shortcuts library has 17 entries, mostly historical candidates;
+- The physical Stage2 reproduction now closes the earlier ambiguity: the
+  shortcut itself reaches a checkmark but produces no chooser. The dynamic
+  view experiment is not yet accepted. Its complete dynamic-path segment is
+  visible in iPhone Edit; the local input-bearing helper reached the iOS
+  privacy prompt for running another shortcut, which is intentionally waiting
+  for owner confirmation before the chooser test.
+- The current Shortcuts library has 20 entries, mostly historical candidates;
   production cleanup needs a fresh inventory before any deletion.
 - The personal briefing config path/UI is not yet finalized. Keep it disabled
   until a persistent user-facing control exists and its tests pass.
@@ -128,13 +141,17 @@ Not complete:
    time safety and focused Swift tests. Keep default disabled.
 3. Update README/current contract/roadmap and this handoff to describe the
    briefing only as implemented-but-disabled until UI acceptance is complete.
-4. Rebuild/verify clean Acceptance trees for CREATE, DONE, and Files, using
-   build markers and the permanent GUI-touch sync gate. Do not ask the user to
-   tap anything until a complete phone Edit-tree is confirmed.
-5. Perform the representative physical acceptance matrix, then explicit
-   Acceptance → Production path/name/URL cutover and Production smoke test.
-6. Only after production passes, perform the KEEP/DELETE/WHY cleanup inventory
-   and safe cleanup; connect and test the RGB lamp last.
+4. Finish the rollback-safe Files diagnosis: verify the complete iPhone Edit
+  tree for VIEW TEST, run the input-bearing helper on iPhone, and record
+  whether the two original basenames reach the chooser. Do not promote the
+  experiment or alter the preserved Stage2 tree on a checkmark alone.
+5. Rebuild/verify clean Acceptance trees for CREATE, DONE, and Files, using
+  build markers and the permanent GUI-touch sync gate. Do not ask the user to
+  tap anything until a complete phone Edit-tree is confirmed.
+6. Perform the representative physical acceptance matrix, then explicit
+  Acceptance → Production path/name/URL cutover and Production smoke test.
+7. Only after production passes, perform the KEEP/DELETE/WHY cleanup inventory
+  and safe cleanup; connect and test the RGB lamp last.
 
 ## Files touched (paths)
 
