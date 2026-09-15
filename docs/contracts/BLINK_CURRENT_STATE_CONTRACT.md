@@ -148,14 +148,15 @@ models. Trace entries in the simulator name the corresponding physical
 Shortcut action groups; Apple-only delivery and presentation remain physical
 gates.
 
-## Open question — same-ID notification freshness
+## Open question — same-ID notification freshness (must resolve before Production)
 
-An event edited without changing its Event ID should conceptually keep that ID
-while future pushes use its current title, date/time, reminders, and
-attachments. It is not yet established whether already queued notification
-snapshots may be delivered after such an edit. Queue/scheduler changes are
-deferred until a separate investigation proves the failure mode and defines
-the required cancellation or re-resolution semantics.
+An event edited without changing its Event ID should conceptually keep that ID.
+The required behavior after an edit is intentionally unresolved: if the Mac
+was asleep, already queued ntfy messages from the old snapshot may perhaps
+continue alongside new pushes for the same Event ID, or future delivery may be
+required to resolve only the current canonical state. This must be investigated
+and explicitly decided before Production cutover. Until then, do not change
+the scheduler or queue; record evidence and define a regression matrix first.
 
 The historical `20260914222838-949257520` payload (Unicode title `Еуые`,
 Blinker `17`) is not evidence for the later user-labelled `Test 17` run; no
@@ -171,7 +172,10 @@ Name synchronization alone is insufficient. Codex {"detail":"Bad Request"}
 messages were connection/tool failures, not Shortcuts/file errors.
 
 Acceptance requires direct CREATE, Share CREATE, DONE, one/multiple-file Files,
-and one event with both independent actions. Production cutover must explicitly
+and one event with both independent actions. The final physical sequence is
+CREATE accepted → DONE accepted → Files accepted → Combined accepted → gray
+Mac `Start blinking` fixed/live-verified → same-ID freshness investigated and
+decided → Production cutover. Production cutover must explicitly
 migrate ToMac/ToPhone/ToPhoneView, replace candidate names with Blink, Blink
 DONE, Blink Files, perform GUI touch and iPhone tree verification, smoke test,
 then enable production controls.

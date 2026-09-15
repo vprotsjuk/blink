@@ -1,7 +1,7 @@
 # Blink — authoritative roadmap
 
 **Snapshot:** 2026-09-15
-**Status:** The three product roles are now modeled by a verified non-runtime simulator harness. The untouched CREATE oracle transport has physically produced a fresh payload; candidate differential debugging remains open. Files multi-file Acceptance and the gray Mac `Start blinking` regression remain open. This checkpoint must be committed and pushed before the next physical acceptance block.
+**Status:** The three product roles are modeled by a verified non-runtime simulator harness, now used as a development/test instrument rather than a separate project. The untouched CREATE oracle transport has physically produced a fresh payload; candidate differential debugging remains open. Files multi-file Acceptance and the gray Mac `Start blinking` regression remain open. Same-ID notification freshness is recorded as an unresolved question and is not being changed yet.
 **Authority:** this roadmap, [`BLINK_CURRENT_STATE_CONTRACT.md`](../contracts/BLINK_CURRENT_STATE_CONTRACT.md), and [`BLINK_SHORTCUT_TREES_2026-09-14.md`](BLINK_SHORTCUT_TREES_2026-09-14.md) describe current state. Older reports preserve history only.
 
 ## Product target
@@ -44,7 +44,10 @@ when the active implementation chunk is limited to Files:
   documentation. Remove obsolete TEST/WORK/Candidate/Diagnostic/Invoke/
   Nested Invoke/Acceptance/BACKUP/proof-only objects only after replacements
   pass; preserve source, useful tests, canonical user data, runtime state, and
-  authoritative documentation.
+  authoritative documentation. After successful Production smoke, the user
+  library should contain exactly `Blink`, `Blink DONE`, and `Blink Files` plus
+  unrelated/system Shortcuts; rollback history belongs in Git/docs/export
+  evidence, not in permanent Test/Stage2/WORK/BACKUP objects.
 - **Contract hygiene:** keep one authoritative answer for architecture,
   current state, event/timing, CREATE, DONE, Files, final trees, production
   paths/flags, roadmap, and acceptance state. Do not multiply competing final
@@ -159,9 +162,29 @@ DONE source/candidate. Verify the CREATE tree/body on iPhone after iCloud sync,
 then physically test direct CREATE, one shared attachment, Share `>1` rejection,
 fractional Blinker rejection, representative text preservation, DONE, the
 prepared JPEG+PDF Files package, and one event with both independent buttons.
-Do not create a new generation or remove fallbacks during this stage.
+Do not create a new generation or remove fallbacks during this stage. If the
+CREATE candidate has no quickly identifiable reachable defect compared with
+the untouched oracle, restore it from that known-good baseline and apply only
+the required Acceptance path, Gate A, and Gate B deltas.
 
-### Stage 3 — Acceptance → Production cutover
+### Stage 3 — Combined acceptance and Mac editor gate
+
+Close representative CREATE, DONE, and Files acceptance, then run the
+combined event case with independent Done and Files actions. Separately fix
+and live-verify the gray Mac `Start blinking` case: an elapsed old `1 day
+before` value must be replaceable by a future `60 min before`, preserving the
+same Event ID and creating no duplicate.
+
+### Stage 4 — Same-ID freshness investigation
+
+Before Production, investigate and document what happens when an event is
+edited in place while the Mac may sleep: whether already queued ntfy messages
+from the old snapshot may legitimately continue alongside new pushes for the
+same Event ID, or whether future delivery must resolve only the current
+canonical state. This is deliberately unresolved. Do not change the scheduler
+or queue until the semantic decision is made and evidenced.
+
+### Stage 5 — Acceptance → Production cutover
 
 Do not merely rename candidates. Explicitly migrate and verify `ToMac`, `ToPhone`
 and `ToPhoneView` paths, replace candidate names/URLs with `Blink`, `Blink DONE`
@@ -169,14 +192,14 @@ and `Blink Files`, GUI-save-touch, confirm complete iPhone trees, and run a
 small Production smoke test. Enable production controls only after all three
 canonical trees pass.
 
-### Stage 4 — final phone UX
+### Stage 6 — final phone UX
 
 Place only `Blink` on the Home Screen. Keep `Blink DONE` and `Blink Files` as
 notification/internal actions. The intermediate Shortcuts screen is accepted
 for now because the proven private `shortcuts://run-shortcut` path opens it;
 removing it is a later optional optimization.
 
-### Stage 5 — Today Morning Briefing
+### Stage 7 — Today Morning Briefing
 
 Add an optional daily briefing for every applicable Today event, with
 importance, title, optional description, scheduled date/time, local-time
@@ -184,7 +207,7 @@ rules, dedupe, empty-day behavior, wake handling, and Weather/Astronomy
 coexistence. It must use the existing watcher sender and have a persistent
 enable/disable control. Do not add a second scheduler or sender.
 
-### Stage 6 — cleanup
+### Stage 8 — cleanup
 
 Before deletion inventory Shortcuts, iCloud roots, and project/runtime paths as
 `KEEP / DELETE / WHY`. Remove obsolete tests, backups, diagnostics, and
@@ -192,12 +215,13 @@ acceptance clutter only after Production replacement passes. Never remove user
 attachments, source, tests, runtime state, authoritative docs, or the only
 working fallback prematurely.
 
-### Stage 7 — RGB lamp, last
+### Stage 9 — RGB lamp, last
 
-Identify the lamp's exact model, power, and control interface; add a separate
-fail-safe adapter; connect it only to accepted Blink/Attention state; run a
-separate hardware smoke test and document rollback. It must not become a second
-sender, scheduler, or source of truth.
+The lamp is already identified as a WiZ Mobile Portable Light 400 lm. Verify
+its local Wi-Fi/LAN control interface and add a separate fail-safe adapter for
+`green/yellow/red/off`; connect it only to accepted Blink/Attention state, run
+a separate hardware smoke test, and document rollback. It must not become a
+second sender, scheduler, or source of truth.
 
 ## Verification gate
 
@@ -237,27 +261,27 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   exact Acceptance/ToMac mailbox. The remaining failure is candidate-only:
   `Blink Create Stage2 WORK` returns to the library without a fresh pair.
   Differential debugging is limited to the candidate's reachable path.
-- iCloud sync/tree verification of the frozen 100-action CREATE candidate
+- Differential-debug or restore the frozen CREATE candidate against untouched
+  `Blink Create Test`; do not create a fourth candidate.
+- iCloud sync/tree verification of the frozen CREATE candidate
 - Remaining physical CREATE acceptance: fresh direct valid CREATE correlated
   to a new payload, one attachment,
   Share `>1` rejection, and representative text preservation
 - Files live-banner JPEG+PDF multi-file Acceptance
+- Combined Done + Files acceptance
 - Existing-event Blinker UI regression: stale elapsed `1 day before` must be
   replaceable by a future `60 min before` in the live Mac editor
-- Git checkpoint/push for the verified simulator/profile harness and current
-  contracts
+- Same-ID freshness investigation and explicit semantic decision before
+  Production (no implementation change until decided)
+- Coherent Git commit/push after each accepted block; mandatory checkpoints
+  before Production cutover and before destructive cleanup
 
 ### REMAINING
 
-- **Open question — same Event ID and queued push snapshots:** when an event is
-  edited in place, future notifications should represent its current title,
-  date/time, reminders, and attachments. Investigate whether the scheduler or
-  notification queue can still deliver a snapshot prepared before the edit.
-  Do not change queue or scheduler behavior in the current CREATE convergence
-  block; this requires a separate evidence-led design and regression matrix.
-
 - Final CREATE/DONE/Files acceptance as needed
 - Combined Done + Files acceptance
+- Same-ID freshness investigation/decision before Production; implementation is
+  intentionally deferred until the semantics are decided
 - Acceptance → Production cutover
 - Production smoke test
 - One-icon Blink phone UX
