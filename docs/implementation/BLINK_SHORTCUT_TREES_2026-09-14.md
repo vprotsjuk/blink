@@ -162,7 +162,7 @@ a time. The candidate now begins its input handling with:
    `Get First Item` behavior for the single-item case.
 
 The Mac editor was saved and the candidate was re-opened from the library as
-98 actions. The visible order confirms the rejection actions are inside the
+99 actions. The visible order confirms the rejection actions are inside the
 new true branch, before the original single-attachment branch; the accepted
 source remains 93 actions and untouched. A focused macOS `shortcuts run` smoke
 with two real file inputs returned `Running was cancelled`, which is the
@@ -171,24 +171,24 @@ payload was produced by that rejection path. This proves the candidate's Gate
 A behavior at the Shortcut/runtime level; physical iPhone Share Sheet/banner
 acceptance remains a later gate.
 
-Gate B remained isolated from Gate A and was applied only after the Gate A
-check.
+Gate B is intentionally not present yet. It remains the next isolated change
+after this Gate A save/sync checkpoint.
 
-### CREATE Gate B — Blinker integer rejection
+### CREATE Gate B — Blinker integer rejection (not yet applied)
 
-Gate B was then applied as a separate behavioral change to the same candidate.
-The old regex branch was removed only here and replaced with native numeric
-validation immediately after the Blinker input assignment:
+The old regex branch has not been changed in the current candidate. The next
+isolated edit will replace it only in `Blink Create Stage2 WORK` with native
+numeric validation immediately after the Blinker input assignment:
 
 1. `Round BlinkerMinutesBefore to Integer`.
 2. `If All are true`, requiring `Rounded Number is BlinkerMinutesBefore` and
    `BlinkerMinutesBefore is greater than or equal to 0`.
 3. `Otherwise` -> `Stop this shortcut`.
 
-This rejects fractions without locale-sensitive Number -> Text -> regex
-conversion and preserves valid `0` and positive integers. The Mac library now
-reports 100 actions for the candidate. No accepted Reminder, Date/Time,
-serialization, or `.ready` behavior was intentionally removed.
+This is the planned Gate B shape: it must reject fractions without
+locale-sensitive Number -> Text -> regex conversion and preserve valid `0` and
+positive integers. No accepted Reminder, Date/Time, serialization, or
+`.ready` behavior may be removed.
 
 ### CREATE validation contract — preserve during cleanup
 
@@ -228,9 +228,9 @@ temporary Shortcut complexity:
 ### CREATE behavior matrix
 
 `Before` is the accepted `Blink Create Test` tree plus the Mac importer tests.
-`After` is the current 100-action `Blink Create Stage2 WORK` candidate
-after the isolated Gate A and Gate B edits. The candidate is implemented and
-programmatically verified; physical iPhone rows still need dedicated
+`After` is the current 99-action `Blink Create Stage2 WORK` candidate after
+the isolated Gate A edit only. Gate B is not yet applied; physical iPhone rows
+still need dedicated
 acceptance evidence before product acceptance or production cutover.
 
 ### iPhone sync checkpoint — 2026-09-15
@@ -298,22 +298,21 @@ These are parity checks of logical/transport output only. They do not promote
 the simulator over physical Apple acceptance: Share Sheet delivery, iCloud
 materialization, ntfy deep links, and Quick Look remain real-device gates.
 
-The candidate was opened in iPhone Mirroring under the same name. The live
-iPhone editor visibly showed Gate A in the synced body: `Count Items in
-Shortcut Input` → `If Count is greater than 1` → alert `Blink accepts at most
-one attachment.` → `Stop this shortcut`, before the original `First Item`
-branch. This proves sync of Gate A, not product Acceptance. Mirroring lost its
-connection while scrolling toward the Blinker block. The current 100-action
-candidate is now visible in the iPhone library after the latest Mac save-touch;
-Mac-side Gate B tree evidence is verified, while physical CREATE cases remain
-open.
+Historical checkpoint, superseded by the in-place restoration from the
+untouched oracle on 2026-09-15: the candidate was opened in iPhone Mirroring
+under the same name and the live editor visibly showed Gate A in a previous
+100-action body. That proved sync of that prior body, not product Acceptance.
+The restored current candidate is 99 actions with Gate A only; Gate B has not
+been reapplied.
 
-Gate B was then physically exercised through the live CREATE flow: after valid
+In the superseded pre-restoration 100-action body, Gate B was physically
+exercised through the live CREATE flow: after valid
 Title, empty optional Description, default Date/Time, green Importance, and
 valid Reminder `30`, the Blinker field received `1.5`. Pressing `Done` ended
 the Shortcut and returned to the Shortcuts library without continuing CREATE.
 No new file appeared in the Acceptance `ToMac` mailbox, and no `.ready` was
-created. This is physical rejection evidence for fractional Blinker input.
+created. This remains historical evidence for the old candidate body and is
+not evidence that native Gate B is present in the current 99-action candidate.
 
 A subsequent non-fractional run was initially inconclusive while iCloud state
 was being inspected. The mailbox contains an older
@@ -322,7 +321,7 @@ Title `Еуые`, explicit `-07:00` start offset, Reminder `[0]`, Blinker `17`,
 and the required 9-digit transport suffix. The user later identified that
 payload as an older run, not the later `Test 17` run; the later run produced no
 new file in `ToMac`. Therefore this payload is retained as historical evidence
-only, not as physical acceptance of the current 100-action candidate. A fresh
+only, not as physical acceptance of the current candidate. A fresh
 valid run must be correlated by timestamp and title before acceptance.
 
 After the Mac save-touch at approximately 23:00, a fresh controlled iPhone
@@ -330,7 +329,9 @@ run at approximately 23:05 used Title `17`, empty Description, green
 Attention, Reminder `0`, and Blinker `0`. The Shortcut returned to the library,
 but `ToMac` still contained no new `.event.json`/`.ready` pair. This confirms
 that the valid direct path remains unresolved despite the Mac tree being saved
-at 100 actions; do not advance to attachment or Files acceptance yet.
+at the then-current 100-action body; do not advance to attachment or Files
+acceptance yet. The candidate was subsequently restored, so Gate B must be
+reapplied and reverified before that gate can be considered closed.
 
 ### Differential CREATE checkpoint — 2026-09-15 12:10–12:12
 
@@ -374,9 +375,9 @@ boundary over an iCloud sync backlog`.
 | Reminder `17.5` | rejected | rejected | unchanged |
 | Reminder `abc` | rejected | rejected | unchanged |
 | Reminder mixed symbols/text | rejected | rejected | unchanged |
-| Blinker valid integer | accepted | accepted by integer contract/parser | regex matches; original `>= 0` path remains |
+| Blinker valid integer | accepted | accepted by integer contract/parser | unchanged; Gate B pending |
 | Blinker letters | rejected | rejected by transport/parser; phone UI gate | Ask for Number/regex rejection; no coercion |
-| Blinker decimal | rejected | transport rejects; phone UI gate | full-match `^\d+$` rejects before `>= 0` |
+| Blinker decimal | rejected | transport rejects; phone UI gate | current source behavior retained; native Gate B pending |
 | direct launch, no attachment | accepted | physically accepted | unchanged |
 | Share one PDF | accepted | physically accepted / parser green | unchanged |
 | Share one image | accepted | physically accepted / parser green | unchanged |

@@ -147,17 +147,15 @@ Mark diagnostic and candidate chronology as historical. Keep the plan at
 - Verify transport IDs have exactly nine random digits and are never event IDs.
 - Verify deterministic `__01__`, `__02__` attachment ordering and safe original
   basenames.
-- CREATE Gate A and Gate B are implemented in the active 100-action candidate
-  and programmatically verified: reject Share `Count > 1` before `First Item`,
-  and require a full integer Blinker match before the existing `>= 0` check.
-  They are not PRODUCT ACCEPTED until the candidate is proven synced on iPhone
-  and representative physical cases pass. Freeze the tree at 100 actions; do
-  not redesign or optimize it before that evidence.
+- CREATE Gate A is implemented in the active 99-action candidate and verified
+  after Mac save/re-open: reject Share `Count > 1` before `First Item`.
+  Gate B is the next isolated edit; do not claim it is present until the
+  native integer validation is physically visible in the candidate tree.
 
 ### Stage 2 — synchronize and physically accept frozen candidates
 
 The current candidates are frozen for acceptance: `Blink Create Stage2 WORK`
-(100 actions), `Blink Files Stage2 VIEW TEST` (14 actions), and the accepted
+(99 actions, Gate A only), `Blink Files Stage2 VIEW TEST` (14 actions), and the accepted
 DONE source/candidate. Verify the CREATE tree/body on iPhone after iCloud sync,
 then physically test direct CREATE, one shared attachment, Share `>1` rejection,
 fractional Blinker rejection, representative text preservation, DONE, the
@@ -266,9 +264,10 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   exact Acceptance/ToMac mailbox. The remaining failure is candidate-only:
   `Blink Create Stage2 WORK` returns to the library without a fresh pair.
   Differential debugging is limited to the candidate's reachable path.
-- CREATE candidate restored from untouched `Blink Create Test` in-place; both
-  currently show `93 actions`. No fourth candidate was created. Gate A and Gate
-  B must now be reapplied one at a time, followed by save/sync verification.
+- CREATE candidate restored from untouched `Blink Create Test` in-place; source
+  remains 93 actions and untouched. Gate A is now reapplied and saved in the
+  candidate at 99 actions. Gate B must be applied next, followed by save/sync
+  verification.
 - iCloud sync/tree verification of the frozen CREATE candidate
 - Remaining physical CREATE acceptance: fresh direct valid CREATE correlated
   to a new payload, one attachment,

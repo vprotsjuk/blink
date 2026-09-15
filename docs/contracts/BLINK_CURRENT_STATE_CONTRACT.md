@@ -100,10 +100,10 @@ shortcut`; the single-item and direct-launch paths remain unchanged. The
 Blinker contract is still independently gated: its Shortcut input must reject
 fractions, letters, negatives, and malformed text rather than coercing them.
 
-Files one-file Acceptance passed physically. CREATE Gate A (Share `>1`) and
-Gate B (integer Blinker) are implemented and programmatically verified. Gate
-B's fractional rejection has now also been physically exercised on iPhone
-(`1.5` stopped with no new payload or `.ready`), but full CREATE product
+Files one-file Acceptance passed physically. CREATE Gate A (Share `>1`) is
+implemented in the current 99-action candidate and verified in the saved Mac
+tree. Gate B (integer Blinker) remains the next isolated physical edit; the
+untouched source still provides the rollback/oracle. Full CREATE product
 Acceptance still requires the representative direct, single-attachment,
 multi-item, and text-preservation cases. DONE needs final clean-tree verification and
 representative physical Acceptance under its canonical name. The Mac editor
