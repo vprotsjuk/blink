@@ -270,6 +270,17 @@ if one more stable differential comparison does not expose a concrete
 reachable defect, restore this candidate from untouched `Blink Create Test`
 and reapply only the Acceptance path, Gate A, and Gate B deltas.
 
+### In-place candidate baseline restoration — 2026-09-15
+
+The recovery rule was executed without creating a Shortcut object: the
+existing `Blink Create Stage2 WORK` action body was replaced in-place from the
+untouched oracle copy. The Mac library now reports `93 actions` for both
+`Blink Create Test` and `Blink Create Stage2 WORK`, and the candidate's visible
+body matches the oracle, including the original `First Item` attachment branch
+and original Blinker path. Gate A and Gate B are intentionally not present in
+this restored baseline; they are to be reapplied as two isolated, recoverable
+changes with GUI save-touch and acceptance after each.
+
 ### Three-role simulator parity — 2026-09-15
 
 The simulator is intentionally limited to the three product roles, with

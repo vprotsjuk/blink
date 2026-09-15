@@ -266,8 +266,9 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   exact Acceptance/ToMac mailbox. The remaining failure is candidate-only:
   `Blink Create Stage2 WORK` returns to the library without a fresh pair.
   Differential debugging is limited to the candidate's reachable path.
-- Differential-debug or restore the frozen CREATE candidate against untouched
-  `Blink Create Test`; do not create a fourth candidate.
+- CREATE candidate restored from untouched `Blink Create Test` in-place; both
+  currently show `93 actions`. No fourth candidate was created. Gate A and Gate
+  B must now be reapplied one at a time, followed by save/sync verification.
 - iCloud sync/tree verification of the frozen CREATE candidate
 - Remaining physical CREATE acceptance: fresh direct valid CREATE correlated
   to a new payload, one attachment,
