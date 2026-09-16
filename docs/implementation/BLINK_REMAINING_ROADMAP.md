@@ -104,8 +104,9 @@ Blink Files
   -> Show Selected Item in Quick Look
 ```
 
-The canonical `Blink Files` tree now uses the same 14-action dynamic-path
-implementation as the verified Acceptance candidate. Its Mac save-touch is
+The canonical `Blink Files` tree now uses the existing flat-root package
+filtering implementation (`Blink_Acceptance/ToPhone`) with package-specific
+ready/manifest/prefix checks and chooser output. Its Mac save-touch is
 complete; iPhone body sync and representative JPEG+PDF physical acceptance
 remain required before cutover.
 

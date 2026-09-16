@@ -10,7 +10,7 @@ evidence separately from desired production contracts.
 |---|---|---|---|
 | Blink | CREATE from direct launch or Share | CREATE payload | Gate A/B implemented; direct, one-image, and two-image iPhone paths verified; final representative text/Files acceptance remains |
 | Blink DONE | apply a DONE command on Mac | blink-done-v1|<event-id> | controlled Acceptance exists; canonical production acceptance still required |
-| Blink Files | open event attachments on iPhone | blink-files-v1|<package-id> | canonical 14-action dynamic tree saved on Mac; iPhone sync + JPEG/PDF acceptance |
+| Blink Files | open event attachments on iPhone | blink-files-v1|<package-id> | canonical flat-root filtering tree saved on Mac; iPhone sync + JPEG/PDF acceptance |
 
 ## Proven Files tree
 
@@ -32,14 +32,17 @@ only original safe basenames, for example Appointment Schedule (1).pdf.
 Manifest, .ready, package IDs, technical prefixes, and unrelated packages are
 never copied into the view folder.
 
-On 2026-09-15 the canonical `Blink Files` Shortcut was repaired in place from
-the verified 14-action dynamic-path tree. The former canonical body had only
-four actions and read the historical `Blink_Feasibility/ToPhone` folder; that
-was the concrete reason a valid package action opened the stale single file
-`745 Windsor...`. The canonical Mac editor now shows 14 actions and the path
-`Blink_Acceptance/ToPhoneView/PackageID/`. The unchanged fallback remains
-available. iPhone body synchronization and the final two-file physical run
-are still open.
+On 2026-09-15 the canonical `Blink Files` Shortcut was repaired in place. The
+former canonical body had only four actions and read the historical
+`Blink_Feasibility/ToPhone` folder; that was the concrete reason a valid
+package action opened the stale single file `745 Windsor...`. The first repair
+used a 14-action dynamic path, but iPhone execution completed without a
+chooser, indicating that nested `ToPhoneView` was not a reliable iPhone
+boundary. The canonical body was therefore replaced with the existing
+flat-root package-filtering tree, retaining its ready/manifest/prefix checks
+and chooser branches. The Mac editor marker is now
+`FILES-CANONICAL-FLAT-20260916 | GUI-SAVED`. iPhone body synchronization and
+the final two-file physical run remain open.
 
 ## Live multi-file Acceptance checkpoint
 
