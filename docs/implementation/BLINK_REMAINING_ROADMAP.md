@@ -106,9 +106,11 @@ Blink Files
 
 The canonical `Blink Files` tree now uses the existing flat-root package
 filtering implementation (`Blink_Acceptance/ToPhone`) with package-specific
-ready/manifest/prefix checks and chooser output. Its Mac save-touch is
-complete; iPhone body sync and representative JPEG+PDF physical acceptance
-remain required before cutover.
+ready/manifest/prefix checks and chooser output. A concrete source-token defect
+was found in the iPhone editor (`Get file from PackageID` instead of
+`Get file from Shortcuts`); it was corrected on Mac and the complete corrected
+body is now visible on iPhone. Representative JPEG+PDF physical acceptance
+remains required before cutover.
 
 ## Permanent synchronization gate
 

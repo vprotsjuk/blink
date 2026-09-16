@@ -45,6 +45,16 @@ and chooser branches. The Mac editor marker is now
 actions, including the flat-root package filters and fail-closed count branch.
 iPhone body synchronization and the final two-file physical run remain open.
 
+On 2026-09-15 the iPhone editor exposed the concrete runtime defect in this
+tree: the `Get file` action's source token was `PackageID`, while its path was
+`Blink_Acceptance/ToPhone`. That is not the intended Shortcuts/iCloud source;
+the shortcut therefore reached its fail-closed `AttachmentCount = 0` stop and
+showed only a completion checkmark. The canonical Mac tree was corrected so
+the action now reads `Get file from Shortcuts at path
+Blink_Acceptance/ToPhone`, and the complete corrected body was verified in the
+iPhone editor. No filters, validation, package naming, or Quick Look actions
+were changed by this repair. A fresh physical two-file run is still required.
+
 ## Live multi-file Acceptance checkpoint
 
 On 2026-09-14 a new controlled package was generated from the personal event
