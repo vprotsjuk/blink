@@ -20,5 +20,12 @@
   <string>/Users/vitaliiprotsiuk/Desktop/Blink/watcher.launchd.err.log</string>
   <key>WorkingDirectory</key>
   <string>/Users/vitaliiprotsiuk/Desktop/Blink</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>BLINK_NTFY_FILES_ACTION_ENABLED</key>
+    <string>1</string>
+    <key>BLINK_TO_PHONE_ROOT</key>
+    <string>/Users/vitaliiprotsiuk/Library/Mobile Documents/iCloud~is~workflow~my~workflows/Documents/Blink_Acceptance/ToPhone</string>
+  </dict>
 </dict>
 </plist>
