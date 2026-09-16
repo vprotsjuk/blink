@@ -16,12 +16,20 @@ class FilesShortcutSimulatorTests(unittest.TestCase):
         self.assertTrue(result.accepted)
         self.assertEqual(result.selected, "Appointment Scheduled (1).pdf")
         self.assertEqual(result.trace, (
-            "Receive Shortcut Input",
-            "Validate PackageID",
-            "Dynamic path ToPhoneView/<PackageID>",
-            "Get Contents of Folder",
-            "Choose from List",
-            "Quick Look selected item",
+            "Receive Apps and 18 more from Nowhere (Continue if no input)",
+            "Get text from Shortcut Input",
+            "Comment (build marker)",
+            "Match blink-files-v1|<32-hex-package-id>",
+            "If match is empty -> Stop this shortcut",
+            "Split Text by |",
+            "Get Item at Index 2",
+            "Set PackageID",
+            "Get file from Shortcuts at Blink_Acceptance/ToPhoneView/<PackageID>/",
+            "Get contents of File",
+            "Set AllFiles to Folder Contents",
+            "Choose from AllFiles",
+            "Show Selected Item in Quick Look",
+            "Stop and output Quick Look",
         ))
 
     def test_single_file_view_is_still_chooser_backed(self):

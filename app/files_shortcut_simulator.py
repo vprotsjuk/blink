@@ -18,14 +18,27 @@ class FilesSimulation:
 
 
 def simulate_files(value: str, *, view_files: tuple[str, ...], selected: str | None = None) -> FilesSimulation:
-    trace = ["Receive Shortcut Input"]
+    trace = [
+        "Receive Apps and 18 more from Nowhere (Continue if no input)",
+        "Get text from Shortcut Input",
+        "Comment (build marker)",
+    ]
     prefix = "blink-files-v1|"
     if not isinstance(value, str) or not value.startswith(prefix):
         return FilesSimulation(False, ("input must be blink-files-v1|<package-id>",), None, (), None, tuple(trace))
     package_id = value[len(prefix):]
     if PACKAGE_RE.fullmatch(package_id) is None:
         return FilesSimulation(False, ("PackageID is malformed",), None, (), None, tuple(trace))
-    trace.extend(["Validate PackageID", "Dynamic path ToPhoneView/<PackageID>", "Get Contents of Folder"])
+    trace.extend([
+        "Match blink-files-v1|<32-hex-package-id>",
+        "If match is empty -> Stop this shortcut",
+        "Split Text by |",
+        "Get Item at Index 2",
+        "Set PackageID",
+        "Get file from Shortcuts at Blink_Acceptance/ToPhoneView/<PackageID>/",
+        "Get contents of File",
+        "Set AllFiles to Folder Contents",
+    ])
     visible = tuple(sorted(
         name for name in view_files
         if name not in {".ready"} and not name.endswith(".manifest.json")
@@ -33,9 +46,12 @@ def simulate_files(value: str, *, view_files: tuple[str, ...], selected: str | N
     ))
     if not visible:
         return FilesSimulation(False, ("package contains no viewable files",), None, (), None, tuple(trace))
-    trace.append("Choose from List")
+    trace.append("Choose from AllFiles")
     chosen = selected if selected is not None else (visible[0] if len(visible) == 1 else None)
     if chosen not in visible:
         return FilesSimulation(False, ("selected file is not in this package view",), None, visible, None, tuple(trace))
-    trace.append("Quick Look selected item")
+    trace.extend([
+        "Show Selected Item in Quick Look",
+        "Stop and output Quick Look",
+    ])
     return FilesSimulation(True, (), {"package_id": package_id, "selected": chosen}, visible, chosen, tuple(trace))
