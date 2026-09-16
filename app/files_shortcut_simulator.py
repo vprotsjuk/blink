@@ -17,6 +17,44 @@ class FilesSimulation:
     trace: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class GetFileBoundarySimulation:
+    accepted: bool
+    resolved_path: str
+    object_type: str | None
+    contents_type: str | None
+    choose_input: tuple[str, ...] | None
+
+
+def simulate_get_file_boundary(
+    *,
+    base_path: str,
+    package_id: str,
+    package_files: tuple[str, ...],
+    path_binding: str,
+) -> GetFileBoundarySimulation:
+    """Model the typed boundary before the Files chooser.
+
+    This deliberately separates path construction from the later chooser logic.
+    A Magic Variable and a literal full package path both resolve to a Folder;
+    an unresolved ``PackageID`` text token remains a non-existent path.
+    """
+    if path_binding == "literal-full-package-path":
+        resolved_path = f"{base_path}/{package_id}/"
+    elif path_binding == "magic-variable":
+        resolved_path = f"{base_path}/{package_id}/"
+    elif path_binding == "literal-packageid-token":
+        resolved_path = f"{base_path}/PackageID/"
+    else:
+        raise ValueError(f"unsupported path binding: {path_binding}")
+
+    expected_path = f"{base_path}/{package_id}/"
+    if resolved_path != expected_path:
+        return GetFileBoundarySimulation(False, resolved_path, None, None, None)
+    files = tuple(package_files)
+    return GetFileBoundarySimulation(True, resolved_path, "Folder", "List[File]", files)
+
+
 def simulate_files(value: str, *, view_files: tuple[str, ...], selected: str | None = None) -> FilesSimulation:
     trace = [
         "Receive Apps and 18 more from Nowhere (Continue if no input)",
