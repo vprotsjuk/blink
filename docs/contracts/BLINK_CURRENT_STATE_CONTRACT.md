@@ -162,6 +162,11 @@ package-prefix filter -> `Choose` -> `Quick Look`) and passes the two-file and
 fail-closed cases. This does not prove that iOS forbids Magic Variables in path
 fields. Apple documents Magic Variables in action text fields and parameters.
 
+An already-delivered ntfy action is immutable: if it was generated while the
+test override named a Candidate Shortcut, it continues to invoke that old
+name. Current generation with no explicit test override was verified to emit
+`name=Blink%20Files`; canonical acceptance must use a newly generated push.
+
 These simulators are the primary development/test harness for the three
 Shortcut roles, but are never runtime dependencies. The required sequence is:
 simulator/profile verification → minimal physical Shortcut edit →

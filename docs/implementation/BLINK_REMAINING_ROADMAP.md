@@ -8,8 +8,11 @@ Latest Files evidence: the preserved fixed-path/flat-root fallback opens both
 JPEG and PDF with the same ntfy package input. The canonical `Blink Files`
 body now uses the same flat-root filter path and has been GUI-saved with marker
 `FILES-CANONICAL-FLAT-20260916 | GUI-SAVED`; iPhone sync and one canonical
-live-banner run remain open. Do not treat the earlier dynamic-path failure as a
-blanket iOS restriction or proceed to Production cutover before acceptance.
+live-banner run remain open. The previously observed yellow Candidate chooser
+was from an already-delivered old push containing the test override; current
+default generation was verified to target `Blink Files`. Do not treat the
+earlier dynamic-path failure as a blanket iOS restriction or proceed to
+Production cutover before acceptance.
 
 ## Product target
 
