@@ -104,9 +104,10 @@ Blink Files
   -> Show Selected Item in Quick Look
 ```
 
-The last tree is the physically proven one-file path. The first two still
-require final clean-tree verification and representative physical acceptance
-under their canonical Production names before cutover.
+The canonical `Blink Files` tree now uses the same 14-action dynamic-path
+implementation as the verified Acceptance candidate. Its Mac save-touch is
+complete; iPhone body sync and representative JPEG+PDF physical acceptance
+remain required before cutover.
 
 ## Permanent synchronization gate
 
