@@ -41,8 +41,9 @@ chooser, indicating that nested `ToPhoneView` was not a reliable iPhone
 boundary. The canonical body was therefore replaced with the existing
 flat-root package-filtering tree, retaining its ready/manifest/prefix checks
 and chooser branches. The Mac editor marker is now
-`FILES-CANONICAL-FLAT-20260916 | GUI-SAVED`. iPhone body synchronization and
-the final two-file physical run remain open.
+`FILES-CANONICAL-FLAT-20260916 | GUI-SAVED`. The canonical body now has 47
+actions, including the flat-root package filters and fail-closed count branch.
+iPhone body synchronization and the final two-file physical run remain open.
 
 ## Live multi-file Acceptance checkpoint
 
