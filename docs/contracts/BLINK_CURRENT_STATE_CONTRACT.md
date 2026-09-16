@@ -1,6 +1,6 @@
 # Blink — current state contract
 
-**Snapshot:** 2026-09-14
+**Snapshot:** 2026-09-16
 **Authority:** this file and ROADMAP. Historical reports explain how a problem
 was found but never override this contract.
 
@@ -128,6 +128,35 @@ CREATE Shortcut: validation, variables, branches, v1 JSON, transport names,
 and output ordering. They intentionally do not model Apple-specific behavior
 such as Share Sheet delivery, iCloud sync, Mirroring, Quick Look, or ntfy.
 Those boundaries still require the real Shortcut and physical acceptance.
+
+## Simulator-first development contract
+
+For every future Shortcut change, use this order:
+
+```text
+official Apple Shortcuts instructions
+  -> complete physical tree and known-good oracle
+  -> role simulator/profile with failing tests first
+  -> focused + full automated verification
+  -> minimal reversible Mac edit and GUI save-touch
+  -> complete iPhone tree/build-marker verification
+  -> Apple-specific physical acceptance
+```
+
+The simulator must model the semantic blocks actually present in the physical
+Shortcut, including typed boundaries. For Files this is
+`Get File -> Folder/File -> Get Contents -> List[File] -> Choose -> Quick Look`,
+not merely a pre-resolved Python list. The simulator is never runtime code and
+cannot prove Share Sheet, iCloud sync, ntfy launch, Mirroring, or Quick Look.
+When a physical run fails, compare it first with the known-good fixed-path
+fallback; do not promote an unverified iOS limitation into the contract.
+
+The verified Files differential result is evidence: the existing fixed
+full-package path opened both JPEG and PDF, while the dynamic canonical path
+reached a checkmark without a chooser. This isolates dynamic path resolution
+for further investigation but does not prove that iOS forbids Magic Variables
+in path fields. Apple documents Magic Variables in action text fields and
+parameters.
 
 These simulators are the primary development/test harness for the three
 Shortcut roles, but are never runtime dependencies. The required sequence is:

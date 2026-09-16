@@ -4,6 +4,39 @@
 **Authority:** current contract and roadmap. This file records actual tree
 evidence separately from desired production contracts.
 
+## Correction — 2026-09-16
+
+The latest canonical `Blink Files` body is the 16-action dynamic-path tree
+saved on Mac and visible in the iPhone editor:
+
+```text
+Receive (Apps and 18 more; no input -> Continue)
+Get text from Shortcut Input
+Comment (build marker)
+Match ^blink-files-v1\|blink-files-v1-[0-9a-f]{32}$ in Text
+If Text has no value -> Stop this shortcut
+Otherwise -> End If
+Split Text by |
+Get Item at Index 2 from Split Text
+Set PackageID
+Get file from Shortcuts at Blink_Acceptance/ToPhoneView/PackageID/
+Get contents of File
+Set AllFiles to Folder Contents
+Choose from AllFiles
+Show Selected Item in Quick Look
+Stop and output Quick Look
+```
+
+The phone body is synchronized; its top and middle sections were inspected in
+the iPhone editor. The simulator and automated suite model the same semantic
+blocks and the real package contains exactly the JPEG and PDF expected by the
+chooser. A controlled differential notification proved the existing fixed-path
+fallback opens both files, while canonical dynamic-path execution still ends
+with a checkmark and no chooser. This is the current isolated Apple runtime
+boundary; it is not evidence that iOS universally forbids Magic Variables in
+path fields. No canonical replacement or production cutover is authorized from
+this observation alone.
+
 ## Canonical targets
 
 | User-facing target | Purpose | ntfy input | Status |

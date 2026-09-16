@@ -1,8 +1,14 @@
 # Blink — authoritative roadmap
 
 **Snapshot:** 2026-09-15
-**Status:** The three product roles are modeled by a verified non-runtime simulator harness, now used as a development/test instrument rather than a separate project. The untouched CREATE oracle transport has physically produced a fresh payload; candidate differential debugging remains open. Files multi-file Acceptance and the gray Mac `Start blinking` regression remain open. Same-ID notification freshness is recorded as an unresolved question and is not being changed yet.
+**Status:** The three product roles are modeled by a verified non-runtime simulator harness, now used as the primary development/test instrument. The untouched CREATE oracle transport has physically produced a fresh payload; candidate differential debugging remains open. Files multi-file chooser behavior is physically proven on the fixed-path fallback with both JPEG and PDF, while canonical dynamic-path resolution remains the isolated open boundary. The gray Mac `Start blinking` regression remains open. Same-ID notification freshness is recorded as an unresolved question and is not being changed yet.
 **Authority:** this roadmap, [`BLINK_CURRENT_STATE_CONTRACT.md`](../contracts/BLINK_CURRENT_STATE_CONTRACT.md), and [`BLINK_SHORTCUT_TREES_2026-09-14.md`](BLINK_SHORTCUT_TREES_2026-09-14.md) describe current state. Older reports preserve history only.
+
+Latest Files evidence: the synchronized canonical dynamic tree still fails to
+open its chooser, while the existing fixed-path fallback opens both JPEG and
+PDF with the same ntfy package input. The simulator now models the typed
+`Get File` boundary, but this evidence remains an open Apple runtime issue; do
+not treat it as a blanket iOS restriction or proceed to Production cutover.
 
 ## Product target
 
@@ -79,6 +85,15 @@ when the active implementation chunk is limited to Files:
   never runtime code. Every logical Shortcut change must pass its role/profile
   simulation first; only the minimal corresponding edit is transferred to a
   physical Shortcut, followed by Apple-specific acceptance where required.
+
+The reusable `shortcuts-simulator-first` skill records the mandatory workflow:
+official Apple instructions -> complete physical tree/oracle inspection -> role
+simulator and failing tests -> focused/full verification -> minimal GUI transfer
+-> iCloud/iPhone tree verification -> Apple-specific acceptance. The Files
+simulator explicitly models the `Get File -> Folder/File -> Get Contents ->
+List[File] -> Choose` typed boundary. Its fixed-path and Magic Variable profiles
+resolve to a Folder and `List[File]`; an unresolved literal `PackageID` does not.
+This is a diagnostic model, not proof that iOS rejects dynamic paths.
 
 ## Working Shortcut contracts
 
