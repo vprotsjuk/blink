@@ -6,8 +6,8 @@ evidence separately from desired production contracts.
 
 ## Correction — 2026-09-16
 
-The latest canonical `Blink Files` body is the 16-action dynamic-path tree
-saved on Mac and visible in the iPhone editor:
+The latest canonical `Blink Files` body is the 47-action flat-root tree
+saved on Mac:
 
 ```text
 Receive (Apps and 18 more; no input -> Continue)
@@ -19,23 +19,23 @@ Otherwise -> End If
 Split Text by |
 Get Item at Index 2 from Split Text
 Set PackageID
-Get file from Shortcuts at Blink_Acceptance/ToPhoneView/PackageID/
+Get file from Shortcuts at path Blink_Acceptance/ToPhone
 Get contents of File
 Set AllFiles to Folder Contents
-Choose from AllFiles
+Filter ready and manifest markers
+Filter attachment prefix PackageID__
+Count and fail closed when empty
+Choose from Attachments
 Show Selected Item in Quick Look
-Stop and output Quick Look
 ```
 
-The phone body is synchronized; its top and middle sections were inspected in
-the iPhone editor. The simulator models both the dynamic view tree and the
-preserved flat-root WORK tree, including their typed `Get File` boundaries. A
-controlled differential notification proved the existing fixed-path/flat-root
-fallback opens both JPEG and PDF, while canonical dynamic-path execution still
-ends with a checkmark and no chooser. This is the current isolated Apple
-runtime boundary; it is not evidence that iOS universally forbids Magic
-Variables in path fields. No canonical replacement or production cutover is
-authorized from this observation alone.
+The preserved fallback physically opens both JPEG and PDF. The canonical body
+has now been replaced in place with the verified flat-root body, with marker
+`FILES-CANONICAL-FLAT-20260916 | GUI-SAVED`; its source is confirmed as
+`Shortcuts`, not the `PackageID` token. The iPhone body still requires the
+usual lock/sync verification before physical canonical acceptance. The former
+dynamic-path body remains comparison/rollback evidence only; this result is
+not evidence that iOS universally forbids Magic Variables in path fields.
 
 ## Canonical targets
 
