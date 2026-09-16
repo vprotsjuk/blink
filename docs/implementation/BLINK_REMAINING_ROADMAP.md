@@ -39,6 +39,12 @@ when the active implementation chunk is limited to Files:
   still carry an independent `blinker_minutes_before` value. Do not infer a
   data-loss or transport defect from this screenshot; restore the editor
   control and then re-run the existing timing acceptance case.
+  **Open menu-bar question (2026-09-16):** the Mac shows two yellow Blink
+  circles near the clock; one remains lit even when the Blink application is
+  switched off. Later identify the owner/lifecycle of both indicators and
+  determine whether the persistent one is a stale process, a separate helper,
+  or intentional status UI. No UI/lifecycle change is authorized from this
+  observation alone.
 - **Phone/Mac timing parity:** phone CREATE uses the Mac timing semantics:
   integer-minute reminders, multiple reminders, the current presets and
   Custom behavior, plus one independent integer-minute blinker with matching

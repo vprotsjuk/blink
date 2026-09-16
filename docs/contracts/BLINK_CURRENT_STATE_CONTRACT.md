@@ -40,6 +40,12 @@ Blinker control in the timing section. This is a UI regression to investigate;
 the persisted/model contract remains an independent non-negative integer
 `blinker_minutes_before`, and the missing control must not be “fixed” by
 changing transport or Shortcut validation.
+
+**Open menu-bar question (2026-09-16):** two yellow Blink circles are visible
+near the Mac clock, and one remains lit after the Blink application is turned
+off. Their process ownership and intended lifecycle are not yet established;
+investigate later without treating the persistent indicator as proof of an
+application or watcher defect.
 The active CREATE candidate uses native numeric validation: it rounds the
 number to Integer and requires equality with the original value, combined with
 a native `>= 0` check. Thus fractions, letters, signs, and mixed symbols cannot
