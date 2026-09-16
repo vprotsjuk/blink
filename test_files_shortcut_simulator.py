@@ -1,6 +1,6 @@
 import unittest
 
-from app.files_shortcut_simulator import simulate_files
+from app.files_shortcut_simulator import simulate_files, simulate_flat_root_files
 
 
 class FilesShortcutSimulatorTests(unittest.TestCase):
@@ -56,6 +56,37 @@ class FilesShortcutSimulatorTests(unittest.TestCase):
         )
         self.assertTrue(result.accepted)
         self.assertEqual(result.visible_files, ("report.pdf",))
+
+    def test_flat_root_path_filters_package_markers_and_returns_all_attachments(self):
+        result = simulate_flat_root_files(
+            f"blink-files-v1|{self.package}",
+            root_files=(
+                f"{self.package}.ready",
+                f"{self.package}.manifest.json",
+                f"{self.package}__01__485 Notice.jpeg",
+                f"{self.package}__02__Appointment Scheduled (1).pdf",
+                "other-package__01__wrong.pdf",
+            ),
+            selected=f"{self.package}__02__Appointment Scheduled (1).pdf",
+        )
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.visible_files, (
+            f"{self.package}__01__485 Notice.jpeg",
+            f"{self.package}__02__Appointment Scheduled (1).pdf",
+        ))
+        self.assertEqual(result.selected, f"{self.package}__02__Appointment Scheduled (1).pdf")
+
+    def test_flat_root_path_rejects_missing_or_duplicate_package_markers(self):
+        for root_files in (
+            (f"{self.package}__01__report.pdf",),
+            (f"{self.package}.ready", f"{self.package}.ready", f"{self.package}__01__report.pdf"),
+            (f"{self.package}.manifest.json", f"{self.package}.manifest.json", f"{self.package}__01__report.pdf"),
+        ):
+            with self.subTest(root_files=root_files):
+                result = simulate_flat_root_files(
+                    f"blink-files-v1|{self.package}", root_files=root_files
+                )
+                self.assertFalse(result.accepted)
 
 
 if __name__ == "__main__":

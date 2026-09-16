@@ -1,14 +1,16 @@
 # Blink — authoritative roadmap
 
 **Snapshot:** 2026-09-15
-**Status:** The three product roles are modeled by a verified non-runtime simulator harness, now used as the primary development/test instrument. The untouched CREATE oracle transport has physically produced a fresh payload; candidate differential debugging remains open. Files multi-file chooser behavior is physically proven on the fixed-path fallback with both JPEG and PDF, while canonical dynamic-path resolution remains the isolated open boundary. The gray Mac `Start blinking` regression remains open. Same-ID notification freshness is recorded as an unresolved question and is not being changed yet.
+**Status:** The three product roles are modeled by a verified non-runtime simulator harness, now used as the primary development/test instrument. The untouched CREATE oracle transport has physically produced a fresh payload; candidate differential debugging remains open. Files multi-file chooser behavior is physically proven on the preserved fixed-path/flat-root fallback with both JPEG and PDF; the simulator now models that flat-root action sequence and its fail-closed marker/prefix checks. Canonical dynamic-path resolution remains the isolated open boundary. The gray Mac `Start blinking` regression remains open. Same-ID notification freshness is recorded as an unresolved question and is not being changed yet.
 **Authority:** this roadmap, [`BLINK_CURRENT_STATE_CONTRACT.md`](../contracts/BLINK_CURRENT_STATE_CONTRACT.md), and [`BLINK_SHORTCUT_TREES_2026-09-14.md`](BLINK_SHORTCUT_TREES_2026-09-14.md) describe current state. Older reports preserve history only.
 
 Latest Files evidence: the synchronized canonical dynamic tree still fails to
-open its chooser, while the existing fixed-path fallback opens both JPEG and
-PDF with the same ntfy package input. The simulator now models the typed
-`Get File` boundary, but this evidence remains an open Apple runtime issue; do
-not treat it as a blanket iOS restriction or proceed to Production cutover.
+open its chooser, while the preserved fixed-path/flat-root fallback opens both
+JPEG and PDF with the same ntfy package input. The simulator models both the
+typed `Get File` boundary and the flat-root filter path. This closes the
+multi-file behavior at the fallback boundary, but remains an open canonical
+Apple runtime issue; do not treat it as a blanket iOS restriction or proceed
+to Production cutover.
 
 ## Product target
 
@@ -297,7 +299,7 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
 - Remaining physical CREATE acceptance: fresh direct valid CREATE correlated
   to a new payload, one attachment,
   Share `>1` rejection, and representative text preservation
-- Files live-banner JPEG+PDF multi-file Acceptance
+- canonical Files live-banner JPEG+PDF multi-file Acceptance (fallback boundary accepted; canonical dynamic path remains open)
 - Combined Done + Files acceptance
 - Same-ID freshness investigation and explicit semantic decision before
   Production (no implementation change until decided)

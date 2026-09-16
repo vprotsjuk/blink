@@ -28,14 +28,14 @@ Stop and output Quick Look
 ```
 
 The phone body is synchronized; its top and middle sections were inspected in
-the iPhone editor. The simulator and automated suite model the same semantic
-blocks and the real package contains exactly the JPEG and PDF expected by the
-chooser. A controlled differential notification proved the existing fixed-path
-fallback opens both files, while canonical dynamic-path execution still ends
-with a checkmark and no chooser. This is the current isolated Apple runtime
-boundary; it is not evidence that iOS universally forbids Magic Variables in
-path fields. No canonical replacement or production cutover is authorized from
-this observation alone.
+the iPhone editor. The simulator models both the dynamic view tree and the
+preserved flat-root WORK tree, including their typed `Get File` boundaries. A
+controlled differential notification proved the existing fixed-path/flat-root
+fallback opens both JPEG and PDF, while canonical dynamic-path execution still
+ends with a checkmark and no chooser. This is the current isolated Apple
+runtime boundary; it is not evidence that iOS universally forbids Magic
+Variables in path fields. No canonical replacement or production cutover is
+authorized from this observation alone.
 
 ## Canonical targets
 
@@ -546,7 +546,7 @@ The add/remove Stop Shortcut experiment is historical evidence only.
 | CREATE Share | one shared attachment accepted; second rejected |
 | DONE | EventID applied once; duplicate is silent |
 | Files one | original name and Quick Look — PASS |
-| Files multiple | two or more isolated names and Quick Look — OPEN |
+| Files multiple | both JPEG and PDF opened through preserved fallback; canonical dynamic path — OPEN |
 | Combined event | Done and Files buttons independently work — OPEN |
 | Production | canonical names/paths and smoke test — OPEN |
 

@@ -93,3 +93,67 @@ def simulate_files(value: str, *, view_files: tuple[str, ...], selected: str | N
         "Stop and output Quick Look",
     ])
     return FilesSimulation(True, (), {"package_id": package_id, "selected": chosen}, visible, chosen, tuple(trace))
+
+
+def simulate_flat_root_files(
+    value: str,
+    *,
+    root_files: tuple[str, ...],
+    selected: str | None = None,
+) -> FilesSimulation:
+    """Simulate the preserved Stage2 WORK flat-root Shortcut tree.
+
+    This mirrors its physical action groups: acquire the shared ``ToPhone``
+    folder, require one ready marker and manifest, filter attachment files by
+    the package transport prefix, then use the chooser/Quick Look pair.
+    """
+    trace = [
+        "Receive Apps and 18 more from Nowhere (Continue if no input)",
+        "Get text from Shortcut Input",
+        "Match blink-files-v1|<32-hex-package-id>",
+        "If match is empty -> Stop this shortcut",
+    ]
+    prefix = "blink-files-v1|"
+    if not isinstance(value, str) or not value.startswith(prefix):
+        return FilesSimulation(False, ("input must be blink-files-v1|<package-id>",), None, (), None, tuple(trace))
+    package_id = value[len(prefix):]
+    if PACKAGE_RE.fullmatch(package_id) is None:
+        return FilesSimulation(False, ("PackageID is malformed",), None, (), None, tuple(trace))
+    trace.extend([
+        "Split Shortcut Input by |",
+        "Get Item at Index 2",
+        "Set PackageID",
+        "Get file from Shortcuts at Blink_Acceptance/ToPhone",
+        "Get contents of File",
+        "Set AllFiles to Folder Contents",
+        "Filter AllFiles where Name is PackageID.ready",
+    ])
+    ready = tuple(name for name in root_files if name == f"{package_id}.ready")
+    if len(ready) != 1:
+        return FilesSimulation(False, ("package must have exactly one ready marker",), None, (), None, tuple(trace))
+    trace.append("Filter AllFiles where Name is PackageID.manifest.json")
+    manifests = tuple(name for name in root_files if name == f"{package_id}.manifest.json")
+    if len(manifests) != 1:
+        return FilesSimulation(False, ("package must have exactly one manifest",), None, (), None, tuple(trace))
+    attachment_prefix = f"{package_id}__"
+    trace.extend([
+        "Filter AllFiles where Name begins with PackageID__",
+        "Set Attachments to Files",
+        "Count Items in Attachments",
+        "Set AttachmentCount to Count",
+    ])
+    visible = tuple(sorted(
+        (name for name in root_files if name.startswith(attachment_prefix)),
+        key=str.casefold,
+    ))
+    if not visible:
+        return FilesSimulation(False, ("package contains no attachments",), None, (), None, tuple(trace))
+    trace.extend([
+        "If AttachmentCount is 0 -> Stop this shortcut",
+        "Choose from Attachments",
+        "Show Selected Item in Quick Look",
+    ])
+    chosen = selected if selected is not None else (visible[0] if len(visible) == 1 else None)
+    if chosen not in visible:
+        return FilesSimulation(False, ("selected file is not in this package",), None, visible, None, tuple(trace))
+    return FilesSimulation(True, (), {"package_id": package_id, "selected": chosen}, visible, chosen, tuple(trace))

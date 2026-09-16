@@ -151,11 +151,15 @@ cannot prove Share Sheet, iCloud sync, ntfy launch, Mirroring, or Quick Look.
 When a physical run fails, compare it first with the known-good fixed-path
 fallback; do not promote an unverified iOS limitation into the contract.
 
-The verified Files differential result is evidence: the existing fixed
-full-package path opened both JPEG and PDF, while the dynamic canonical path
-reached a checkmark without a chooser. This isolates dynamic path resolution
-for further investigation but does not prove that iOS forbids Magic Variables
-in path fields. Apple documents Magic Variables in action text fields and
+The verified Files differential result is evidence: the preserved fixed-path/
+flat-root fallback opened both JPEG and PDF, while the dynamic canonical path
+reached a checkmark without a chooser. The simulator models the flat-root
+physical sequence (`Get File` for shared `ToPhone` -> `Get Contents` -> exact
+ready/manifest checks -> package-prefix filter -> `Choose` -> `Quick Look`) and
+passes the two-file and fail-closed cases. This closes the multi-file behavior
+at the fallback boundary, but isolates canonical dynamic path resolution for
+further investigation and does not prove that iOS forbids Magic Variables in
+path fields. Apple documents Magic Variables in action text fields and
 parameters.
 
 These simulators are the primary development/test harness for the three
