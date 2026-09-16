@@ -62,7 +62,10 @@ when the active implementation chunk is limited to Files:
   package-scoped `ToPhoneView` containing only real attachment basenames.
 - The Acceptance Files candidate was physically tested on iPhone: green ntfy
   `Files` button → Shortcuts → chooser with the original filename → PDF in
-  Quick Look. A one-file result is accepted; multi-file acceptance is open.
+  Quick Look. One-file Acceptance is closed. A live notification carrying the
+  controlled two-file JPEG+PDF package was delivered and its `Files` action
+  was verified in ntfy, but the multi-file action tap was not yet completed;
+  multi-file acceptance remains open.
 - `Done` and `Files` are independent ntfy actions. `Done` carries EventID;
   `Files` carries PackageID. No `clear=true` is used.
 - Production mailbox and `Blink_Production/ToMac` remain disabled/unused.

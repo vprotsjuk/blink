@@ -10,7 +10,7 @@ evidence separately from desired production contracts.
 |---|---|---|---|
 | Blink | CREATE from direct launch or Share | CREATE payload | Gate A/B implemented; direct, one-image, and two-image iPhone paths verified; final representative text/Files acceptance remains |
 | Blink DONE | apply a DONE command on Mac | blink-done-v1|<event-id> | controlled Acceptance exists; canonical production acceptance still required |
-| Blink Files | open event attachments on iPhone | blink-files-v1|<package-id> | one-file Acceptance passed physically; multi-file open |
+| Blink Files | open event attachments on iPhone | blink-files-v1|<package-id> | one-file Acceptance passed physically; JPEG+PDF action delivered; multi-file tap |
 
 ## Proven Files tree
 
@@ -39,6 +39,20 @@ On 2026-09-14 a new controlled package was generated from the personal event
 `blink-files-v1-b7125ae665b167365d197f0bb7785b2c`. The flat package validated
 with two files, and its derived view contains only `485 Notice.jpeg` and
 `Appointment Scheduled (1).pdf`.
+
+On 2026-09-15 the one-file path was physically exercised from a live ntfy
+notification: the `Files` action opened Shortcuts, showed the single file in
+the chooser, and opening that filename displayed the file successfully. This
+closes one-file Acceptance.
+
+The same controlled two-file package was independently verified on Mac and in
+the Acceptance iCloud container. Its manifest and ready marker are valid, and
+its package-scoped view contains exactly `485 Notice.jpeg` and `Appointment
+Scheduled (1).pdf`. A fresh ntfy notification was accepted with HTTP 200 and
+displayed the `Files` action on iPhone. The multi-file action still requires
+one physical tap while the phone is unlocked/in use; Mirroring lost control
+when the owner used the phone. JPEG+PDF chooser/Quick Look therefore remains
+open and is not declared accepted.
 
 The notification was sent to the existing Acceptance subscription with the
 target `Blink Files Stage2 WORK`. iPhone Mirroring displayed the notification
