@@ -34,6 +34,12 @@ only; clearing all reminders must never silently restore it.
 
 Blinker is independent from reminders and uses one non-negative integer minute
 offset. If the Mac UI exposes a custom blinker, the phone mirrors it.
+
+**Open editor bug (2026-09-16):** the Mac event editor currently shows no
+Blinker control in the timing section. This is a UI regression to investigate;
+the persisted/model contract remains an independent non-negative integer
+`blinker_minutes_before`, and the missing control must not be “fixed” by
+changing transport or Shortcut validation.
 The active CREATE candidate uses native numeric validation: it rounds the
 number to Integer and requires equality with the original value, combined with
 a native `>= 0` check. Thus fractions, letters, signs, and mixed symbols cannot

@@ -34,6 +34,11 @@ when the active implementation chunk is limited to Files:
   live evidence shows that after an old `1 day before` trigger has elapsed,
   `Start blinking` can be disabled and prevent replacement with a future
   `60 min before`. Final acceptance must reproduce this exact live UI case.
+  **Open UI bug (2026-09-16):** the editor currently renders no Blinker control
+  at all for an existing event, although the event model and Shortcut contract
+  still carry an independent `blinker_minutes_before` value. Do not infer a
+  data-loss or transport defect from this screenshot; restore the editor
+  control and then re-run the existing timing acceptance case.
 - **Phone/Mac timing parity:** phone CREATE uses the Mac timing semantics:
   integer-minute reminders, multiple reminders, the current presets and
   Custom behavior, plus one independent integer-minute blinker with matching
