@@ -17,17 +17,19 @@ editing code or runtime data.
 The current implementation is defined by running code and the documents below.
 If sources differ, use this order:
 
-1. Running code and
+1. [`docs/contracts/BLINK_PRODUCT_REQUIREMENTS.md`](docs/contracts/BLINK_PRODUCT_REQUIREMENTS.md)
+   for non-negotiable product intent and delivery order.
+2. Running code and
    [`docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md`](docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md).
-2. [`BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`](BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md)
+3. [`BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md`](BLINK_FULL_DESCRIPTION_FOR_CHATGPT.md)
    for the full product and UI specification.
-3. [`docs/HANDOFF.md`](docs/HANDOFF.md) for operational history and known
+4. [`docs/HANDOFF.md`](docs/HANDOFF.md) for operational history and known
    implementation decisions.
-4. [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md)
+5. [`docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md`](docs/feasibility/BLINK_IPHONE_ICLOUD_EXCHANGE_SPIKE.md)
    for the separate iCloud/iPhone spike.
-5. [`docs/implementation/BLINK_REMAINING_ROADMAP.md`](docs/implementation/BLINK_REMAINING_ROADMAP.md)
+6. [`docs/implementation/BLINK_REMAINING_ROADMAP.md`](docs/implementation/BLINK_REMAINING_ROADMAP.md)
    for the authoritative post-Phase-7 roadmap; Stage 1 is current.
-5. [`docs/feasibility/BLINK_NEW_THREAD_HANDOFF_PROMPT.md`](docs/feasibility/BLINK_NEW_THREAD_HANDOFF_PROMPT.md)
+7. [`docs/feasibility/BLINK_NEW_THREAD_HANDOFF_PROMPT.md`](docs/feasibility/BLINK_NEW_THREAD_HANDOFF_PROMPT.md)
    for the immediately preceding handoff checkpoint.
 
 Documents labelled **HISTORICAL** or **SUPERSEDED** are retained only for

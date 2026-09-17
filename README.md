@@ -4,6 +4,8 @@ Blink is a local macOS reminder utility. The native SwiftUI app edits local JSON
 
 Product north star: [BLINK_PRODUCT_PHILOSOPHY.md](docs/BLINK_PRODUCT_PHILOSOPHY.md) — preserve not only what the user must do, but why it exists and the source context needed when the moment arrives.
 
+For the compact list of non-negotiable product wishes, open [BLINK_PRODUCT_REQUIREMENTS.md](docs/contracts/BLINK_PRODUCT_REQUIREMENTS.md). New agents must start with the root [AGENTS.md](AGENTS.md).
+
 The current implementation contract for future agents is [docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md](docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md). Read it before changing architecture, runtime boundaries, notification behavior, or shared UI rules.
 
 ## Run
