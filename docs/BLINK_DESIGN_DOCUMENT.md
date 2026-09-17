@@ -287,6 +287,11 @@ The native Mac application owns presentation and editing:
 - persistence through the JSON/domain-store contracts;
 - menu-bar and Dock attention presentation.
 
+Event lists should remain compact and content-proportional. Large unexplained
+vertical gaps between a small number of Today or Upcoming cards are a UI
+defect; section separation must be intentional rather than caused by a fixed
+or expanding spacer.
+
 It does not send ntfy notifications and does not become a second scheduler.
 
 The Swift package is at `app/BlinkSwiftUI`. Its core target should remain

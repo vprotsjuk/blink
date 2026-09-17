@@ -149,6 +149,10 @@ These observations must not be lost or silently reclassified:
    supported file and creation from a supported clipboard object. Both must
    enter the existing one-attachment CREATE flow, not create a second event
    architecture.
+6. **Today list spacing:** investigate why a large empty vertical gap can
+   appear between event rows/cards when only a small number of events is
+   present. The final layout should use space proportionally to actual content
+   while preserving intentional grouping such as Active and Today's Events.
 
 ## Final library state
 
