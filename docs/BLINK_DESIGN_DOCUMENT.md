@@ -16,6 +16,12 @@ for event creation, completion, and attachment viewing.
 The Mac is the source of truth. The phone is a fast interaction and
 notification surface, not a second database.
 
+The governing product principle is documented in
+[`BLINK_PRODUCT_PHILOSOPHY.md`](BLINK_PRODUCT_PHILOSOPHY.md): Blink preserves
+the reason and source context behind an action, then returns that context when
+the action needs to happen. This is the product test for future features; the
+architecture exists to protect it.
+
 ## 2. Why Blink exists for the user
 
 The user wants one quiet, dependable place to remember things that require

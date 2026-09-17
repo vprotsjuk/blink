@@ -2,6 +2,8 @@
 
 Blink is a local macOS reminder utility. The native SwiftUI app edits local JSON; `watcher.py` is the only ntfy sender; ntfy delivers to the iPhone.
 
+Product north star: [BLINK_PRODUCT_PHILOSOPHY.md](docs/BLINK_PRODUCT_PHILOSOPHY.md) — preserve not only what the user must do, but why it exists and the source context needed when the moment arrives.
+
 The current implementation contract for future agents is [docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md](docs/contracts/BLINK_CURRENT_STATE_CONTRACT.md). Read it before changing architecture, runtime boundaries, notification behavior, or shared UI rules.
 
 ## Run

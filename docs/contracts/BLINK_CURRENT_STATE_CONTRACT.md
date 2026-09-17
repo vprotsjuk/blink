@@ -4,6 +4,11 @@
 **Authority:** this file and ROADMAP. Historical reports explain how a problem
 was found but never override this contract.
 
+**Product north star:** [`BLINK_PRODUCT_PHILOSOPHY.md`](../BLINK_PRODUCT_PHILOSOPHY.md)
+defines why Blink exists: preserve the reason and source context behind an
+event, return it at the right moment, and keep important work visible until
+explicit `Done`. Technical changes must preserve this purpose.
+
 ## Ownership
 
 ```text
