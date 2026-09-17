@@ -110,3 +110,11 @@ opening the main editor first:
   validation, event ownership, and Mac source of truth.
 
 These are additional capture entry points, not a second event architecture.
+
+The same principle also applies to selected text: a user should be able to
+select text on the Mac, create a Blink event from it, and have Blink preserve
+that text as a text-document attachment owned by the event. On the iPhone, the
+user should eventually be able to browse event folders by their real names and
+open their attachments. The attachment layer should grow to support many
+document types while preserving original content and making unsupported types
+explicit.

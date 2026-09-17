@@ -169,6 +169,11 @@ These are additional entry points only. They reuse canonical validation,
 attachment ownership, and persistence; they do not introduce a second event
 type or storage path.
 
+The Mac context entry points also include creating an event from selected text.
+Blink should preserve the selection as a text-document attachment owned by the
+event, so it can be returned together with the reminder rather than lost in a
+temporary clipboard state.
+
 ### 5.4 Complete from a notification
 
 1. User presses the `Done` action in an ntfy notification.
@@ -190,6 +195,10 @@ type or storage path.
    markers, filters only that package's attachment files, presents a chooser,
    and opens the selected file in Quick Look.
 5. The Shortcut does not modify the event or send data back to the Mac.
+
+As a later read-only capability, the iPhone may browse event folders by their
+real event names and open the attachments within them. This browser must use
+derived, bounded transport data and must not become a second source of truth.
 
 ## 6. Event domain model
 

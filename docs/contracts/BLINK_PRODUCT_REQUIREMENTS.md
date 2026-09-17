@@ -70,6 +70,28 @@ read-only with respect to canonical event state.
 - Optionally receive a useful daily briefing, practical weather guidance, and
   astronomy context without turning Blink into an unrelated dashboard.
 
+## Future context capture and browsing
+
+The context layer should grow beyond a single shared file without changing the
+event/source-of-truth model:
+
+- **Selected text capture:** create an event from text selected on the Mac. The
+  selected text is preserved as a text document attachment owned by the event,
+  so the original context is still available at reminder time.
+- **Phone event-folder browsing:** from the iPhone, allow the user to browse
+  event folders using their real human-readable names and see the attachments
+  belonging to each event. Browsing must remain read-only and must not bypass
+  the Mac source of truth.
+- **Broader document support:** support a substantially wider set of document
+  and media types than the initial image/PDF/Word-oriented set. New types must
+  preserve their original bytes and display/open behavior where iOS and macOS
+  support it; unsupported types must fail clearly rather than being silently
+  converted or discarded.
+
+These requirements are future product work. They do not authorize a second
+cloud file database, uncontrolled recursive iCloud browser, or replacement of
+the existing one-file CREATE Share Sheet contract.
+
 ## Development rules
 
 - Simulators are the primary development/test harness for CREATE, DONE, and
