@@ -97,3 +97,16 @@ against the north star:
 
 If a change improves an isolated technical symptom but weakens these answers,
 it is not automatically a Blink improvement.
+
+## Future Mac capture entry points
+
+The same context-preserving CREATE flow should eventually be available without
+opening the main editor first:
+
+- right-click a supported Finder file and choose the Blink create action;
+- when the clipboard contains a supported object, create a Blink event from it
+  through a context-menu or equivalent Mac command;
+- both entry points reuse the existing one-optional-attachment CREATE contract,
+  validation, event ownership, and Mac source of truth.
+
+These are additional capture entry points, not a second event architecture.

@@ -154,7 +154,22 @@ The arrows have different meanings:
 6. The Mac mailbox importer validates and applies the command under the normal
    agenda lock. The iPhone never edits `agenda.json` directly.
 
-### 5.3 Complete from a notification
+### 5.3 Create from Mac context
+
+The same context-preserving capture should be available from the Mac without
+requiring the user to open the editor first:
+
+- right-click a supported Finder file and choose the Blink create action;
+- when the clipboard contains a supported object, invoke the same create flow
+  from a context-menu or equivalent Mac command;
+- pass the selected object as the one optional attachment into the existing
+  event editor/create contract.
+
+These are additional entry points only. They reuse canonical validation,
+attachment ownership, and persistence; they do not introduce a second event
+type or storage path.
+
+### 5.4 Complete from a notification
 
 1. User presses the `Done` action in an ntfy notification.
 2. The action launches `Blink DONE` with
@@ -165,7 +180,7 @@ The arrows have different meanings:
    start and recording actual `done_at`.
 6. Blink may send one short confirmation push. Replays are silent.
 
-### 5.4 View attachments from a notification
+### 5.5 View attachments from a notification
 
 1. For an eligible event, the Mac creates a deterministic `ToPhone` snapshot.
 2. The normal event notification contains a paperclip marker and a `Files`

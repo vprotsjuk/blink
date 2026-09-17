@@ -21,6 +21,11 @@ the iPhone. The Mac is the source of truth. The final phone UX is one Home
 Screen entry `Blink`; `Share → Blink` creates an event from one shared file.
 `Done` and `Files` are separate internal notification actions.
 
+Future capture entry points include Mac Finder right-click creation from a
+supported file and creation from a supported clipboard object. Both must feed
+the existing CREATE flow and one-optional-attachment contract rather than
+introduce another event architecture.
+
 ## Complete product scope preserved
 
 The following approved requirements remain part of the product target even
