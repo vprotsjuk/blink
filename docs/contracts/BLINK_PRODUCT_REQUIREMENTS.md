@@ -153,6 +153,21 @@ These observations must not be lost or silently reclassified:
    appear between event rows/cards when only a small number of events is
    present. The final layout should use space proportionally to actual content
    while preserving intentional grouping such as Active and Today's Events.
+7. **Weather current temperature:** add a `Now` temperature value below or
+   alongside the daily maximum/minimum, matching the existing `Now` humidity
+   presentation. It must represent the temperature at the briefing/data
+   timestamp, not another daily high/low value.
+8. **Astronomy checkbox filtering:** investigate and fix the apparent case
+   where most Astronomy event checkboxes are disabled but the delivered
+   astronomy briefing still contains the full set of events. Disabled
+   categories must not appear in the generated briefing or scheduled
+   notifications.
+9. **Briefing schedule/deduplication:** investigate the observed behavior where
+   an Astronomy briefing configured for 06:53 arrived at 07:07 after the Mac
+   became available, followed later by an unexpected Weather briefing at 09:39.
+   Verify wake/startup catch-up, configured times, enable flags, queue
+   ownership, and per-day deduplication. A catch-up briefing must not create an
+   unrelated second briefing later in the day.
 
 ## Final library state
 
