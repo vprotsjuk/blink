@@ -168,6 +168,12 @@ These observations must not be lost or silently reclassified:
    Verify wake/startup catch-up, configured times, enable flags, queue
    ownership, and per-day deduplication. A catch-up briefing must not create an
    unrelated second briefing later in the day.
+10. **Possible multiple Blink instances:** investigate the appearance that
+    several Blink processes or application instances may be running at the same
+    time. Identify the owning launch path, determine whether parallel instances
+    can duplicate scheduling, notifications, menu-bar indicators, or file
+    handling, and define the required single-instance/lifecycle guard before
+    Production.
 
 ## Final library state
 
