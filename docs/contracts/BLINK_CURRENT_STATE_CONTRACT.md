@@ -153,6 +153,19 @@ Additional physical evidence (2026-09-19): after the owner materialized the
 The current transport blocker is therefore an observed iCloud/CloudDocs
 upload-conflict loop. Shortcut logic remains frozen until the loop is resolved.
 
+Controlled oracle recovery (2026-09-19) supersedes that diagnosis as the
+current explanation. The untouched `Blink Create Test` produced a fresh
+`.event.json` and `.ready` pair in `Blink_Acceptance/ToMac`. The missing push
+was caused by the watcher LaunchAgent lacking the explicit Acceptance mailbox
+settings `BLINK_MAILBOX_ENABLED` and `BLINK_MAILBOX_ROOT`; its mailbox worker
+was therefore disabled while the Shortcut and iCloud write path were working.
+The documented one-shot Acceptance enable imported the package into
+`agenda.json`, and `watcher_state.json` recorded the ntfy delivery at
+2026-09-19 13:05:57. The settings were then unset and the watcher restarted,
+leaving Production disabled. CREATE transport is therefore proven through
+`ToMac` -> importer -> watcher -> ntfy; no Shortcut or iCloud repair is
+justified by the earlier no-push observation.
+
 ## Fast CREATE logic oracle
 
 `app/create_shortcut_simulator.py` and

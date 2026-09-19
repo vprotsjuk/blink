@@ -95,6 +95,16 @@ when the active implementation chunk is limited to Files:
 - `Done` and `Files` are independent ntfy actions. `Done` carries EventID;
   `Files` carries PackageID. No `clear=true` is used.
 - Production mailbox and `Blink_Production/ToMac` remain disabled/unused.
+
+CREATE transport recovery evidence (2026-09-19): the unchanged oracle created
+a fresh package in `Blink_Acceptance/ToMac`. The apparent no-push failure was
+the expected disabled Acceptance mailbox worker: the LaunchAgent had the Files
+root configured but not the explicit `BLINK_MAILBOX_ENABLED` and
+`BLINK_MAILBOX_ROOT` settings. A documented one-shot Acceptance enable imported
+the package and delivered the ntfy notification; the settings were then unset
+and the watcher restarted. The shared Shortcut/iCloud transport investigation
+is closed. Remaining CREATE work is candidate/product acceptance, not transport
+reconstruction; Production remains disabled.
 - The physical USB RGB lamp is available but intentionally not connected yet.
 - Existing-event same-ID persistence and the model/unit regression are green,
   but live running-app evidence contradicts product acceptance: the stale
@@ -308,9 +318,8 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   `Blink Create Test` and `Blink Create Stage2 WORK` through their valid prompts
   and produced no fresh `.event.json`/`.ready` pair. `brctl` reported the
   Shortcuts container caught-up/full-sync with no pending materialization.
-  Current status is `CREATE transport/write boundary under investigation;
-  iCloud sync/materialization is the leading hypothesis`. Do not change Gate
-  A/B until this shared boundary is explained.
+  That earlier shared-boundary status is superseded by the controlled oracle
+  recovery recorded above; do not treat the old iCloud hypothesis as current.
 - Physical follow-up after materializing `ToMac` still produced no fresh pair.
   Finder and CloudDocs now show a repeatable upload loop (`Uploading 2 items`;
   one item finishes, two edited items return, one is sent again). Resolve this
