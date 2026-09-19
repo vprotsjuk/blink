@@ -146,6 +146,13 @@ The 2026-09-15 success is retained as historical evidence; the current status
 is `CREATE transport/write boundary under investigation`, with iCloud
 sync/materialization only a leading hypothesis. Gate A/B remain unchanged.
 
+Additional physical evidence (2026-09-19): after the owner materialized the
+`ToMac` folder, a fresh candidate run still produced no pair. Finder showed
+`Uploading 2 items` in a loop, and CloudDocs logs showed repeated
+`finished uploading 1 item` → `received 2 edited items` → `sending 1 item`.
+The current transport blocker is therefore an observed iCloud/CloudDocs
+upload-conflict loop. Shortcut logic remains frozen until the loop is resolved.
+
 ## Fast CREATE logic oracle
 
 `app/create_shortcut_simulator.py` and

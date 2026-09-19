@@ -364,6 +364,18 @@ shared physical Save/write boundary regression, not a candidate-only Gate A/B
 failure. Do not change CREATE logic until this boundary is restored or an
 Apple-side permission/path cause is proven.
 
+### iCloud upload-loop evidence — 2026-09-19 12:04–12:06
+
+The owner materialized the `Blink_Acceptance/ToMac` folder on Mac and a fresh
+candidate run was repeated. The folder still contained only the historical
+2026-09-15 payloads; no new `.event.json` or `.ready` appeared. Finder then
+reported `Uploading 2 items` with progress repeatedly approaching completion
+and restarting. CloudDocs logs showed the corresponding cycle: one item
+finished uploading, two edited items were received from cloud, and another
+item was sent back to cloud. This proves an active iCloud/CloudDocs
+upload-conflict loop around the Shortcuts container. It is now the leading
+transport blocker; do not alter CREATE action logic while this loop persists.
+
 ### Latest candidate transport retest — 2026-09-15
 
 After Mirroring was reconnected, the current Mac editor run of `Blink Create

@@ -311,6 +311,10 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   Current status is `CREATE transport/write boundary under investigation;
   iCloud sync/materialization is the leading hypothesis`. Do not change Gate
   A/B until this shared boundary is explained.
+- Physical follow-up after materializing `ToMac` still produced no fresh pair.
+  Finder and CloudDocs now show a repeatable upload loop (`Uploading 2 items`;
+  one item finishes, two edited items return, one is sent again). Resolve this
+  transport conflict before any further CREATE tree edits.
 - CREATE candidate restored from untouched `Blink Create Test` in-place; source
   remains 93 actions and untouched. Gate A is now reapplied and saved in the
   candidate at 104 actions. Gate B is applied and must now be physically
