@@ -734,3 +734,23 @@ optional attachment save to `ToMac`, then `READY` renamed to
 Therefore the current Mac/iPhone tree mismatch hypothesis is closed. This does
 not yet prove a fresh physical payload; the remaining investigation is the
 CREATE transport/write/publication boundary.
+
+### CREATE transport root cause and recovery — 2026-09-19
+
+The controlled unchanged-oracle run then produced
+`20260919130355-850443617.event.json` and `.ready` in the exact
+`Blink_Acceptance/ToMac` folder. The payload was imported into `agenda.json`,
+and `watcher_state.json` recorded the ntfy delivery at 13:05:57. The long
+no-push investigation was therefore not a CREATE tree defect, an iPhone tree
+defect, or a current iCloud write failure.
+
+The actual failure was the Mac runtime boundary: the watcher LaunchAgent had
+the Files staging variable `BLINK_TO_PHONE_ROOT`, but did not have the two
+explicit Acceptance mailbox variables `BLINK_MAILBOX_ENABLED` and
+`BLINK_MAILBOX_ROOT`. The watcher process was alive, but its CREATE mailbox
+worker was intentionally disabled, so it never consumed `ToMac` and could not
+send the event push. The documented one-shot Acceptance environment was
+enabled, the package was consumed and delivered, then both variables were
+unset and the watcher was restarted. Production remains disabled. This is now
+the authoritative explanation for the historical “files exist but no push”
+symptom.
