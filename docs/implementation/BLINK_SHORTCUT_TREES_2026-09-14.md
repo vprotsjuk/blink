@@ -726,3 +726,11 @@ candidate's Gate A body (`Count Items` -> `Count > 1` -> alert -> `Stop`) under
 is now published to the phone. Mirroring then crashed again when scrolling the
 editor, so the full iPhone tail and physical run remain unverified; this is not
 treated as CREATE acceptance.
+
+The subsequent iPhone screenshots completed the comparison: the candidate
+tail matches the Mac tree. The iPhone shows the event JSON save to `ToMac`, the
+optional attachment save to `ToMac`, then `READY` renamed to
+`<TransferID>.ready`, saved to `ToMac`, followed by `Stop this shortcut`.
+Therefore the current Mac/iPhone tree mismatch hypothesis is closed. This does
+not yet prove a fresh physical payload; the remaining investigation is the
+CREATE transport/write/publication boundary.
