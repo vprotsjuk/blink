@@ -674,3 +674,48 @@ no-attachment input (`Reminder 0`, `Blinker 0`). No fresh `.event.json` or
 explain the current failure. The authoritative status remains a shared CREATE
 Save/publication boundary under investigation; the earlier upload-loop is
 evidence, but not by itself a proven current root cause after reconnection.
+
+## CREATE historical/current differential audit — 2026-09-19
+
+Before any further physical repair, the Mac Shortcuts GUI was re-read without
+editing either tree. The historical working reference is the untouched
+`Blink Create Test` oracle plus the accepted 2026-09-15 direct, Blinker 0/17,
+fractional-rejection, and one-image runs recorded above.
+
+| Region | Current oracle `Blink Create Test` | Current candidate `Blink Create Stage2 WORK` |
+|---|---|---|
+| action count | 93 | 104 |
+| input | Share Sheet, no-input Continue, `First Item` | same, preceded by Count Items -> Count > 1 -> alert -> Stop -> Otherwise |
+| title/description/date/importance/reminders | unchanged oracle body | unchanged oracle body |
+| Blinker | Ask Number plus `>= 0` | Round to Integer -> exact equality -> Stop, then `>= 0` -> Stop |
+| serialization | v1 JSON, optional attachment, `.ready` last | same reachable serialization |
+| current visible Save destination | `Shortcuts` | `Blink_Acceptance/ToMac` |
+
+The candidate's logical delta is therefore only the intended Gate A/B behavior;
+the simulator reproduces those semantic blocks and all 18 focused CREATE,
+DONE, and Files tests pass. No lost validation, serialization, or `.ready`
+action was found in the current Mac trees.
+
+The Save binding remains an unresolved difference: the current oracle's Save
+controls are visibly labelled `Shortcuts`, while the candidate's are labelled
+`ToMac`. A read-only picker inspection of the oracle did not resolve that label
+to the Acceptance folder. Historical documents prove that the working
+2026-09-15 mailbox was the exact `Blink_Acceptance/ToMac` path, but Git contains
+documentation and simulator profiles rather than a binary Shortcut export.
+The current oracle binding must therefore not be assumed equivalent to the
+historical working binding.
+
+Independent local evidence records a publication anomaly: the main
+`Shortcuts.sqlite` file is timestamped 2026-09-15 while the active
+`Shortcuts.sqlite-wal` is a 3 MB file modified 2026-09-19. SQLite integrity is
+`ok`, but CloudDocs continues an upload/reconciliation cycle. `brctl status`
+reports caught-up/full-sync, so that line alone does not prove identical
+publication of the Mac body and Save bindings to iPhone.
+
+Audit conclusion: no logic repair is justified yet. Ranked causes are
+(1) unresolved Save-destination divergence, (2) Shortcuts publication/iCloud
+WAL-CloudDocs boundary failure, and only then (3) a reachable candidate action
+defect. The next physical step must be a complete iPhone Edit-tree comparison,
+followed by one controlled GUI publication/save-touch or destination correction
+only if that comparison identifies the exact missing state. No Gate A/B rewrite
+or new Shortcut object is authorized by this audit.

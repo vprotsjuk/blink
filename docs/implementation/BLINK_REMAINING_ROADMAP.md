@@ -344,6 +344,16 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
 - Coherent Git commit/push after each accepted block; mandatory checkpoints
   before Production cutover and before destructive cleanup
 
+- Differential audit completed before further repair: Mac oracle is 93 actions
+  and candidate is 104 actions with only the intended Gate A/B deltas, and the
+  focused simulator suite passes. The current oracle Save controls are labelled
+  `Shortcuts`, while the candidate controls are labelled
+  `Blink_Acceptance/ToMac`; this is a real unresolved binding difference from
+  the historical 2026-09-15 working mailbox. Shortcuts WAL/CloudDocs activity
+  is supporting publication-boundary evidence, not yet a sole root-cause
+  declaration. Read and compare the complete iPhone Edit tree before any
+  physical repair; then use one controlled GUI save-touch/path correction.
+
 ### REMAINING
 
 - Final CREATE/DONE/Files acceptance as needed

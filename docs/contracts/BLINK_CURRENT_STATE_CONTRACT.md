@@ -280,3 +280,22 @@ Before cleanup inventory Shortcuts, iCloud, and project/runtime as
 KEEP / DELETE / WHY. Delete only agent-created or explicitly approved obsolete
 artifacts after replacement acceptance; never delete user data, source, tests,
 runtime state, authoritative docs, or the only fallback.
+
+### CREATE differential audit before repair — 2026-09-19
+
+The complete Mac trees were re-read without editing: `Blink Create Test` is
+93 actions and `Blink Create Stage2 WORK` is 104. The candidate contains only
+the intended Gate A and native Gate B deltas, and the focused simulator suite
+passes. The current oracle Save controls are labelled `Shortcuts`, while the
+candidate controls are labelled `Blink_Acceptance/ToMac`. Because the
+historical 2026-09-15 successful mailbox was `Blink_Acceptance/ToMac`, the
+oracle's current binding is unresolved and must not be treated as an
+equivalent transport control.
+
+The main `Shortcuts.sqlite` file remains timestamped on 2026-09-15 while its
+active WAL was modified on 2026-09-19; SQLite integrity is valid, but CloudDocs
+continues an upload/reconciliation cycle. This is evidence of a
+Shortcuts-publication/iCloud boundary issue, not proof that iCloud alone is
+the root cause. Before changing Shortcut logic, read the complete iPhone Edit
+tree and perform one controlled GUI publication step only if that comparison
+identifies the exact missing publication/path state.
