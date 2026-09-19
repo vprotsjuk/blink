@@ -303,11 +303,14 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   `Blink DONE`, and `Blink Files`. Existing Test/Stage2/WORK/Candidate/BACKUP
   objects are comparison profiles, not additional product architecture.
 
-- Known-good CREATE transport restored physically through untouched
-  `Blink Create Test`: fresh `.event.json` + `.ready` materialized in the
-  exact Acceptance/ToMac mailbox. The remaining failure is candidate-only:
-  `Blink Create Stage2 WORK` returns to the library without a fresh pair.
-  Differential debugging is limited to the candidate's reachable path.
+- Historical known-good CREATE transport success remains recorded from
+  2026-09-15, but the current physical retest on 2026-09-19 ran both untouched
+  `Blink Create Test` and `Blink Create Stage2 WORK` through their valid prompts
+  and produced no fresh `.event.json`/`.ready` pair. `brctl` reported the
+  Shortcuts container caught-up/full-sync with no pending materialization.
+  Current status is `CREATE transport/write boundary under investigation;
+  iCloud sync/materialization is the leading hypothesis`. Do not change Gate
+  A/B until this shared boundary is explained.
 - CREATE candidate restored from untouched `Blink Create Test` in-place; source
   remains 93 actions and untouched. Gate A is now reapplied and saved in the
   candidate at 104 actions. Gate B is applied and must now be physically

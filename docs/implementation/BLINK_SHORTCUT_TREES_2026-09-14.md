@@ -349,6 +349,21 @@ candidate-only differential failure; Gate A/B and iCloud are no longer valid
 general explanations. The candidate remains frozen while its reachable
 Gate-B-to-save path is compared against the untouched oracle.
 
+### Current transport regression retest — 2026-09-19 11:51–11:52
+
+After a clean iPhone Shortcuts restart, `Blink Create Stage2 WORK` completed a
+valid direct run (title, empty description, default date/time, green attention,
+Reminder `0`, Blinker `0`) and returned to the library without a fresh
+`.event.json` or `.ready`. The untouched `Blink Create Test` oracle was then
+run with the same input shape and also produced no fresh pair. The Mac
+Acceptance mailbox and all local `ToMac` folders were checked by modification
+time. `brctl status iCloud~is~workflow~my~workflows` reported the Shortcuts
+container caught-up/full-sync with no pending materialization. The 2026-09-15
+oracle success remains historical evidence, but the current failure is now a
+shared physical Save/write boundary regression, not a candidate-only Gate A/B
+failure. Do not change CREATE logic until this boundary is restored or an
+Apple-side permission/path cause is proven.
+
 ### Latest candidate transport retest — 2026-09-15
 
 After Mirroring was reconnected, the current Mac editor run of `Blink Create

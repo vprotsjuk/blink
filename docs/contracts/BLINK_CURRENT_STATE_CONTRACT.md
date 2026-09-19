@@ -137,6 +137,15 @@ proves the transport and iCloud materialization path are currently available;
 the remaining no-payload result is candidate-only and must be debugged against
 that oracle.
 
+Status correction (2026-09-19): a clean physical retest disproved the stronger
+claim that transport is currently available. Both the untouched `Blink Create
+Test` oracle and `Blink Create Stage2 WORK` completed valid direct runs but
+produced no fresh `.event.json`/`.ready` pair. `brctl status` reported the
+private Shortcuts container caught-up/full-sync with no pending materialization.
+The 2026-09-15 success is retained as historical evidence; the current status
+is `CREATE transport/write boundary under investigation`, with iCloud
+sync/materialization only a leading hypothesis. Gate A/B remain unchanged.
+
 ## Fast CREATE logic oracle
 
 `app/create_shortcut_simulator.py` and
