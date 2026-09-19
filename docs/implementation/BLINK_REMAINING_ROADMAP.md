@@ -313,6 +313,11 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   candidate at 104 actions. Gate B is applied and must now be physically
   save/sync-verified
   verification.
+- A live process snapshot on 2026-09-19 showed one `watcher.py` process and
+  one `Blink.app` process, with one loaded watcher LaunchAgent. No duplicate
+  instance is proven at this snapshot; however, singleton protection currently
+  lives in launch/start scripts rather than an in-process watcher lock, so a
+  direct second watcher launch remains an open lifecycle risk.
 - iCloud sync/tree verification of the frozen CREATE candidate
 - Remaining physical CREATE acceptance: fresh direct valid CREATE correlated
   to a new payload, one attachment,
