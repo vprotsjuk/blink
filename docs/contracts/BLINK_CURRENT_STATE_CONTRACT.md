@@ -200,6 +200,18 @@ test override named a Candidate Shortcut, it continues to invoke that old
 name. Current generation with no explicit test override was verified to emit
 `name=Blink%20Files`; canonical acceptance must use a newly generated push.
 
+### CREATE explicit ToMac retest — 2026-09-19
+
+All three reachable `Save` actions in the active candidate were explicitly
+rebound in Mac Shortcuts to the verified `Blink_Acceptance/ToMac` folder. The
+Mac picker exposed the exact private iCloud URL, and a GUI save-touch was
+observed by CloudDocs as Shortcut-record upload/application. A subsequent
+valid iPhone candidate run still produced no fresh `.event.json`/`.ready`.
+This excludes a merely ambiguous folder label as the complete explanation.
+Keep the status as `CREATE Save/publication boundary under investigation`;
+the earlier upload-loop remains supporting evidence, not a conclusive current
+root cause after reconnection.
+
 These simulators are the primary development/test harness for the three
 Shortcut roles, but are never runtime dependencies. The required sequence is:
 simulator/profile verification → minimal physical Shortcut edit →

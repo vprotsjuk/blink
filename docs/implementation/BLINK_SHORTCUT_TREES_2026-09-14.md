@@ -659,3 +659,18 @@ The current Files implementation chunk is to simplify the existing VIEW TEST
 candidate in place. No new Shortcut is required. The old 47-action Stage2
 candidate remains only until the simplified dynamic candidate passes the
 physical acceptance matrix; it is not a design to extend.
+
+## Explicit candidate ToMac retest — 2026-09-19 12:15–12:18
+
+The active candidate was minimally edited in Mac Shortcuts only: all three
+reachable `Save` actions (event JSON, optional attachment, and final `.ready`)
+were explicitly bound to the verified folder `Blink_Acceptance/ToMac`. The Mac
+picker exposed the exact private iCloud URL ending in
+`Documents/Blink_Acceptance/ToMac/`; `Blink Create Test` was not edited. A GUI
+save-touch caused CloudDocs to upload and apply changed Shortcut records, after
+which the candidate was run again on the reconnected iPhone with valid direct
+no-attachment input (`Reminder 0`, `Blinker 0`). No fresh `.event.json` or
+`.ready` appeared. The path-selection error is therefore not sufficient to
+explain the current failure. The authoritative status remains a shared CREATE
+Save/publication boundary under investigation; the earlier upload-loop is
+evidence, but not by itself a proven current root cause after reconnection.

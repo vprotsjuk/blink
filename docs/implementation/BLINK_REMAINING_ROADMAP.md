@@ -315,6 +315,14 @@ retain the iPhone Edit-tree evidence and physical result in the tree inventory.
   Finder and CloudDocs now show a repeatable upload loop (`Uploading 2 items`;
   one item finishes, two edited items return, one is sent again). Resolve this
   transport conflict before any further CREATE tree edits.
+- After reconnecting the iPhone and reopening Shortcuts, the active candidate
+  was minimally repaired in place: all three reachable `Save` actions were
+  explicitly bound to the verified `Blink_Acceptance/ToMac` folder. Mac GUI
+  save-touch and CloudDocs Shortcut-record application succeeded, but a fresh
+  valid iPhone candidate run still produced no `.event.json`/`.ready`. The
+  current gate is therefore the shared CREATE Save/publication boundary; the
+  earlier upload-loop is evidence, not a proven sole root cause. Do not touch
+  the oracle or redesign CREATE while this differential remains unresolved.
 - CREATE candidate restored from untouched `Blink Create Test` in-place; source
   remains 93 actions and untouched. Gate A is now reapplied and saved in the
   candidate at 104 actions. Gate B is applied and must now be physically
