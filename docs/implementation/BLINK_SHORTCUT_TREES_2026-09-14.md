@@ -719,3 +719,10 @@ defect. The next physical step must be a complete iPhone Edit-tree comparison,
 followed by one controlled GUI publication/save-touch or destination correction
 only if that comparison identifies the exact missing state. No Gate A/B rewrite
 or new Shortcut object is authorized by this audit.
+
+After reconnecting iPhone Mirroring, the iPhone editor visibly showed the
+candidate's Gate A body (`Count Items` -> `Count > 1` -> alert -> `Stop`) under
+`Blink Create Stage2 WORK`. This proves that at least the edited candidate body
+is now published to the phone. Mirroring then crashed again when scrolling the
+editor, so the full iPhone tail and physical run remain unverified; this is not
+treated as CREATE acceptance.
